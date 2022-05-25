@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "HTTP://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+ 	<settings> 
+ 		<setting name="callSettersOnNulls" value="true" />
+ 		<setting name="defaultStatementTimeout" value="10"/> 
+ 		<setting name="cacheEnabled" value="false"/>
+ 		<!-- DB2는 jdbcTypeForNull 주석처리해야 함 -->
+		<setting name="jdbcTypeForNull" value="NULL" />
+<!-- 		<setting name="cacheEnabled" value="false" /> -->
+<!-- 		<setting name="useGeneratedKeys" value="true" /> -->
+<!-- 		<setting name="defaultExecutorType" value="REUSE" /> -->
+ 	</settings> 
+
+	<typeAliases>
+<!-- 		<typeAlias type="com.wise.menu.MenuVO" alias="MenuVO" /> -->
+	</typeAliases>
+
+</configuration>

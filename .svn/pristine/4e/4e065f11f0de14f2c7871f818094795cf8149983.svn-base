@@ -1,0 +1,36 @@
+.zssheet * {
+	box-sizing: content-box;
+}
+
+html {
+	font-size: 14px;
+}
+
+body {
+	height: 100% !important;
+	width: 100% !important;
+	padding: 0 !important;
+}
+
+section.content.spreadsheet-editor {
+	height: calc(100vh - 125px);
+}
+
+.panel-head {
+	border-right: 1px solid #e7e7e7;
+}
+
+.spreadsheet-cont {
+    width: calc(100% - 212px);
+    height: calc(100vh - 105px);
+    position: relative;
+    float: right;
+}
+
+.panel-tab .panel.tree{
+	width: 212px !important;
+}
+
+.spreadsheet-editor .panel-tab .panel-body {
+  padding: 5px !important;
+}

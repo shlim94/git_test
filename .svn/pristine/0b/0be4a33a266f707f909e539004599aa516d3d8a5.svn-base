@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Dashboard CurrencyCulture="ko-KR">
+  <Title Text="훈련실시회차 현황" Alignment="Left"/>
+  <DataSources>
+    <DataSource ComponentName="dataSource1" Name="데이터집합1"/>
+    <DataSource ComponentName="dataSource2" Name="데이터집합2"/>
+    <DataSource ComponentName="dataSource3" Name="데이터집합3"/>
+    <DataSource ComponentName="dataSource4" Name="데이터집합4"/>
+  </DataSources>
+  <Items>
+    <Grid ComponentName="gridDashboardItem1" Name="지역별" MemoText="" DataSource="dataSource1" ShowCaption="false" Palette="Office" HeaderList="{&quot;HEADER_CODE1&quot;:{&quot;HEADER_CODE&quot;:&quot;HEADER_CODE1&quot;,&quot;HEADER_NAME&quot;:&quot;훈련과정&quot;,&quot;HEADER_YN&quot;:&quot;Y&quot;,&quot;COLUMN_LIST&quot;:[{&quot;dataField&quot;:&quot;sum_훈련과정수&quot;,&quot;alignment&quot;:&quot;right&quot;,&quot;dataType&quot;:&quot;number&quot;,&quot;format&quot;:&quot;fixedPoint&quot;,&quot;caption&quot;:&quot;개소&quot;,&quot;name&quot;:&quot;훈련과정수&quot;,&quot;uniqueName&quot;:&quot;DataItem2&quot;,&quot;UniqueName&quot;:&quot;DataItem2&quot;,&quot;TopNEnabled&quot;:false,&quot;TopNOrder&quot;:false,&quot;TopNShowOthers&quot;:false,&quot;ContainerType&quot;:&quot;&quot;,&quot;summaryType&quot;:&quot;sum&quot;,&quot;precision&quot;:0,&quot;precisionOption&quot;:&quot;반올림&quot;,&quot;HEADER_CODE&quot;:&quot;HEADER_CODE1&quot;,&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;},{&quot;dataField&quot;:&quot;sum_훈련과정수_비중&quot;,&quot;alignment&quot;:&quot;right&quot;,&quot;dataType&quot;:&quot;number&quot;,&quot;format&quot;:&quot;percent&quot;,&quot;caption&quot;:&quot;비중&quot;,&quot;name&quot;:&quot;훈련과정수_비중&quot;,&quot;uniqueName&quot;:&quot;DataItem3&quot;,&quot;UniqueName&quot;:&quot;DataItem3&quot;,&quot;TopNEnabled&quot;:false,&quot;TopNOrder&quot;:false,&quot;TopNShowOthers&quot;:false,&quot;ContainerType&quot;:&quot;&quot;,&quot;summaryType&quot;:&quot;sum&quot;,&quot;precision&quot;:2,&quot;precisionOption&quot;:&quot;반올림&quot;,&quot;HEADER_CODE&quot;:&quot;HEADER_CODE1&quot;,&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;}],&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;},&quot;HEADER_CODE2&quot;:{&quot;HEADER_CODE&quot;:&quot;HEADER_CODE2&quot;,&quot;HEADER_NAME&quot;:&quot;학습근로자&quot;,&quot;HEADER_YN&quot;:&quot;Y&quot;,&quot;COLUMN_LIST&quot;:[{&quot;dataField&quot;:&quot;sum_학습근로자수&quot;,&quot;alignment&quot;:&quot;right&quot;,&quot;dataType&quot;:&quot;number&quot;,&quot;format&quot;:&quot;fixedPoint&quot;,&quot;caption&quot;:&quot;개소&quot;,&quot;name&quot;:&quot;학습근로자수&quot;,&quot;uniqueName&quot;:&quot;DataItem4&quot;,&quot;UniqueName&quot;:&quot;DataItem4&quot;,&quot;TopNEnabled&quot;:false,&quot;TopNOrder&quot;:false,&quot;TopNShowOthers&quot;:false,&quot;ContainerType&quot;:&quot;&quot;,&quot;summaryType&quot;:&quot;sum&quot;,&quot;precision&quot;:0,&quot;precisionOption&quot;:&quot;반올림&quot;,&quot;HEADER_CODE&quot;:&quot;HEADER_CODE2&quot;,&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;},{&quot;dataField&quot;:&quot;sum_학습근로자수_비중&quot;,&quot;alignment&quot;:&quot;right&quot;,&quot;dataType&quot;:&quot;number&quot;,&quot;format&quot;:&quot;percent&quot;,&quot;caption&quot;:&quot;비중&quot;,&quot;name&quot;:&quot;학습근로자수_비중&quot;,&quot;uniqueName&quot;:&quot;DataItem5&quot;,&quot;UniqueName&quot;:&quot;DataItem5&quot;,&quot;TopNEnabled&quot;:false,&quot;TopNOrder&quot;:false,&quot;TopNShowOthers&quot;:false,&quot;ContainerType&quot;:&quot;&quot;,&quot;summaryType&quot;:&quot;sum&quot;,&quot;precision&quot;:2,&quot;precisionOption&quot;:&quot;반올림&quot;,&quot;HEADER_CODE&quot;:&quot;HEADER_CODE2&quot;,&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;}],&quot;HEADER_UPPER&quot;:&quot;NonHeader&quot;}}">
+      <DataItems>
+        <Dimension DataMember="구분" Name="구분" ContainerType="" UniqueName="DataItem1" SortByMeasure="DataItem0"/>
+        <Measure DataMember="훈련과정수" Name="개소" ContainerType="" SummaryType="Sum" UniqueName="DataItem2">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="훈련과정수_비중" Name="비중" ContainerType="" SummaryType="Sum" UniqueName="DataItem3">
+          <NumericFormat FormatType="Percent" Precision="2" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="학습근로자수" Name="개소" ContainerType="" SummaryType="Sum" UniqueName="DataItem4">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="학습근로자수_비중" Name="비중" ContainerType="" SummaryType="Sum" UniqueName="DataItem5">
+          <NumericFormat FormatType="Percent" Precision="2" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="S_구분" Name="S_구분" ContainerType="" SummaryType="Min" UniqueName="DataItem0">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+      </DataItems>
+      <GridColumns>
+        <GridDimensionColumn>
+          <Dimension UniqueName="DataItem1"/>
+        </GridDimensionColumn>
+        <GridMeasureColumn DisplayMode="value">
+          <Measure UniqueName="DataItem2"/>
+        </GridMeasureColumn>
+        <GridMeasureColumn DisplayMode="value">
+          <Measure UniqueName="DataItem3"/>
+        </GridMeasureColumn>
+        <GridMeasureColumn DisplayMode="value">
+          <Measure UniqueName="DataItem4"/>
+        </GridMeasureColumn>
+        <GridMeasureColumn DisplayMode="value">
+          <Measure UniqueName="DataItem5"/>
+        </GridMeasureColumn>
+      </GridColumns>
+      <HiddenMeasures>
+        <Measure UniqueName="DataItem0"/>
+      </HiddenMeasures>
+      <GridOptions PagingEnabled="false" PagingDesc="" PagingDefault="20" PagingSizeEnabled="false">
+        <PagingSet Fir="10" Sec="20" Thi="50"/>
+      </GridOptions>
+    </Grid>
+    <Pivot ComponentName="pivotDashboardItem2" Name="유형별" MemoText="" DataSource="dataSource2" ShowCaption="false" DataFieldPosition="row">
+      <AutoExpandColumnGroups>true</AutoExpandColumnGroups>
+      <AutoExpandRowGroups>true</AutoExpandRowGroups>
+      <PagingOptions PagingDesc="" PagingDefault="50" PagingEnabled="false" PagingSizeEnabled="false">
+        <PagingSet Fir="10" Sec="20" Thi="50"/>
+      </PagingOptions>
+      <DataItems>
+        <Dimension DataMember="구분대분류" Name="구분대분류" UniqueName="DataItem4" SortByMeasure=""/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem5" SortByMeasure=""/>
+        <Measure DataMember="훈련과정(개소)" Name="훈련과정(개소)" SummaryType="Sum" UniqueName="DataItem0">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="비중" Name="비중" SummaryType="Sum" UniqueName="DataItem1">
+          <NumericFormat FormatType="Percent" Precision="2" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="S_구분대분류" Name="S_구분대분류" SummaryType="Min" UniqueName="DataItem2">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="S_구분" Name="S_구분" SummaryType="Min" UniqueName="DataItem3">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+      </DataItems>
+      <HiddenMeasures>
+        <Measure UniqueName="DataItem2"/>
+        <Measure UniqueName="DataItem3"/>
+      </HiddenMeasures>
+      <Columns>
+        <Column UniqueName="DataItem4"/>
+        <Column UniqueName="DataItem5"/>
+      </Columns>
+      <Values>
+        <Value UniqueName="DataItem0"/>
+        <Value UniqueName="DataItem1"/>
+      </Values>
+    </Pivot>
+    <Pivot ComponentName="pivotDashboardItem4" Name="연도별" MemoText="" DataSource="dataSource3" ShowCaption="false" DataFieldPosition="row">
+      <AutoExpandColumnGroups>true</AutoExpandColumnGroups>
+      <AutoExpandRowGroups>true</AutoExpandRowGroups>
+      <PagingOptions PagingDesc="" PagingDefault="50" PagingEnabled="false" PagingSizeEnabled="false">
+        <PagingSet Fir="10" Sec="20" Thi="50"/>
+      </PagingOptions>
+      <DataItems>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem3" SortByMeasure="DataItem2"/>
+        <Measure DataMember="훈련과정(개소)" Name="훈련과정(개소)" SummaryType="Sum" UniqueName="DataItem0">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="비중" Name="비중" SummaryType="Sum" UniqueName="DataItem1">
+          <NumericFormat FormatType="Percent" Precision="2" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="S_구분" Name="S_구분" SummaryType="Min" UniqueName="DataItem2">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+      </DataItems>
+      <HiddenMeasures>
+        <Measure UniqueName="DataItem2"/>
+      </HiddenMeasures>
+      <Columns>
+        <Column UniqueName="DataItem3"/>
+      </Columns>
+      <Values>
+        <Value UniqueName="DataItem0"/>
+        <Value UniqueName="DataItem1"/>
+      </Values>
+    </Pivot>
+    <Pivot ComponentName="pivotDashboardItem6" Name="업종별" MemoText="" DataSource="dataSource4" ShowCaption="false" DataFieldPosition="row">
+      <AutoExpandColumnGroups>true</AutoExpandColumnGroups>
+      <AutoExpandRowGroups>true</AutoExpandRowGroups>
+      <PagingOptions PagingDesc="" PagingDefault="50" PagingEnabled="false" PagingSizeEnabled="false">
+        <PagingSet Fir="10" Sec="20" Thi="50"/>
+      </PagingOptions>
+      <DataItems>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem3" SortByMeasure="DataItem2"/>
+        <Measure DataMember="훈련과정(개소)" Name="훈련과정(개소)" SummaryType="Sum" UniqueName="DataItem0">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="비중" Name="비중" SummaryType="Sum" UniqueName="DataItem1">
+          <NumericFormat FormatType="Percent" Precision="2" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Measure DataMember="S_구분" Name="S_구분" SummaryType="Min" UniqueName="DataItem2">
+          <NumericFormat FormatType="Number" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+      </DataItems>
+      <HiddenMeasures>
+        <Measure UniqueName="DataItem2"/>
+      </HiddenMeasures>
+      <Columns>
+        <Column UniqueName="DataItem3"/>
+      </Columns>
+      <Values>
+        <Value UniqueName="DataItem0"/>
+        <Value UniqueName="DataItem1"/>
+      </Values>
+    </Pivot>
+    <TabContainer ComponentName="tabContainerDashboardItem1" Name="텝 컨테이너 1">
+      <Pages>
+        <Page ComponentName="dashboardTabPage1" Name="지역별"/>
+        <Page ComponentName="dashboardTabPage2" Name="유형별"/>
+        <Page ComponentName="dashboardTabPage4" Name="연도별"/>
+        <Page ComponentName="dashboardTabPage5" Name="업종별"/>
+      </Pages>
+    </TabContainer>
+  </Items>
+  <LayoutTree>
+    <LayoutTabContainer DashboardItem="tabContainerDashboardItem1" Weight="100">
+      <LayoutTabPage DashboardItem="dashboardTabPage1" Orientation="Horizontal">
+        <LayoutItem DashboardItem="gridDashboardItem1" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage2" Orientation="Horizontal">
+        <LayoutItem DashboardItem="pivotDashboardItem2" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage4" Orientation="Horizontal">
+        <LayoutItem DashboardItem="pivotDashboardItem4" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage5" Orientation="Horizontal">
+        <LayoutItem DashboardItem="pivotDashboardItem6" Weight="100"/>
+      </LayoutTabPage>
+    </LayoutTabContainer>
+  </LayoutTree>
+</Dashboard>

@@ -1,0 +1,540 @@
+/* GENERAL */
+.config-container {
+	height: calc(100vh - 124px);
+	overflow: auto;
+}
+
+.content {
+	height: 100%;
+}
+
+.panel-tab.pref {
+	height: 100%;
+}
+
+.panel-tab .panel.list {
+	height: 100%;
+	width: 15%;
+	background: #fff;
+}
+
+.preferences-cont {
+	/* 	2020.01.29 MKSONG KERIS UI 수정 KERIS일때 위에꺼 사용DOGFOOT  */
+	width: calc(100% - 242px) !important; 
+/* 	width: calc(100% - 212px) !important;  */
+	height: calc(100vh - 125px) !important;
+/* 	height: calc(100vh - 123px) !important; */
+}
+
+.preferences-cont.DataSet{
+	width: calc(100%) !important; 
+	height: calc(100vh - 123px) !important;
+}
+.preferences-lnb {
+	display: none;
+}
+
+.nav-scroll-x {
+	width: calc(100% - 35px);
+}
+
+.tit-config {
+    color: #6a6f7f;
+    font-size: 2rem;
+    letter-spacing: 0;
+}
+
+.tab-container {
+    width: 100%;
+    height: 100%;
+    margin: auto;
+	/* padding: 10px; */
+	background-color: #f5f6fa;
+	display: none;
+}
+
+.item-container {
+	background: #f1f2f8;
+	border: 1px solid #dfe2e5;
+}
+
+.item-container .dx-datagrid-pager.dx-pager {
+	background: #f1f2f8;
+}
+
+.tit-level3.pre.item-container-title {
+	padding-top: 13px;
+}
+
+#selectedSubcategory {
+	float: left;
+	margin-right: 20px;
+}
+
+#filterContainer {
+	height: 60px;
+	display: block;
+	padding-top: 13px;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+#refreshBtn {
+	height: 60px;
+	width: 60px;
+	float: right;
+}
+
+.sql-display {
+	width: 100%;
+	height: 100%;
+	border: none;
+	-webkit-border-radius: 0;
+	border-radius: 0;
+}
+
+.sql-display:disabled {
+	background-color: #fff;
+}
+
+.popup-footer {
+	padding-top: 20px;
+}
+
+.preferences-tbl .ipt input, .preferences-tbl .ipt select {
+	width: 100%;
+}
+
+#loginImage, #logo {
+	height: 100px;
+}
+
+#resetLoginImage, #resetLogo {
+	margin-left: 10px;
+}
+
+#showNullValue, #showNullValueLabel {
+	display: inline-block !important;
+}
+
+#nullValue {
+	display: inline-block !important; 
+	width: calc(100% - 28px);
+}
+
+.check-and-text {
+	width: 100%;
+	max-width: 400px;
+}
+
+/* USER & GROUP */
+#userGroupPage {
+	height: 100%;
+}
+
+#userListContainer {
+	float: left;
+	height: calc(100% - 20px);
+	width: calc((100% - 10px) / 2);
+	margin-right: 5px;
+}
+
+#userList, #groupList {
+	/* width: 100%; */
+	height: calc(100% - 65px);
+}
+
+#userDetailedInfo {
+	height: 100%;
+	/* width: 100%; */
+}
+
+#groupDetailedInfo {
+	height: calc(100% - 65px);
+	/* width: 100%; */
+}
+
+.user-desc {
+	height: 100px;
+}
+
+.row.multi-table {
+	height: 100%;
+	width: 100%;
+}
+
+#usersInGroup, #usersNotInGroup {
+	height: calc(100% - 65px);
+	/* width: 100%; */
+}
+
+/* REPORT & FOLDER */
+#reportFolderPage {
+	height: 100%;
+}
+
+#reportList, #folderList {
+	height: calc(100% - 65px);
+	width: 100%;
+}
+
+#reportInfo {
+	height: calc(100% - 65px);
+	width: 100%;
+}
+
+@media (max-width: 1024px) {
+	.dx-popup {
+		width: 500px !important;
+		height: auto !important;
+	}
+}
+
+/* LOG */
+#logPage {
+	height: 100%;
+}
+
+#startDate, #endDate, #logStatus, #idNo, #idNoFilter, #colSelector, #selectAll, #deselectAll {
+	display: inline-block;
+	margin: 0 10px 0 10px;
+	vertical-align: top;
+}
+
+.date-tilde {
+	display: inline-block;
+}
+
+#logUserList, #logReportList, #logExportList {
+	height: 100%;
+}
+
+#logQueryList {
+	height: 100%;
+}
+
+#logQuerySql {
+	height: calc(100% - 65px);
+	width: 100%;
+}
+
+.logquery-top-container {
+	width: 100%;
+	height: calc(67% - 15px);
+	margin-bottom: 10px;
+}
+
+.logquery-bottom-container {
+	width: 100%;
+	height: calc(33% - 15px);
+	margin-top: 10px;
+}
+
+/* SESSION */
+#sessionPage {
+	height: 100%;
+}
+
+#sessionGrid, #userGrid, #inactiveUserGrid, #lockedUserGrid {
+	height: 100%;
+}
+
+/* MONITORING */
+#monitoringPage {
+	height: 100%; 
+}
+
+#tabPanel {
+    width: 100%; 
+    height: calc(100% - 50px);
+}
+
+#cpuGauge, #memGauge, #diskGauge {
+    height: 100%;
+    width: 100%;
+}
+
+.system-chart-container {
+	height: calc(100% - 65px);
+	width: 50%;
+}
+
+.system-chart-full-container {
+	height: calc(100% - 65px);
+	width: 100%;
+}
+
+#cpuChart, #memChart, #systemInfo, #diskChart {
+	height: 100%;
+	width: 100%;
+	padding: 20px;
+}
+
+#jobDescription, #sametimeUser {
+	padding-left:25px;
+}
+
+#jobInfoList, #activeUserList {
+	height: 100%; 
+}
+
+#jobInfoBtn, #userBtn {
+	margin-top: 10px; 
+	float:right;
+}
+
+@media (max-width: 1024px) {
+	.responsive-border {
+		border-bottom: 1px solid #e7e7e7;
+	}
+}
+
+@media (max-width: 640px) {
+	.system-chart-container {
+		width: 100%;
+	}
+}
+
+/* AUTHENTICATION */
+#authenticationPage {
+	height: 100%;
+}
+
+#userDataSelectTable, #groupDataSelectTable, #userDatasetSelectTable, #userDatasetSelectTable, #groupDatasetSelectTable, #userReportSelectTable, #groupReportSelectTable, #userReportList, #groupReportList, #userWbSelectTable, #groupWbSelectTable {
+	width: 100%;
+	height: calc(100% - 65px);
+}
+
+#userDsList, #groupDsList, #userAreaList, #groupAreaList, #userDsViewArea, #groupDsViewArea, #userDsDimensionArea, #groupDsDimensionArea, #userMemberArea, #groupMemberArea {
+	width: 100%;
+	height: calc(100% - 65px);
+}
+
+.advanced-grid-container {
+	width: calc(80% - 5px);
+	height: calc(60% - 20px);
+	background-color: #fff;
+	margin-right: 5px;
+	margin-left: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.auth-report-icon {
+	width: 18px;
+    height: 18px;
+    background-position: 0px 0px;
+    -webkit-background-size: 18px 18px;
+    -moz-background-size: 18px 18px;
+    background-size: 18px 18px;
+    padding: 0px;
+    font-size: 18px;
+    text-align: center;
+    line-height: 18px;
+}
+
+/* USER ACCOUNT SETTINGS */
+.account-container-inner {
+	padding-top: 62px;
+}
+
+.account-container {
+	height: calc(100vh - 64px);
+	overflow: auto;
+}
+
+.tit-level3.account-tit {
+	font-size: 2.4em;
+	text-align: center;
+	padding: 9px;
+	margin-bottom: 0;
+}
+
+.account-content {
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 20px;
+	width: auto;
+	max-width: 1120px;
+	height: auto;
+	overflow: auto;
+}
+
+.preferences-tbl.account {
+	background-color: transparent;
+}
+
+.account-settings-container {
+	border: 2px solid #d3d3d3;
+	border-radius: 16px;
+	margin: 24px 12px 0 12px;
+	overflow: auto;
+}
+
+.account-settings-button {
+	padding: 10px;
+	border-top: 1px solid #dfe2e5;
+	text-align: center;
+}
+
+.account-settings-button:hover {
+	background-color: #e1e6fa;
+}
+
+.account-settings-button:active {
+	background-color: #dcdde1;
+}
+
+.account-settings-button.left {
+	width: 50%;
+	float: left;
+	border-right: 1px solid #dfe2e5;
+}
+
+.account-settings-button.right {
+	width: 50%;
+	float: right;
+	margin-left: -1px;
+}
+
+/* DOGFOOT ktkang 개인보고서 추가  20200107 */
+.account-settings-button.left2 {
+	width: 33%;
+	float: left;
+	border-right: 1px solid #dfe2e5;
+}
+
+.account-settings-button.center {
+	width: 34%;
+	float: left;
+	border-right: 1px solid #dfe2e5;
+}
+
+.account-settings-button.right2 {
+	width: 33%;
+	float: right;
+	border-right: 1px solid #dfe2e5;
+}
+
+.account-settings-button p {
+	font-size: 1.2em;
+	color: #577df6;
+}
+
+.account-settings-category {
+	border-top: 1px solid #dfe2e5;
+/* 	text-align: center; */
+	overflow: auto;
+}
+
+.account-settings-category.no-border {
+	border: 0;
+}
+
+.account-settings-category.left {
+	width: 50%;
+	float: left;
+	margin-right: -1px;
+}
+
+.account-settings-category.right {
+	width: 50%;
+	float: right;
+	border-left: 1px solid #dfe2e5;
+}
+
+.category-body {
+	width: 100%;
+	height: auto;
+	overflow: auto;
+/* 	padding: 20px; */
+}
+
+.category-title {
+	float: left;
+	width: auto;
+	text-align: left;
+}
+
+.category-title p {
+	font-size: 1.5em;
+	color: #646464;
+}
+
+.category-title-bold {
+	font-weight: bold;
+}
+
+.category-image {
+	height: 100%;
+	width: auto;
+	float: right;
+}
+
+#userProfile {
+	height: 240px;
+	width: auto;
+}
+
+/* .popup-body { */
+/* 	height: 692px; */
+/* } */
+
+#editDesignerInfo {
+	display: none;
+}
+
+@media (max-width: 780px) {
+	.acc {
+		min-width: 100% !important;
+	}
+
+	.preferences-tbl.account input[type="radio"] + label + input + label,  .preferences-tbl.account input[type="checkbox"] + label + input + label {
+		margin-left: 0;
+		margin-top: 6px;
+	}
+
+	.preferences-tbl.account table input[type="text"],  .preferences-tbl.account table input[type="number"],  .preferences-tbl.account table input[type="password"],  .preferences-tbl.account table select,  .preferences-tbl.account table textarea,  .preferences-tbl.account table .line-area {
+		max-width: 100%;
+	}
+
+	.preferences-tbl.account table tr {
+		display: block;
+	}
+
+	.preferences-tbl.account table tr th,  .preferences-tbl.account table tr td {
+		display: block;
+		padding: 10px 20px 10px 20px !important;
+		height: auto;
+	}
+
+	.preferences-tbl.account table tr th .crud,  .preferences-tbl.account table tr td .crud {
+		width: 100%;
+		max-width: 100%;
+		margin-left: 0;
+		margin-top: 10px;
+	}
+
+	.preferences-tbl.account table tr th .crud + .crud,  .preferences-tbl.account table tr td .crud + .crud {
+		margin-left: 0;
+	}
+
+	.preferences-tbl.account table tr th .check + label,  .preferences-tbl.account table tr td .check + label {
+		display: block;
+	}
+}
+
+@media (max-width: 640px) {
+	.account-settings-category.left, .account-settings-category.right {
+		width: 100%;
+		float: none;
+		border-right: none;
+	}
+
+	.account-settings-button.left, .account-settings-button.right {
+		width: 100%;
+		float: none;
+		border-right: none;
+		margin-left: 0;
+	}
+}

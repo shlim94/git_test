@@ -1,0 +1,8943 @@
+/**
+ * 2020.05.12 MKSON DOGFOOT
+ * 모든 아이템의 공통 부분은 이곳에서 관리
+ */
+
+WISE.libs.Dashboard.item.ItemGenerateManager = function() {
+	var self = this;
+	var dataSources;
+	var itemFactory;
+	var layoutManager;
+//	var customFieldCalculater;
+	this.pivotItem = [];
+	this.dashboardid;
+	this.dxItemBasten = [];
+	this.viewedItemList = [];
+    this.customFieldCalculater;
+    this.focusedItem;
+	
+	/* goyong ktkang 본사 탭컨테이너 개별 조회 기능 추가  20210616 */
+    this.selectedItemList = [];
+	this.selectedTabList = [];
+	this.isParamReady;
+	
+	this.isDirectExportBtn = false;
+	
+	var crossFiltering;
+	
+	this.trackingConditionManager = {};
+	this.sqlConfigWhere = [];
+	/*dogfoot 다른 데이터 집합일 경우 마스터필터 영향 안받도록 수정 shlim 20200619*/
+	this.sqlConfigCurruntId;
+//	this.checker = 0;
+	
+	this.init = function() {
+		if(gDashboard.isNewReport == false){
+			dataSources = WISE.util.Object.toArray(gDashboard.structure.DataSources.DataSource);
+			layoutManager = window[this.dashboardid].layoutManager;
+		}else{
+			dataSources = WISE.util.Object.toArray(gDashboard.itemGenerateManager.dxItemBasten[0].dataSource);
+			layoutManager = gDashboard.layoutManager;
+		}
+//		dataSources = WISE.util.Object.toArray(gDashboard.structure.DataSources.DataSource);
+//		dataSources = WISE.util.Object.toArray(gDashboard.itemGenerateManager.dxItemBasten[0].dataSource);
+//		layoutManager = window[this.dashboardid].layoutManager;
+		layoutManager = gDashboard.layoutManager;
+		itemFactory = new WISE.libs.Dashboard.item.ItemFactory();
+		self.customFieldCalculater = new WISE.libs.Dashboard.CustomFieldCalculater(dataSources);
+		this.dashboardid = gDashboard.id;
+		
+
+	}
+	
+	var ParentItem = function() {
+		this.renderTitleHeader = function(_o) {
+			if (_o['ShowCaption'] === false) {
+				this.itemTitleH = $('#'+this.itemid).siblings('.cont_box_top').height();
+				var HH = parseInt($('#'+this.itemid).height() + this.itemTitleH,10);
+				$('#'+this.itemid)
+					.css('height',HH)
+					.siblings('.cont_box_top').hide();
+			}
+		};
+		this.generate = function(_o) {
+		};
+		this.bindData = function(_data) {
+		};
+		this.preResize = function() {
+			if (this.meta['ShowCaption'] === false) {
+				var HH = parseInt($('#'+this.itemid).height() + this.itemTitleH,10);
+				$('#'+this.itemid).css('height',HH);
+			}
+			
+			this.resize();
+		};
+		this.resize = function() {
+		};
+		this.clearTrackingConditions = function() {
+		
+		};
+
+		/* DOGFOOT hsshim 2020-02-06
+		 * - 마스터 필터 기능 리팩토링 적용 (코드 정리)
+		 * - 마스터 필터 속도 개선
+		 * - 마스터 필터 렌더링 표시 추가
+		 * - 매계변수 필터가 적용 되있을때 마스터 필터가 제대로 적용이 안되는 오류 수정
+		 */
+		this.queryTrackingData = function(_rawData) {
+			if(_rawData == undefined) return;
+			var cf = crossfilter(_rawData);
+			$.each(gDashboard.itemGenerateManager.trackingConditionManager, function(dimName, dimValues) {
+				cf.dimension(dimName).filterFunction(function(d) {
+					return dimValues.indexOf(d) !== -1;
+				});
+			});
+			
+			return cf.allFiltered();
+		};
+		/*dogfoot 아이템 하나라도 삭제하면 프로그레스바 무한로딩되는 오류 수정 shlim 20200618*/
+		this.doTrackingCondition = function(_itemid,_currntItem) {
+			if (!this.IO || !this.IO.IgnoreMasterFilters) {
+				this.tracked = true;
+				// TODO
+				if (_itemid !== this.itemid || this.IO.IsDrillDownEnabled) {
+					if(!_.isEmpty(gDashboard.itemGenerateManager.trackingConditionManager)){
+						this.filteredData = this.queryTrackingData(this.globalData);	
+					}else{
+						this.filteredData = [];
+					}
+					
+					this.bindData(this.filteredData);
+				}
+				/*dogfoot 마스터필터 무한로딩되는 오류 수정 shlim 20200717*/
+			//	if(_itemid === this.itemid){
+					if(_currntItem.ComponentName && gDashboard.itemGenerateManager.viewedItemList.indexOf(_currntItem.ComponentName) < 0 ){
+						gDashboard.itemGenerateManager.viewedItemList.push(_currntItem.ComponentName);
+					}
+					/*필터 프로그레스바 오류 수정*/
+					if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+						gProgressbar.setStopngoProgress(true);
+						gProgressbar.hide();		
+						gDashboard.updateReportLog();
+					}
+			//	}
+			}else{
+				if(_currntItem.ComponentName && gDashboard.itemGenerateManager.viewedItemList.indexOf(_currntItem.ComponentName) < 0 ){
+					gDashboard.itemGenerateManager.viewedItemList.push(_currntItem.ComponentName);
+				}
+				/*필터 프로그레스바 오류 수정*/
+				if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+					gProgressbar.setStopngoProgress(true);
+					gProgressbar.hide();		
+					gDashboard.updateReportLog();
+				}
+			}
+		};
+		/* DOGFOOT hsshim 2020-02-06 끝 */
+	}; // end of ParentItem
+	
+	this.addParentItems = function(instance) {
+		WISE.util.Object.overrideExtend(instance, new ParentItem());
+	}
+	
+	this.itemCustomize = function(instance, _o) {
+		if (instance) {
+			if (WISE.Constants.editmode !== 'viewer') {
+				instance.itemid = _o['ComponentName'] + '_item';
+				instance.itemNm = (_o['Name'] || '')/*.replace(/\s/g,'_')*/;
+			}
+			instance.__CUSTOMIZED = {
+				'common': WISE.widget.getCustom('common', instance.type),
+				'page': WISE.widget.getCustom(WISE.Constants.pid, instance.type),
+				'commonConfig': WISE.widget.getCustom('common', 'Config'),
+				'pageConfig': WISE.widget.getCustom(WISE.Constants.pid, 'Config')
+			};
+			instance.CUSTOMIZED = {
+				get: function(_path, _scope) {
+					var __instance = instance;
+					if (_scope === undefined) {
+
+						if (_path.indexOf('dx') === 0 && _path.indexOf('dx.') === -1) {
+							var item, page, common;
+							try {
+								var PAGE_CONFIG = __instance.__CUSTOMIZED.page;
+								item = _.clone(PAGE_CONFIG['dx-'+__instance.itemNm]);
+							} catch (_e) {
+								item = {};
+							}
+							try {
+								page = _.clone(eval('__instance.__CUSTOMIZED.page.' + _path));
+							} catch (_e) {
+								page = {};
+							}
+							try {
+								common = _.clone(eval('__instance.__CUSTOMIZED.common.' + _path));
+							} catch (_e) {
+								common = {};
+							}
+							
+							var dxOptions = $.extend({}, common, page);
+							return $.extend(dxOptions, item);
+						}
+						else {
+							var val1, val2;
+							try {
+								val1 = eval('__instance.__CUSTOMIZED.page.' + _path)
+							} catch (_e) {
+							}
+							try {
+								val2 = eval('__instance.__CUSTOMIZED.common.' + _path);
+							} catch (_e) {
+							}
+							
+							return val1 || val2;
+						}
+					} 
+					else if (_scope === 'Config') {
+						var val1, val2;
+						try {
+							val1 = eval('__instance.__CUSTOMIZED.pageConfig.' + _path)
+						} catch (_e) {
+						}
+						try {
+							val2 = eval('__instance.__CUSTOMIZED.commonConfig.' + _path);
+						} catch (_e) {
+						}
+						
+						return val1 || val2;
+					} 
+					else {
+						var val;
+						try {
+							val =  eval('__instance.__CUSTOMIZED.' + _scope + '.' + _path);
+						} catch (_e) {
+						}
+						
+						return val;
+					}
+				}	
+			};
+		}
+	}; // end of newItemInstance
+	
+	this.generate = function(_items, _reportId) {
+		var reportId = _reportId ? '_' + _reportId : '';
+		
+		var newItemInstance = function(_type, _o) {
+			var instance = itemFactory.getInstance(_type);
+			if (instance) {
+				/* extend */
+				WISE.util.Object.overrideExtend(instance, new ParentItem());
+				
+				if (instance.child) {
+					instance.child.dashboardid = self.dashboardid;
+					instance.child.dataSources = dataSources;
+					instance.child.layoutManager = layoutManager;
+				}
+				
+				instance.ComponentName = _o['ComponentName'] + reportId;
+				instance.memoText = _o['MemoText'];
+				instance.itemid = instance.ComponentName + '_item';
+				instance.itemNm = instance.Name = (_o['Name']+"" || '');
+				instance.dashboardid = self.dashboardid;
+				instance.dataSources = dataSources;
+				instance.layoutManager = layoutManager;
+				instance.__CUSTOMIZED = {
+					'common': WISE.widget.getCustom('common', instance.type),
+					'page': WISE.widget.getCustom(WISE.Constants.pid, instance.type),
+					'commonConfig': WISE.widget.getCustom('common', 'Config'),
+					'pageConfig': WISE.widget.getCustom(WISE.Constants.pid, 'Config')
+				};
+				instance.CUSTOMIZED = {
+					get: function(_path, _scope) {
+						var __instance = instance;
+						if (_scope === undefined) {
+
+							if (_path.indexOf('dx') === 0 && _path.indexOf('dx.') === -1) {
+								var item, page, common;
+								try {
+									var PAGE_CONFIG = __instance.__CUSTOMIZED.page;
+									item = _.clone(PAGE_CONFIG['dx-'+__instance.itemNm]);
+								} catch (_e) {
+									item = {};
+								}
+								try {
+									page = _.clone(eval('__instance.__CUSTOMIZED.page.' + _path));
+								} catch (_e) {
+									page = {};
+								}
+								try {
+									common = _.clone(eval('__instance.__CUSTOMIZED.common.' + _path));
+								} catch (_e) {
+									common = {};
+								}
+								
+								var dxOptions = $.extend({}, common, page);
+								return $.extend(dxOptions, item);
+							}
+							else {
+								var val1, val2;
+								try {
+									val1 = eval('__instance.__CUSTOMIZED.page.' + _path)
+								} catch (_e) {
+								}
+								try {
+									val2 = eval('__instance.__CUSTOMIZED.common.' + _path);
+								} catch (_e) {
+								}
+								
+								return val1 || val2;
+							}
+						} 
+						else if (_scope === 'Config') {
+							var val1, val2;
+							try {
+								val1 = eval('__instance.__CUSTOMIZED.pageConfig.' + _path)
+							} catch (_e) {
+							}
+							try {
+								val2 = eval('__instance.__CUSTOMIZED.commonConfig.' + _path);
+							} catch (_e) {
+							}
+							
+							return val1 || val2;
+						} 
+						else {
+							var val;
+							try {
+								val =  eval('__instance.__CUSTOMIZED.' + _scope + '.' + _path);
+							} catch (_e) {
+							}
+							
+							return val;
+						}
+					}	
+				};
+				instance.renderTitleHeader(_o);
+				self.generateItem(instance, _o);
+				/*dogfoot 통계 분석 추가 shlim 20201102*/
+				switch(gDashboard.analysisType) {
+					case 'insertOnewayAnova':
+						instance.focusItemType = 'onewayAnova';
+						break;
+					case 'insertTwowayAnova':
+						instance.focusItemType = 'twowayAnova';
+						break;
+					case 'insertOnewayAnova2':
+						instance.focusItemType = 'onewayAnova2';
+						break;
+					case 'insertSimpleRegression':
+						instance.focusItemType = 'simpleRegression';
+						break;
+					case 'insertMultipleRegression':
+						instance.focusItemType = 'multipleRegression';
+						break;
+					case 'insertLogisticRegression':
+						instance.focusItemType = 'logisticRegression';
+						break;
+					case 'insertMultipleLogisticRegression':
+						instance.focusItemType = 'multipleLogisticRegression';
+						break;
+					case 'insertPearsonsCorrelation':
+						instance.focusItemType = 'pearsonsCorrelation';
+						break;
+					case 'insertSpearmansCorrelation':
+						instance.focusItemType = 'spearmansCorrelation';
+						break;
+					/* DOGFOOT ktkang 가설검정 T-test 추가  20210204 */
+					case 'insertTtest':
+						instance.focusItemType = 'tTest';
+						break;
+					case 'insertZtest':
+						instance.focusItemType = 'zTest';
+						break;
+					case 'insertChitest':
+						instance.focusItemType = 'chiTest';
+						break;
+					case 'insertFtest':
+						instance.focusItemType = 'fTest';
+						break;
+					case 'insertMultivariate':
+						instance.focusItemType = 'multivariate';
+						break;
+					default:
+						break;
+				}
+				self.dxItemBasten.push(instance);
+			}
+		}; // end of newItemInstance
+		
+		if(gDashboard.reportType != 'StaticAnalysis'){
+			$.each(_items, function(_type, _item) {
+				$.each(WISE.util.Object.toArray(_item), function(_i, _o) {
+					newItemInstance(_type, _o);
+				});
+			});
+		}else if(gDashboard.reportType == 'StaticAnalysis'){
+			var itemArr = Object.keys(_items)
+            
+            var tmp = itemArr[itemArr.indexOf('Grid')];
+			itemArr[itemArr.indexOf('Grid')] = itemArr[0];
+			itemArr[0] = tmp;
+            
+            $.each(itemArr, function(_i, _item) {
+				$.each(WISE.util.Object.toArray(_items[_item]), function(_i, _o) {
+					newItemInstance(_item, _o);
+				});
+			});
+		}
+	};
+	
+	
+	// 2020.05.21 ajkim 아이템별 generate 공통 처리 dogfoot
+	// _options : PIVOT_GRID에서 옵션을 받아오기 위해 사용
+	this.generateItem = function(_instance, _meta, _options){
+		var generateHiddenMeasures = function(){
+			_instance.HiddenMeasures = [];
+			$.each(_instance.HM,function(_i,_hm){
+				var dataMember = _instance.DU.getDataMember(_hm.UniqueName, _instance.DI);
+				_instance.HiddenMeasures.push(dataMember);
+			});
+		}
+		
+		var generateMeasures = function(measureList){
+			_instance.measures = [];
+			$.each(measureList, function(_i0, _a0) {
+				var uniqueName = _a0['UniqueName'];
+				var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+				_instance.measures.push(dataMember);
+			});
+		}
+
+		var generateChartValues = function (){
+			_instance.A = WISE.util.Object.toArray((_meta.Arguments && _meta.Arguments.Argument) || []);
+			
+			_instance.SD = WISE.util.Object.toArray((_meta.SeriesDimensions && _meta.SeriesDimensions.SeriesDimension) || []);
+			_instance.CTN = WISE.libs.Dashboard.item.ChartUtility.Constants;	
+			_instance.HM = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Measure) : [];
+
+			if(_instance.type === 'SIMPLE_CHART' || _instance.type === 'BUBBLE_CHART' 
+				||_instance.type === 'RANGE_BAR_CHART' ||_instance.type === 'RANGE_AREA_CHART'){
+				_instance.P = WISE.util.Object.toArray((_meta.Panes && _meta.Panes.Pane) || []);	
+				_instance.QU = WISE.libs.Dashboard.item.QueryUtility;
+				_instance.HD = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Dimension) : [];
+				_instance.dimension = [];
+			}else if(_instance.type === 'PIE_CHART'){
+				_instance.PCU = WISE.libs.Dashboard.item.PieChartUtility;
+				_instance.V = WISE.util.Object.toArray((_meta.Values && _meta.Values.Value) || []);
+			}else if(_instance.type === 'STAR_CHART'){
+				_instance.P = WISE.util.Object.toArray((_meta.Panes && _meta.Panes.Pane) || []);	
+				_instance.QU = WISE.libs.Dashboard.item.QueryUtility;
+			}else if(_instance.type === 'TREEMAP'){
+				_instance.V = WISE.util.Object.toArray((_meta.Values && _meta.Values.Value) || []);
+				_instance.PCU = WISE.libs.Dashboard.item.TreeMapChartUtility;
+			}else if(_instance.type === 'TIME_LINE_CHART'){
+				_instance.P = WISE.util.Object.toArray((_meta.Panes && _meta.Panes.Pane) || []);	
+				_instance.QU = WISE.libs.Dashboard.item.QueryUtility;
+				_instance.HD = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Dimension) : [];
+				_instance.dimension = [];
+				_instance.SA = WISE.util.Object.toArray((_meta.StartDate && _meta.StartDate.StartDate) || []);
+				_instance.EA = WISE.util.Object.toArray((_meta.EndDate && _meta.EndDate.EndDate) || []);
+			}
+		}
+
+		var generateArgument = function(argumentList) {
+			_instance.arguments = [];
+			$.each(argumentList, function(_i0, _a0) {
+				var uniqueName = _a0['UniqueName'];
+				var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+				
+				_instance.arguments.push(dataMember);
+			});
+		}
+		
+		var generateDimensions = function(dimensionsList) {
+			_instance.dimensions = [];
+			$.each(dimensionsList, function(_i0, _a0) {
+				var uniqueName = _a0['UniqueName'];
+				var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+				
+				_instance.dimensions.push(dataMember);
+			});
+		}
+
+		var topNCheck = function(){
+			var dMtopNval = new Array();
+			if(_meta['DataItems']['Dimension']){
+				dMtopNval = _meta['DataItems']['Dimension'];
+				
+				if(dMtopNval.length == undefined){
+					_instance.dimensionTopN.push(dMtopNval);
+				}else{
+					_instance.dimensionTopN = dMtopNval;
+				}
+				var chk = false;
+				for(var i = 0; i < _instance.dimensionTopN.length; i++){
+					if(_instance.dimensionTopN[i].TopNEnabled){
+						chk = true;
+					}
+				}
+				/*dogfoot topN 정렬 설정 추가 shlim 20201112*/
+				var orderChk = false;
+				for(var i = 0; i < _instance.dimensionTopN.length; i++){
+					if(_instance.dimensionTopN[i].TopNOrder){
+						orderChk = true;
+					}
+				}
+				
+				if(chk){
+				    _instance.topNEnabeled = true;	
+				}else{
+					_instance.topNEnabeled = false;
+				}
+				/*dogfoot topN 정렬 설정 추가 shlim 20201112*/
+				if(orderChk){
+				    _instance.topNOrder = true;	
+				}else{
+					_instance.topNOrder = false;
+				}
+				
+			}
+		}
+
+		var pivotAdhocSetting = function (adhocInfoJson) {
+			/*dogfoot 뷰어 그리드 속성보기 활성화 shlim 20210504*/
+//			if(WISE.Constants.editmode == 'viewer'){
+//				_instance.optionFields = [];	
+//			}
+			
+			if (_options && _options.containerid) {
+				_instance.itemid = _options.containerid;
+			}
+			
+			_instance.drillThruPop = new WISE.libs.Dashboard.item.PivotGridGenerator.DrillThroughPopup(_instance,{});
+			
+			//2020.04.09 mksong 비정형 아이템 이름 변경 저장 및 불러오기 dogfoot
+			if(adhocInfoJson != undefined){
+				if(adhocInfoJson.TITLE_ELEMENT != undefined){
+					/*dogfoot shlim 20210419*/
+					_meta.Name = _meta.Name != undefined ? _meta.Name : adhocInfoJson.TITLE_ELEMENT.PIVOT_TITLE == undefined ? "피벗" : adhocInfoJson.TITLE_ELEMENT.PIVOT_TITLE;
+				}
+			}
+			
+			if(adhocInfoJson != undefined && gDashboard.reportType == 'AdHoc'){
+				if(adhocInfoJson.DELTAVALUE_ELEMENT != ""){
+					var DeltaVal = WISE.util.Object.toArray(adhocInfoJson.DELTAVALUE_ELEMENT.DELTA_VALUE);
+					if(_instance.deltaItems.length == 0){
+						$.each(DeltaVal,function(_i,_del){
+							_del.ID = _i;
+						});
+						_instance.deltaItems = DeltaVal;
+						if(WISE.Constants.editmode != 'viewer'){
+							adhocInfoJson.DELTAVALUE_ELEMENT = "";	
+						}
+					}
+				}
+			}
+			if(adhocInfoJson != undefined){
+				if(adhocInfoJson.TOPBOTTOM_ELEMENT != ""){
+					var TopBottomVal = adhocInfoJson.TOPBOTTOM_ELEMENT.TOPBOTTOM_VALUE;
+					TopBottomVal.PERCENT = TopBottomVal.PERCENT == 'Y' ? true : false;
+					TopBottomVal.SHOW_OTHERS = TopBottomVal.SHOW_OTHERS == 'Y' ? true : false;
+					_instance.topBottomInfo = TopBottomVal;
+					if(_instance.topBottomInfo.DATA_FLD_NM != ''){
+						_instance.topBottomSet = true;
+						if(WISE.Constants.editmode != 'viewer'){
+							adhocInfoJson.TOPBOTTOM_ELEMENT = "";	
+						}
+						
+					}
+				}
+			}
+			if(adhocInfoJson != undefined){
+				var hightlightVal = WISE.util.Object.toArray(adhocInfoJson.HIGHLIGHT_ELEMENT.HIGHLIGHT);
+				if(_instance.highlightItems.length == 0){
+					$.each(hightlightVal,function(_i,_highlight){
+						var foreArray = _highlight.FORE_COLOR.split(',');
+						var backArray = _highlight.BACK_COLOR.split(',');
+						_highlight.ID = _highlight.SEQ-1000;
+						if(foreArray.length != 1){
+							_highlight.FORE_COLOR = '#'+ (Number(foreArray[0]).toString(16).length == 1 ? ("0"+Number(foreArray[0]).toString(16)) : Number(foreArray[0]).toString(16)) + 
+							 (Number(foreArray[1]).toString(16).length == 1 ? ("0"+Number(foreArray[1]).toString(16)) : Number(foreArray[1]).toString(16)) +  
+							 (Number(foreArray[2]).toString(16).length == 1 ? ("0"+Number(foreArray[2]).toString(16)) : Number(foreArray[2]).toString(16));
+						}
+						if(backArray.length != 1){
+							_highlight.BACK_COLOR = '#'+ (Number(backArray[0]).toString(16).length == 1 ? ("0"+Number(backArray[0]).toString(16)) : Number(backArray[0]).toString(16)) + 
+							 (Number(backArray[1]).toString(16).length == 1 ? ("0"+Number(backArray[1]).toString(16)) : Number(backArray[1]).toString(16)) + 
+							 (Number(backArray[2]).toString(16).length == 1 ? ("0"+Number(backArray[2]).toString(16)) : Number(backArray[2]).toString(16));
+						}
+						if(_highlight.APPLY_CELL == 'Y' || _highlight.APPLY_CELL == 'N'){
+							_highlight.APPLY_CELL = _highlight.APPLY_CELL == 'Y' ? true:false;
+						}
+						if(_highlight.APPLY_TOTAL == 'Y' || _highlight.APPLY_TOTAL == 'N'){
+							_highlight.APPLY_TOTAL = _highlight.APPLY_TOTAL == 'Y' ? true:false;
+						}
+						if(_highlight.APPLY_GRANDTOTAL == 'Y' || _highlight.APPLY_GRANDTOTAL == 'N'){
+							_highlight.APPLY_GRANDTOTAL = _highlight.APPLY_GRANDTOTAL == 'Y' ? true:false;
+						}
+						if(_highlight.IMAGE_INDEX != ""){
+							_highlight.IMAGE_INDEX = (_highlight.IMAGE_INDEX+1)+"";
+						}
+						_instance.highlightItemlength++;
+					});
+					_instance.highlightItems = hightlightVal;
+					if(WISE.Constants.editmode != 'viewer'){
+						adhocInfoJson.HIGHLIGHT_ELEMENT = "";	
+					}
+				}
+				
+			}
+			if(adhocInfoJson != undefined){
+				var gridOptionVal = WISE.util.Object.toArray(adhocInfoJson.GRID_ELEMENT.GRID);
+				var gridSortList = [];
+				if(gDashboard.reportType == 'AdHoc' && adhocInfoJson.DATASORT_ELEMENT != undefined){
+					gridSortList = WISE.util.Object.toArray(adhocInfoJson.DATASORT_ELEMENT.DATA_SORT);	
+				}
+				
+				if(_instance.optionFields.length ==0){
+					$.each(gridOptionVal,function(_i,_options){
+						// 2020.02.04 mksong 주제영역 그리드 옵션 설정 오류 수정 dogfoot
+						if(_options.TYPE == 10 || _options.TYPE == "DIM"){
+							_options.GRID_VISIBLE = _options.VISIBLE == 'Y' ? true : false;
+							$.each(gridSortList,function(_k,_sort){
+								if(_options.FLD_NM == _sort.SORT_FLD_NM || _options.FLD_NM == _sort.SORT_FIELD_NM){
+									_options.sortByMeasure = _sort.BASE_FLD_NM == undefined ? _sort.BASE_FIELD_NM : _sort.BASE_FLD_NM;
+									_options.sortOrder = _sort.SORT_MODE == 'ASC' ? 'asc' : 'desc';
+								}
+							});
+							if(_options.DRAW_CHART == 'Y' || _options.DRAW_CHART == 'N')
+								_options.DRAW_CHART = _options.DRAW_CHART == 'Y' ? true : false;
+							_options.dataField = _options.UNI_NM;
+						// 2020.02.04 mksong 주제영역 그리드 옵션 설정 오류 수정 dogfoot
+						}else if(_options.TYPE == 11 || _options.TYPE == "MEA"){
+							_options.GRID_VISIBLE = _options.VISIBLE == 'Y' ? true : false;
+							if(_options.DRAW_CHART == 'Y' || _options.DRAW_CHART == 'N')
+								_options.DRAW_CHART = _options.DRAW_CHART == 'Y' ? true : false;
+							_options.dataField = _options.UNI_NM;
+							_options.FORMAT = {key : _options.FORMAT_STRING};
+							if(typeof _options.SUMMARY_TYPE == "number"){
+								switch(_options.SUMMARY_TYPE){
+								case 0:
+									_options.SUMMARY_TYPE = 'count';
+									break;
+								case 1:
+									_options.SUMMARY_TYPE = 'sum';
+									break;
+								case 2:
+									_options.SUMMARY_TYPE = 'min';
+									break;
+								case 3:
+									_options.SUMMARY_TYPE = 'max';
+									break;
+								case 4:
+									_options.SUMMARY_TYPE = 'avg';
+									break;
+								/*dogfoot shlim  본사적용 필요 20210701*/
+								case 5:
+									_options.SUMMARY_TYPE = 'countdistinct';
+									break;
+								}
+							}
+							
+						}else if(_options.TYPE == 'DELTA'){
+							_options.GRID_VISIBLE = _options.VISIBLE == 'Y' ? true : false;
+							if(_options.DRAW_CHART == 'Y' || _options.DRAW_CHART == 'N')
+								_options.DRAW_CHART = _options.DRAW_CHART == 'Y' ? true : false;
+							_options.dataField = _options.UNI_NM;
+							_options.FORMAT = {key : _options.FORMAT_STRING};
+							if(typeof _options.SUMMARY_TYPE == "number"){
+								switch(_options.SUMMARY_TYPE){
+								case 0:
+									_options.SUMMARY_TYPE = 'count';
+									break;
+								case 1:
+									_options.SUMMARY_TYPE = 'sum';
+									break;
+								case 2:
+									_options.SUMMARY_TYPE = 'min';
+									break;
+								case 3:
+									_options.SUMMARY_TYPE = 'max';
+									break;
+								case 4:
+									_options.SUMMARY_TYPE = 'avg';
+									break;
+								/*dogfoot shlim  본사적용 필요 20210701*/
+								case 5:
+									_options.SUMMARY_TYPE = 'countdistinct';
+									break;
+								}
+							}
+							
+						}
+					});
+					if(WISE.Constants.editmode != 'viewer'){
+						adhocInfoJson.GRID_ELEMENT.GRID = undefined;
+						adhocInfoJson.DATASORT_ELEMENT = undefined;	
+					}
+					
+					_instance.optionFields = gridOptionVal;
+				}
+			}
+			if(adhocInfoJson != undefined && _instance.Pivot != undefined && gDashboard.reportType == 'AdHoc'){
+				var totalPosition = adhocInfoJson.TOTALLOC_ELEMENT;
+				if(totalPosition == 'Bottom'){
+					_instance.Pivot['RowTotalsPosition'] = false;
+					_instance.Pivot['ColumnTotalsPosition'] = false;
+				}else if(totalPosition == 'Top'){
+					_instance.Pivot['RowTotalsPosition'] = true;
+					_instance.Pivot['ColumnTotalsPosition'] = true;
+				}
+				if(_instance.meta != undefined){
+					_instance.meta['RowTotalsPosition'] = _instance.Pivot['RowTotalsPosition'];
+					_instance.meta['ColumnTotalsPosition'] = _instance.Pivot['ColumnTotalsPosition'];
+					/* ktkang 1005번 오류 수정  */
+					_instance.meta['LayoutType'] = _instance.Pivot['LayoutType'];
+					/* DOGFOOT ktkang Null 데이터 제거 구현  20200904 */
+					_instance.meta['NullRemoveType'] = typeof adhocInfoJson.WEB.NULL_REMOVE_TYPE != 'undefined' ? adhocInfoJson.WEB.NULL_REMOVE_TYPE : 'noRemove';
+				}
+				
+				if(WISE.Constants.editmode != 'viewer'){
+					adhocInfoJson.TOTALLOC_ELEMENT = "";	
+				}
+				
+			}
+			
+			if(adhocInfoJson != undefined && _instance.Pivot != undefined && gDashboard.reportType == 'AdHoc' && WISE.Constants.editmode != 'viewer'){
+				if(adhocInfoJson.DISP_COL_TOTAL_ELEMENT != undefined){
+					_instance.Pivot['ShowColumnTotals'] = adhocInfoJson.DISP_COL_TOTAL_ELEMENT;
+					_instance.Pivot['ShowColumnGrandTotals'] = adhocInfoJson.DISP_COL_GRANDTOTAL_ELEMENT;
+					_instance.Pivot['ShowRowTotals'] = adhocInfoJson.DISP_ROW_TOTAL_ELEMENT;
+					_instance.Pivot['ShowRowGrandTotals'] = adhocInfoJson.DISP_ROW_GRANDTOTAL_ELEMENT;
+				}
+				/*dogfoot 비정형 초기상태 저장 추가 shlim 20200717*/
+				if(adhocInfoJson.AUTOEXPAND_COLUMNGROUPS_ELEMENT != undefined){
+					_instance.Pivot['AutoExpandColumnGroups'] = adhocInfoJson.AUTOEXPAND_COLUMNGROUPS_ELEMENT;
+					_instance.Pivot['AutoExpandRowGroups'] = adhocInfoJson.AUTOEXPAND_ROWGROUPS_ELEMENT;
+				}
+				/*dogfoot 피벗그리드 필터 표시 설정 추기 shlim 20201130*/
+				if(adhocInfoJson.DIM_FILTER_MODE != undefined){
+					_instance.meta['DimFilterMode'] = adhocInfoJson.DIM_FILTER_MODE;
+				}
+				/*dogfoot 피벗그리드 측정값 위치 설정 추가 shlim 20201130*/
+				if(adhocInfoJson.DATA_FIELD_POSITION != undefined){
+					_instance.meta['DataFieldPosition'] =  adhocInfoJson.DATA_FIELD_POSITION;
+				}
+				
+				// 비정형 피벗그리드 페이징 옵션 추가
+				if(adhocInfoJson.PAGING_OPTIONS != undefined){
+					_instance.Pivot['PagingOptions'] = adhocInfoJson.PAGING_OPTIONS;
+				}
+				
+				if(WISE.Constants.editmode != 'viewer'){
+					adhocInfoJson.DISP_COL_TOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_COL_GRANDTOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_ROW_TOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_ROW_GRANDTOTAL_ELEMENT = undefined;
+					adhocInfoJson.DIM_FILTER_MODE = undefined;
+					adhocInfoJson.DATA_FIELD_POSITION = undefined;
+					adhocInfoJson.PAGING_OPTIONS = undefined;
+				}
+			}else if(adhocInfoJson != undefined && _instance.Pivot != undefined && gDashboard.reportType == 'AdHoc' && WISE.Constants.editmode == 'viewer'){
+				if(adhocInfoJson.DISP_COL_TOTAL_ELEMENT != undefined){
+					_instance.Pivot['ShowColumnTotals'] = adhocInfoJson.DISP_COL_TOTAL_ELEMENT;
+					_instance.Pivot['ShowColumnGrandTotals'] = adhocInfoJson.DISP_COL_GRANDTOTAL_ELEMENT;
+					_instance.Pivot['ShowRowTotals'] = adhocInfoJson.DISP_ROW_TOTAL_ELEMENT;
+					_instance.Pivot['ShowRowGrandTotals'] = adhocInfoJson.DISP_ROW_GRANDTOTAL_ELEMENT;
+				}
+				/*dogfoot 비정형 초기상태 저장 추가 shlim 20200717*/
+				if(adhocInfoJson.AUTOEXPAND_COLUMNGROUPS_ELEMENT != undefined){
+					_instance.Pivot['AutoExpandColumnGroups'] = adhocInfoJson.AUTOEXPAND_COLUMNGROUPS_ELEMENT;
+					_instance.Pivot['AutoExpandRowGroups'] = adhocInfoJson.AUTOEXPAND_ROWGROUPS_ELEMENT;
+				}
+				/*dogfoot 피벗그리드 필터 표시 설정 추기 shlim 20201130*/
+				if(adhocInfoJson.DIM_FILTER_MODE != undefined){
+					_instance.meta['DimFilterMode'] = adhocInfoJson.DIM_FILTER_MODE;
+				}
+				/*dogfoot 피벗그리드 측정값 위치 설정 추가 shlim 20201130*/
+				if(adhocInfoJson.DATA_FIELD_POSITION != undefined){
+					_instance.meta['DataFieldPosition'] = _instance.meta['DataFieldPosition'] ? _instance.meta['DataFieldPosition'] : adhocInfoJson.DATA_FIELD_POSITION;
+				}
+				
+				// 비정형 피벗그리드 페이징 옵션 추가
+				if(adhocInfoJson.PAGING_OPTIONS != undefined){
+					_instance.Pivot['PagingOptions'] = adhocInfoJson.PAGING_OPTIONS;
+				}
+				
+				if(WISE.Constants.editmode == 'viewer'){
+					adhocInfoJson.DISP_COL_TOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_COL_GRANDTOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_ROW_TOTAL_ELEMENT = undefined;
+					adhocInfoJson.DISP_ROW_GRANDTOTAL_ELEMENT = undefined;
+					adhocInfoJson.DIM_FILTER_MODE = undefined;
+					adhocInfoJson.DATA_FIELD_POSITION = undefined;
+					adhocInfoJson.PAGING_OPTIONS = undefined;
+				}
+			}
+			if(adhocInfoJson != undefined){
+				if(adhocInfoJson.SUBQUERY_ELEMENT != "" && adhocInfoJson.SUBQUERY_ELEMENT != undefined){
+					if(adhocInfoJson.SUBQUERY_ELEMENT.SUB_QUERY != ""){
+						gDashboard.structure.ReportMasterInfo.subquery = adhocInfoJson.SUBQUERY_ELEMENT;
+						var x2js = new X2JS();
+						var DESIGN_XML = x2js.xml_str2json(gDashboard.structure.ReportMasterInfo.subquery.SUB_QUERY.DESIGN_XML).DESIGN_XML;
+						
+						$.each(DESIGN_XML,function(_i,_o){
+							var subqueryCondition = {
+								'UNI_NM': _o.UNI_NM,
+								'TARGETNAME': _o.UNI_NM.substring(_o.UNI_NM.lastIndexOf('[')+1,_o.UNI_NM.lastIndexOf(']')),
+								'OPER': _o.OPER,
+								'VALUES': _o.VALUES,
+								'BIND_YN': Boolean(_o.BIND_YN),
+								'AGG': _o.AGG,
+								'DATA_TYPE': _o.DATA_TYPE,
+								'TYPE': _o.TYPE,
+								'ORDER': Number(_o.ORDER)
+							}
+							_instance.subqueryArray.push(subqueryCondition);
+							_instance.subqueryArrayIndex++;
+						});
+						_instance.subqueryTarget = gDashboard.structure.ReportMasterInfo.subquery.SUB_QUERY.TARGET;
+					}
+				}
+			}
+			/*dogfoot shlim 20210414*/
+			if(adhocInfoJson != undefined){self.initialized
+				if(adhocInfoJson.AUTO_SIZE_ENABLED != undefined){
+					if(!_instance.initialized){
+					    _instance.meta['AutoSizeEnabled'] = adhocInfoJson.AUTO_SIZE_ENABLED;	
+					}
+				}
+			}
+		}
+		
+		if (_options && _options.containerid) {	
+			_instance.itemid = _options.containerid;	
+		} 
+		
+		if(_meta.isAdhocItem){
+			_instance.isAdhocItem = _meta.isAdhocItem;
+			_instance.adhocIndex = _meta.adhocIndex;
+			
+			if(WISE.Constants.editmode == 'viewer' && _instance.fieldManager == undefined){
+				gDashboard.insertItemManager.generateAdhocFieldManagerForViewer(_instance);
+			}
+		}
+		
+		_instance.meta = _meta;
+		if(!gDashboard.isNewReport){	
+			_instance.dataSourceId = _meta['DataSource'];	
+		}
+
+		_instance.dashboardid = gDashboard.id;
+
+
+		if(_instance.meta['DataItems'] == undefined && _instance.type !== 'IMAGE') return;
+		
+		_instance.DI = _meta.DataItems;
+		_instance.DU = WISE.libs.Dashboard.item.DataUtility;
+		_instance.IO = _meta.InteractivityOptions;
+		_instance.CU = WISE.libs.Dashboard.item.ChartUtility;
+		_instance.IsMasterFilterCrossDataSource = _meta.IsMasterFilterCrossDataSource;
+
+		
+		switch(_instance.type){
+			case 'SIMPLE_CHART':
+			case 'BUBBLE_CHART':
+			case 'RANGE_BAR_CHART':
+			case 'RANGE_AREA_CHART':
+				generateChartValues();
+				topNCheck();
+				if(_instance.isAdhocItem == true){
+					$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_item){
+						if(_item.isAdhocItem && _item.type == 'PIVOT_GRID' && _instance.adhocIndex == _item.adhocIndex){
+							if(_item.dataSourceConfig != undefined){
+								_instance.FO = _item.dataSourceConfig.fields;	
+							}
+							_instance.meta.FilterString = _item.meta.FilterString;
+						}
+					});
+					_instance.dimensions = [];
+					_instance.measures = [];
+				}
+				//_instance.HD = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Dimension) : [];
+		        _instance.rotated = _meta['Rotated'];
+		        
+				// arguments setting 
+				_instance.arguments = [];
+				_instance.dimensions = [];
+				$.each(_instance.A, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					if(_instance.isAdhocItem == false){
+						var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions);
+						_instance.arguments.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									dataMember.caption = _fields.caption;
+									/* goyong ktkang 주제영역 정렬 기준 CS기분으로 추가  20210607 */
+									dataMember.CubeUniqueName = _fields.cubeUNI_NM;
+									_instance.dimensions.push(dataMember);
+									_instance.arguments.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+				});
+				
+				// setting series-dimensions informations
+//				_instance.seriesDimensions = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SD, _instance.DI);
+				_instance.seriesDimensions = [];
+				$.each(_instance.SD, function(_i, _osd) {
+					var dataMember = _instance.DU.getDataMember(_osd.UniqueName, _instance.DI);
+					if(_instance.isAdhocItem == false){
+						_instance.seriesDimensions.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									/* goyong ktkang 주제영역 정렬 기준 CS기분으로 추가  20210607 */
+									dataMember.CubeUniqueName = _fields.cubeUNI_NM;
+									_instance.seriesDimensions.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+					
+				});
+				
+				_instance.measures = [];
+				_instance.HiddenMeasures = [];
+				if (_instance.meta.Panes.Pane.Series.Simple) {
+					$.each(WISE.util.Object.toArray(_instance.meta.Panes.Pane.Series.Simple),function(_i,_simple){
+						$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+							var uniqueName = (_a0['UniqueName'] || _a0['uniqueName']);
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							if(_simple.Value.UniqueName == (_a0['UniqueName'] || _a0['uniqueName'])){
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+//										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+										/*dogfoot 비정형 측정값 rename 시 무한로딍 오류 수정 shlim 20200616*/
+										if((dataMember.caption == _fields.dataField || (userJsonObject.menuconfig.Menu.QRY_CASH_USE && dataMember.caption == _fields.caption && dataMember.name == _fields.dataField)) && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = (_fields.summaryType);
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}else{
+												dataMember.format = _fields.format;
+												dataMember.summaryType = ( _fields.summaryType);
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												$.each(_instance.arguments, function(_k,_dim){
+													if(_fields.caption == _dim.sortByMeasure){
+														dataMember.sortOrder = _dim.sortOrder;
+													}
+												});
+												$.each(_instance.seriesDimensions, function(_k,_dim){
+													if(_fields.caption == _dim.sortByMeasure){
+														dataMember.sortOrder = _dim.sortOrder;
+													}
+												});
+												_instance.HiddenMeasures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+						});
+					});
+				} 
+				if (_instance.meta.Panes.Pane.Series.Weighted) {
+					$.each(WISE.util.Object.toArray(_instance.meta.Panes.Pane.Series.Weighted),function(_i,_weighted){
+						$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+							if(_weighted.Value.UniqueName == _a0['UniqueName']){
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+							if(_weighted.Weight.UniqueName == _a0['UniqueName'] && _weighted.Weight.UniqueName !== _weighted.Value.UniqueName){
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+						});
+					});
+				}
+				
+				if(_instance.isAdhocItem == false){
+					_instance.HiddenMeasures = [];
+					$.each(_instance.HM,function(_i,_hm){
+						var dataMember = _instance.DU.getDataMember(_hm.UniqueName, _instance.DI);
+						// 20200901 ajkim 정렬기준 항목 불러오기 오류 수정 dogfoot
+						dataMember.captionBySummaryType = 'min_' + dataMember.caption;
+						dataMember.nameBySummaryType = 'min_' + dataMember.name;
+						dataMember.nameBySummaryType2 = 'min_' + dataMember.name;
+						dataMember.summaryType = 'min';
+//						if(_instance.isAdhocItem == false){
+							_instance.HiddenMeasures.push(dataMember);
+//						}
+					});	
+				}else{
+				/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+//					$.each(_instance.FO,function(_i,_fields){
+//						if(_fields.visible){
+							$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								$.each(_instance.FO,function(_i,_fields){
+									if(dataMember.UNI_NM == _fields.dataField && _fields.deltaFieldName == undefined){
+										if(_fields.area == "hidden"){
+											dataMember.format = _fields.format;
+											dataMember.summaryType = _fields.summaryType;
+											dataMember.caption = _fields.caption;
+											dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+											dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+											$.each(_instance.arguments, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											$.each(_instance.seriesDimensions, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											_instance.HiddenMeasures.push(dataMember);
+											/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+											return false;
+										}
+									}
+								});
+							});
+							
+							/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+							$.each(WISE.util.Object.toArray(_instance.DI['Dimension']), function(_i0, _a0) {
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								$.each(_instance.FO,function(_i,_fields){
+									if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+										if(_fields.area == "hidden"){
+											$.each(_instance.arguments, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											$.each(_instance.seriesDimensions, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											_instance.dimensions.push(dataMember);
+											return false;
+										}
+									}
+								});
+							});
+//						}
+//					});
+				}
+				break;
+			case 'TIME_LINE_CHART':
+				generateChartValues();
+				topNCheck();
+				if(_instance.isAdhocItem == true){
+					$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_item){
+						if(_item.isAdhocItem && _item.type == 'PIVOT_GRID' && _instance.adhocIndex == _item.adhocIndex){
+							if(_item.dataSourceConfig != undefined){
+								_instance.FO = _item.dataSourceConfig.fields;	
+							}
+							_instance.meta.FilterString = _item.meta.FilterString;
+						}
+					});
+					_instance.dimensions = [];
+					_instance.measures = [];
+				}
+				//_instance.HD = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Dimension) : [];
+		        _instance.rotated = _meta['Rotated'];
+		        
+				// arguments setting 
+				_instance.arguments = [];
+				_instance.dimensions = [];
+				$.each(_instance.A, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					if(_instance.isAdhocItem == false){
+						var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions);
+						_instance.arguments.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									dataMember.caption = _fields.caption;
+									_instance.dimensions.push(dataMember);
+									_instance.arguments.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+				});
+					
+				_instance.startDateDimensions = [];
+                _instance.endDateDimensions = [];
+				$.each(_instance.SA, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					if(_instance.isAdhocItem == false){
+						var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions);
+						//_instance.arguments.push(dataMember);
+						_instance.startDateDimensions.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									dataMember.caption = _fields.caption;
+									_instance.dimensions.push(dataMember);
+									_instance.startDateDimensions.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+				});
+
+				$.each(_instance.EA, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					if(_instance.isAdhocItem == false){
+						var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions);
+						//_instance.arguments.push(dataMember);
+						_instance.endDateDimensions.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									dataMember.caption = _fields.caption;
+									_instance.dimensions.push(dataMember);
+									_instance.endDateDimensions.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+				});
+				
+				// setting series-dimensions informations
+//				_instance.seriesDimensions = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SD, _instance.DI);
+				_instance.seriesDimensions = [];
+				$.each(_instance.SD, function(_i, _osd) {
+					var dataMember = _instance.DU.getDataMember(_osd.UniqueName, _instance.DI);
+					if(_instance.isAdhocItem == false){
+						_instance.seriesDimensions.push(dataMember);
+					}else{
+						$.each(_instance.FO,function(_i,_fields){
+//							if(dataMember.UNI_NM == _fields.UNI_NM){
+							if(dataMember.caption == _fields.dataField){
+								if(_fields.DRAW_CHART){
+									_instance.seriesDimensions.push(dataMember);
+								}
+								return false;
+							}
+						});
+					}
+					
+				});
+				
+				_instance.measures = [];
+				_instance.HiddenMeasures = [];
+				if (_instance.meta.Panes.Pane.Series.Simple) {
+					$.each(WISE.util.Object.toArray(_instance.meta.Panes.Pane.Series.Simple),function(_i,_simple){
+						$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+							var uniqueName = _a0['UniqueName'];
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							if(_simple.Value.UniqueName == _a0['UniqueName']){
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+//										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+										/*dogfoot 비정형 측정값 rename 시 무한로딍 오류 수정 shlim 20200616*/
+										if(dataMember.caption == _fields.dataField && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}else{
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												$.each(_instance.arguments, function(_k,_dim){
+													if(_fields.caption == _dim.sortByMeasure){
+														dataMember.sortOrder = _dim.sortOrder;
+													}
+												});
+												$.each(_instance.seriesDimensions, function(_k,_dim){
+													if(_fields.caption == _dim.sortByMeasure){
+														dataMember.sortOrder = _dim.sortOrder;
+													}
+												});
+												_instance.HiddenMeasures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+						});
+					});
+				} 
+				if (_instance.meta.Panes.Pane.Series.Weighted) {
+					$.each(WISE.util.Object.toArray(_instance.meta.Panes.Pane.Series.Weighted),function(_i,_weighted){
+						$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+							if(_weighted.Value.UniqueName == _a0['UniqueName']){
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+							if(_weighted.Weight.UniqueName == _a0['UniqueName'] && _weighted.Weight.UniqueName !== _weighted.Value.UniqueName){
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								if(_instance.isAdhocItem == false){
+									_instance.measures.push(dataMember);
+								}else{
+									$.each(_instance.FO,function(_i,_fields){
+										if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+											if(_fields.DRAW_CHART){
+												dataMember.format = _fields.format;
+												dataMember.summaryType = _fields.summaryType;
+												dataMember.caption = _fields.caption;
+												dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+												dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+												_instance.measures.push(dataMember);
+											}
+											return false;
+										}
+									});
+								}
+								return false;
+							}
+						});
+					});
+				}
+				
+				if(_instance.isAdhocItem == false){
+					_instance.HiddenMeasures = [];
+					$.each(_instance.HM,function(_i,_hm){
+						var dataMember = _instance.DU.getDataMember(_hm.UniqueName, _instance.DI);
+						// 20200901 ajkim 정렬기준 항목 불러오기 오류 수정 dogfoot
+						dataMember.captionBySummaryType = 'min_' + dataMember.caption;
+						dataMember.nameBySummaryType = 'min_' + dataMember.name;
+						dataMember.nameBySummaryType2 = 'min_' + dataMember.name;
+						dataMember.summaryType = 'min';
+//						if(_instance.isAdhocItem == false){
+							_instance.HiddenMeasures.push(dataMember);
+//						}
+					});	
+				}else{
+				/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+//					$.each(_instance.FO,function(_i,_fields){
+//						if(_fields.visible){
+							$.each(WISE.util.Object.toArray(_instance.DI['Measure']), function(_i0, _a0) {
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								$.each(_instance.FO,function(_i,_fields){
+									if(dataMember.UNI_NM == _fields.dataField && _fields.deltaFieldName == undefined){
+										if(_fields.area == "hidden"){
+											dataMember.format = _fields.format;
+											dataMember.summaryType = _fields.summaryType;
+											dataMember.caption = _fields.caption;
+											dataMember.nameBySummaryType = dataMember.summaryType + '_' + _a0['DataMember'];
+											dataMember.captionBySummaryType = (_a0['Name'] || _a0['DataMember']) + '(' + dataMember.summaryType + ')';
+											$.each(_instance.arguments, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											$.each(_instance.seriesDimensions, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											_instance.HiddenMeasures.push(dataMember);
+											/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+											return false;
+										}
+									}
+								});
+							});
+							
+							/* DOGFOOT ktkang 주제영역 정렬기준 항목 추가  20200305 */
+							$.each(WISE.util.Object.toArray(_instance.DI['Dimension']), function(_i0, _a0) {
+								var uniqueName = _a0['UniqueName'];
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								$.each(_instance.FO,function(_i,_fields){
+									if(dataMember.UNI_NM == _fields.UNI_NM && _fields.deltaFieldName == undefined){
+										if(_fields.area == "hidden"){
+											$.each(_instance.arguments, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											$.each(_instance.seriesDimensions, function(_k,_dim){
+												if(_fields.caption == _dim.sortByMeasure){
+													dataMember.sortOrder = _dim.sortOrder;
+												}
+											});
+											_instance.dimensions.push(dataMember);
+											return false;
+										}
+									}
+								});
+							});
+//						}
+//					});
+				}
+				break;
+			case 'PIE_CHART':
+				_instance.confDimension = _meta['DataItems']['Dimension'];
+				generateChartValues();
+				topNCheck();
+				generateArgument(_instance.A);
+				_instance.values = WISE.libs.Dashboard.item.ChartUtility.Series.Fn.getValues(_instance.V, _instance.DI, _instance.dimensions, _instance.measures);
+				// setting series-dimensions informations
+				_instance.seriesDimensions = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SD, _instance.DI);
+				generateHiddenMeasures();
+				// panelManager initialized
+				_instance.panelManager = new WISE.libs.Dashboard.item.PieGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				_instance.panelManager.dataSourceId = _instance.dataSourceId;
+				_instance.panelManager.renderType = _instance.renderType;
+				_instance.panelManager.values = _instance.values;
+				_instance.panelManager.arguments = _instance.arguments;
+				_instance.panelManager.seriesDimensions = _instance.seriesDimensions;
+				_instance.panelManager.HiddenMeasures = _instance.HiddenMeasures;
+				break;
+			case 'HISTOGRAM_CHART':
+			case 'WORD_CLOUD':
+			case 'RECTANGULAR_ARAREA_CHART':
+			case 'BUBBLE_D3':
+			case 'WATERFALL_CHART':
+			case 'BIPARTITE_CHART':
+			case 'SANKEY_CHART':
+			case 'BOX_PLOT':
+			case 'DEPENDENCY_WHEEL':
+			case 'SEQUENCES_SUNBURST':
+			case 'LIQUID_FILL_GAUGE':
+			case 'PARALLEL_COORDINATE':
+			case 'BUBBLE_PACK_CHART':
+			case 'WORD_CLOUD_V2':
+			case 'DENDROGRAM_BAR_CHART':
+			case 'CALENDAR_VIEW_CHART':
+			case 'CALENDAR_VIEW2_CHART':
+			case 'CALENDAR_VIEW3_CHART':
+			case 'COLLAPSIBLE_TREE_CHART':	
+			case 'HIERARCHICAL_EDGE':
+			case 'FORCEDIRECT':
+			case 'FORCEDIRECTEXPAND':
+			case "HISTORY_TIMELINE":
+			case "RADIAL_TIDY_TREE":
+			case "SCATTER_PLOT_MATRIX":
+			case "ARC_DIAGRAM":
+				var dxConfig = _instance.getDxItemConfig(_meta);
+				_instance.dxItem = $("#" + _instance.itemid).dxChart(dxConfig).dxChart("instance");
+				break;
+			case 'HEATMAP':
+			case 'HEATMAP2':
+			case 'SYNCHRONIZED_CHARTS':
+				var dxConfig = _instance.getDxItemConfig(_meta);
+				_instance.dxItem = $("#" + _instance.itemid).dxChart(dxConfig).dxChart("instance");
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				generateHiddenMeasures();
+				break;
+			case 'SCATTER_PLOT':
+			case 'SCATTER_PLOT2':
+			case 'COORDINATE_LINE':
+			case 'COORDINATE_DOT':
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				generateHiddenMeasures();
+				
+				var dxConfig = _instance.getDxItemConfig(_meta);
+				_instance.dxItem = $("#" + _instance.itemid).dxChart(dxConfig).dxChart("instance");
+				break;
+			case 'DIVERGING_CHART':
+				_instance.seriesDimensions = [];
+				$.each(WISE.util.Object.toArray(_instance.meta.SeriesDimensions.SeriesDimension), function(_i, _osd) {
+					var dataMember = _instance.DU.getDataMember(_osd.UniqueName, _instance.DI);
+					_instance.seriesDimensions.push(dataMember);
+				});
+				
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				generateHiddenMeasures();
+
+				
+				var dxConfig = _instance.getDxItemConfig(_meta);
+				_instance.dxItem = $("#" + _instance.itemid).dxChart(dxConfig).dxChart("instance");
+				break;
+			case 'STAR_CHART':
+				generateChartValues();
+				generateArgument(_instance.A);
+				if(_instance.StarChart['AxisY'] != undefined){	
+					_instance.measureFormat = _instance.StarChart['AxisY']['MeasureFormat'];		
+				}
+				generateMeasures(WISE.util.Object.toArray(_instance.DI['Measure']));
+				_instance.seriesDimensions = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SD, _instance.DI);
+				break;
+			case 'COMBOBOX':
+			case 'LISTBOX':
+			case 'TREEVIEW':
+				_instance.FD = WISE.util.Object.toArray((_meta.FilterDimensions && _meta.FilterDimensions.Dimension) || []);
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+								
+				$.each(_instance.FD, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					dataMember.UNI_NM =  _a0['UNI_NM'];
+					_instance.filterDimensions.push(dataMember);
+				});
+				generateHiddenMeasures();
+
+				if(_instance.type === 'COMBOBOX')
+					_instance.ComboType = _instance.meta.ComboBoxType != 'Checked' ? 'single' : 'multiple'; 
+				else if(_instance.type === 'LISTBOX')
+					_instance.ListType = _instance.meta.ListBoxType == 'Radio' ? 'single' : _instance.meta.ShowAllValue == true ? 'all' : 'multiple';
+				
+//				if (_instance.child) {
+					gDashboard.itemGenerateManager.renderButtons(_instance);
+//					_instance.renderButtons(_instance.itemid);
+//				}
+				break;
+			case 'IMAGE':
+				_instance.SizeMode = _meta.SizeMode;
+				_instance.HorizontalAlignment = _meta.HorizontalAlignment;
+				_instance.VerticalAlignment = _meta.VerticalAlignment;
+				_instance.Alignment = "alignment" + _instance.VerticalAlignment + _instance.HorizontalAlignment;
+				break;
+			case 'TEXTBOX':
+				if(gDashboard.reportType === 'RAnalysis'){
+					_instance.dimensions = _instance.fieldManager.dimensions;
+					_instance.measures = _instance.fieldManager.measures;
+				}else{
+					_instance.V = WISE.util.Object.toArray((_meta.Values && _meta.Values.Value) || []);
+					_instance.HM = _meta.HiddenMeasures ? WISE.util.Object.toArray(_meta.HiddenMeasures.Measure) : [];
+					_instance.values = WISE.libs.Dashboard.item.ChartUtility.Series.Fn.getValues(_instance.V, _instance.DI, _instance.dimensions, _instance.measures);
+					generateHiddenMeasures();
+				}
+				
+				break;
+				/* DOGFOOT syjin 카카오 지도 추가  20200820 */
+			case 'KAKAO_MAP':	
+				_instance.customShapefile = _meta['CustomShapefile'];
+				_instance.shapefileArea = _meta['ShapefileArea'];
+				_instance.VM = WISE.util.Object.toArray((_meta['Maps'] && _meta['Maps']['ValueMap']) || []);
+				_instance.TTM = WISE.util.Object.toArray((_meta['TooltipMeasures'] && _meta['TooltipMeasures']['TooltipMeasure']) || []);
+				_instance.LGDM = _meta['MapLegend'] || undefined;
+				_instance.CTN = WISE.libs.Dashboard.item.ChartUtility.Constants;
+				_instance.SQLike = WISE.libs.Dashboard.Query.likeSql;
+				_instance.panelManager = new WISE.libs.Dashboard.item.MapGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				
+				_instance.shapeTitleAttributeName = _meta['ShapeTitleAttributeName'];
+				_instance.attributeName = _meta['AttributeName'];
+				//2020.10.07 MKSONG 코로플레스 툴팁 설정 기능 추가  dogfoot
+				_instance.toolTipAttributeName = _meta['ToolTipAttributeName'] || _instance.attributeName;
+				
+				// latitute setting
+				_instance.latitudes = [];
+				$.each(WISE.util.Object.toArray(_instance.DI.Latitude), function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					_instance.latitudes.push(dataMember);
+				});
+				
+				_instance.longitudes = [];
+				$.each(WISE.util.Object.toArray(_instance.DI.Longitude), function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					_instance.longitudes.push(dataMember);
+				});
+				
+				_instance.addresses = [];
+				$.each(WISE.util.Object.toArray(_instance.DI.Address), function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					//2020.09.28 mksong 주소타입 지정 dogfoot
+					dataMember.addressType = _a0.AddressType;
+					_instance.addresses.push(dataMember);
+				});
+				
+				_instance.markerDimensions = [];
+				//2020.09.24 mksong 마커차원 불러오기 오류 수정  dogfoot
+				$.each(WISE.util.Object.toArray(_instance.DI.MarkerDimension), function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					_instance.markerDimensions.push(dataMember);
+				});
+				//_instance.attributeDimension = _instance.DU.getDataMember(_meta['AttributeDimension']['UniqueName'], _instance.DI, _instance.dimensions);
+				_instance.dimensions = [];
+				$.each(_instance.DI.Dimension, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					
+					//2020.09.22 mksong dogfoot 카카오지도 로케이션타입에 따른 동기화
+					if(_instance.Map.LocationType == 'address'){
+						$.each(_instance.addresses, function(_ii,_address){
+							if(_address.uniqueName == uniqueName){
+								var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+								_instance.dimensions.push(dataMember);								
+							}
+						});
+					}else{
+						var dataMember;
+						$.each(_instance.latitudes, function(_ii,_address){
+							if(_address.uniqueName == uniqueName){
+								dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							}
+						});
+						
+						$.each(_instance.longitudes, function(_ii,_address){
+							if(_address.uniqueName == uniqueName){
+								dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							}
+						});
+						
+						if(dataMember != undefined){
+							_instance.dimensions.push(dataMember);	
+						}
+					}
+					
+					//2020.09.24 mksong 카카오맵 차원 값 가져오기 dogfoot
+					$.each(_instance.markerDimensions, function(_ii,_markerDimension){
+						if(_markerDimension.uniqueName == uniqueName){
+							dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							_instance.dimensions.push(dataMember);	
+						}
+					});
+				});
+				// valueMaps
+				_instance.valueMaps = [];
+				$.each(_instance.VM, function(_i0, _a0) {
+					var uniqueName = _a0['Value']['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+					dataMember.vmName = _a0['Name'];
+					dataMember.vmValueName = _a0['ValueName'];
+					
+					var rangeStop = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || undefined;
+//					if (rangeStop) {
+//						rangeStop.push(_instance.CUSTOMIZED.get('rangeStopMaxValue'));
+//					}
+					
+					dataMember.colorGroups = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || _instance.CUSTOMIZED.get('CustomScale_RangeStop');
+					_instance.valueMaps.push(dataMember);
+				});
+				
+				// tooltip measures
+				_instance.tooltipMeasures = [];
+				$.each(_instance.TTM, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					
+					_instance.tooltipMeasures.push(dataMember);
+				});
+				
+				// legend
+				_instance.legend = _instance.LGDM || {};
+				
+				// setting pie-chart top-icon
+				var buttonPanelId = _instance.itemid + '_topicon';
+				var topIconPanel = $('#' + buttonPanelId);
+				//2020.11.20 mksong 카카오맵 불필요한 부분 제거 dogfoot
+				break;			
+			case 'KAKAO_MAP2':	
+				_instance.customShapefile = _meta['CustomShapefile'];
+				_instance.shapefileArea = _meta['ShapefileArea'];
+				_instance.VM = WISE.util.Object.toArray((_meta['Maps'] && _meta['Maps']['ValueMap']) || []);
+				_instance.TTM = WISE.util.Object.toArray((_meta['TooltipMeasures'] && _meta['TooltipMeasures']['TooltipMeasure']) || []);
+				_instance.LGDM = _meta['MapLegend'] || undefined;
+				_instance.CTN = WISE.libs.Dashboard.item.ChartUtility.Constants;
+				_instance.SQLike = WISE.libs.Dashboard.Query.likeSql;
+				_instance.panelManager = new WISE.libs.Dashboard.item.MapGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				
+				_instance.shapeTitleAttributeName = _meta['ShapeTitleAttributeName'];
+				_instance.attributeName = _meta['AttributeName'];
+				_instance.toolTipAttributeName = _meta['ToolTipAttributeName'] || _instance.attributeName;
+				
+				// latitute setting 
+				//_instance.attributeDimension = _instance.DU.getDataMember(_meta['AttributeDimension']['UniqueName'], _instance.DI, _instance.dimensions);
+				_instance.dimensions = [];
+				$.each(_instance.DI.Dimension, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					_instance.dimensions.push(dataMember);
+				});
+				// valueMaps
+				_instance.valueMaps = [];
+				$.each(_instance.VM, function(_i0, _a0) {
+					var uniqueName = _a0['Value']['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+					dataMember.vmName = _a0['Name'];
+					dataMember.vmValueName = _a0['ValueName'];
+					
+					var rangeStop = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || undefined;
+//					if (rangeStop) {
+//						rangeStop.push(_instance.CUSTOMIZED.get('rangeStopMaxValue'));
+//					}
+					
+					dataMember.colorGroups = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || _instance.CUSTOMIZED.get('CustomScale_RangeStop');
+					_instance.valueMaps.push(dataMember);
+				});
+				
+				// tooltip measures
+				_instance.tooltipMeasures = [];
+				$.each(_instance.TTM, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					
+					_instance.tooltipMeasures.push(dataMember);
+				});
+				
+				// legend
+				_instance.legend = _instance.LGDM || {};
+				
+				// setting pie-chart top-icon
+				var buttonPanelId = _instance.itemid + '_topicon';
+				var topIconPanel = $('#' + buttonPanelId);
+				if($('#'+_instance.itemid + '_tracking_data_container').length == 0){
+					var trackingDataContainerId = _instance.itemid + '_tracking_data_container';
+					var trackingDataContainerHtml = '<li id="' + trackingDataContainerId + '" style="font-size: 14px; padding-top: 3px;"></li>';
+					topIconPanel.append(trackingDataContainerHtml);
+				}
+				break;				
+			case 'CHOROPLETH_MAP':
+				_instance.customShapefile = _meta['CustomShapefile'];
+//				_instance.customShapefile = [];
+//			    for(var i=0; i<_meta['CustomShapefile'].url.length; i++){
+//                    var urlObject = {
+//                    	"Url" : _meta['CustomShapefile'].url[i]
+//                    };
+//                    _instance.customShapefile.push(urlObject);
+//			    }
+				_instance.ViewArea = _meta['ViewArea'];	
+				if(_instance.searchCheck){
+					for(var i=0; i<3; i++){
+						if(!_instance.disabledCheck(i)){
+							_instance.shpIndex = i;
+								break;
+						}
+					}
+				}else{
+					_instance.shpIndex = _meta['ShpIndex'];
+				}	
+				_instance.currentLocation = _meta['CurrentLocation'];
+				_instance.targetIndex = _meta['TargetIndex'];
+				_instance.shapefileArea = _meta['ShapefileArea'];
+				_instance.LocationName = _meta['LocationName'];
+				_instance.VM = WISE.util.Object.toArray((_meta['Maps'] && _meta['Maps']['ValueMap']) || []);
+				_instance.TTM = WISE.util.Object.toArray((_meta['TooltipMeasures'] && _meta['TooltipMeasures']['TooltipMeasure']) || []);
+				_instance.LGDM = _meta['MapLegend'] || undefined;
+				_instance.CTN = WISE.libs.Dashboard.item.ChartUtility.Constants;
+				_instance.SQLike = WISE.libs.Dashboard.Query.likeSql;
+				_instance.panelManager = new WISE.libs.Dashboard.item.MapGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				
+				//레이블 옵션
+				_instance.labelOption = _meta['LabelOption'];
+				_instance.editPaletteOption = _meta['EditPaletteOption'];
+				if(_instance.editPaletteOption.paletteArray.Palette != undefined){
+					var paletteArray = [];
+					if(Array.isArray(_instance.editPaletteOption.paletteArray.Palette)){
+                        paletteArray = _instance.editPaletteOption.paletteArray.Palette;                        
+					}else{
+						paletteArray = WISE.util.Object.toArray(_instance.editPaletteOption.paletteArray.Palette);
+					}
+					_instance.editPaletteOption.paletteArray = paletteArray;
+					var paletteRange = _instance.editPaletteOption.paletteRangeArray.Range;
+					_instance.editPaletteOption.paletteRangeArray = paletteRange;
+				}
+				//_instance.paletteCustomCheck = _meta['PaletteCustomCheck'];
+				//_instance.paletteStartColor = _meta['PaletteStartColor'];
+				//_instance.paletteLastColor = _meta['PaletteLastColor'];
+				_instance.shapeTitleAttributeName = _meta['ShapeTitleAttributeName'];
+				_instance.attributeName = _meta['AttributeName'];
+				
+				var attributeName = [];
+				if(_instance.attributeName.Name == undefined){
+					attributeName = _instance.attributeName;
+				}else{
+					var array = _instance.attributeName['Name'];
+					
+					if(!Array.isArray(array)){
+                    	if(Object.keys(array)[0] == "state"){
+                    		attributeName[0] = array[Object.keys(array)[0]];
+                    	}else if(Object.keys(array)[0] == "city"){
+                            attributeName[1] = array[Object.keys(array)[0]];
+                    	}else if(Object.keys(array)[0] == "dong"){
+                    		attributeName[2] = array[Object.keys(array)[0]];
+                    	}
+                    }else{
+						for(var i=0; i<3; i++){
+	                    	if(i == 0){
+	                    		if(array[i] != undefined)
+	                    			attributeName[i] = array[i].state;
+	                    	}else if(i == 1){
+	                    		if(array[i] != undefined)
+	                    			attributeName[i] = array[i].city;
+	                    	}else{
+	                    		if(array[i] != undefined)
+	                    			attributeName[i] = array[i].dong;
+	                    	}
+	                    }
+                    }
+				} 
+				_instance.attributeName = attributeName;
+				
+				/* DOGFOOT syjin 지도 불러오기 selectBox 초기화 현상 수정  20211125 */
+				var firstIndex = 0;
+				var indexCount = 0;
+				var indexCheck = true;
+				
+				$.each(_meta.CustomShapefile.url, function(_i, _v){
+					if(Object.keys(_v).length > 0){
+						if(indexCheck) firstIndex = _i;
+						indexCount++;
+						indexCheck = false;
+					}
+				})
+				
+				var fileMetaObject = {}
+				var fileMetaTemp = [];
+				
+				if(!Array.isArray(_meta.FileMeta.FileInfo) || firstIndex>0){
+				   //_meta.FileMeta.FileInfo = WISE.util.Object.toArray(_meta.FileMeta.FileInfo);		
+					fileMetaTemp = _meta.FileMeta.FileInfo;
+					_meta.FileMeta.FileInfo = [{}, {}, {}];
+					
+					for(var i=0; i<indexCount; i++){
+						_meta.FileMeta.FileInfo[firstIndex] = Array.isArray(fileMetaTemp)?fileMetaTemp[i]:fileMetaTemp;
+						firstIndex++;
+					}
+				}
+				   
+                $.each(_meta.FileMeta, function(_i, _v){
+                    var fileInfoObject = {};
+                    $.each(_v, function(_i2, _v2){                    	
+                    		fileInfoObject = {                               	
+								fileName : _v2.fileName,
+								filePropertiesItems : _v2.filePropertiesItems,
+								fileProperties : _v2.fileProperties                               	
+                            }
+                                if(_i2 == 0){
+                                    _instance.fileMeta[0].fileInfo = fileInfoObject;
+                                    _instance.fileMeta[0].viewArea = _meta.ViewArea.area[0];
+                                    if(_meta.CustomShapefile.url != undefined){
+	                                    if(_meta.CustomShapefile.url[0].Url != undefined){
+	                                    	_instance.fileMeta[0].customUrl = _meta.CustomShapefile.url[0].Url.replace(/shp/gi,"geojson");
+	                                    }
+                                    }
+                                }else if(_i2 == 1){
+                                	_instance.fileMeta[1].fileInfo = fileInfoObject;
+                                    _instance.fileMeta[1].viewArea = _meta.ViewArea.area[1];
+                                    if(_meta.CustomShapefile.url != undefined){
+	                                    if(_meta.CustomShapefile.url[1].Url != undefined){
+	                                    	_instance.fileMeta[1].customUrl = _meta.CustomShapefile.url[1].Url.replace(/shp/gi,"geojson");
+	                                    }
+                                    }
+                                }else if(_i2 == 2){
+                                	_instance.fileMeta[2].fileInfo = fileInfoObject;
+                                	_instance.fileMeta[2].viewArea = _meta.ViewArea.area[2];
+                                	if(_meta.CustomShapefile.url != undefined){
+	                                	if(_meta.CustomShapefile.url[2].Url != undefined){
+	                                		_instance.fileMeta[2].customUrl = _meta.CustomShapefile.url[2].Url.replace(/shp/gi,"geojson")
+	                                	}
+                                	}
+                                }
+                    	                                               
+                    })
+                })
+                
+				//2020.10.07 MKSONG 코로플레스 툴팁 설정 기능 추가  dogfoot
+				//_instance.toolTipAttributeName = _meta['ToolTipAttributeName'] || _instance.attributeName;
+                //dogfoot 코로플레스 속성 상관없이 지역명으로 표시되도록 수정 syjin 20210825
+                _instance.toolTipAttributeName = ['name', 'name', 'name'];
+				
+				// latitute setting 
+				//_instance.attributeDimension = _instance.DU.getDataMember(_meta['AttributeDimension']['UniqueName'], _instance.DI, _instance.dimensions);
+				//2021.04.28 syjin 코로플레스 attributeDimension 수정  dogfoot
+				_instance.attributeDimension = [];
+
+				$.each(_meta['AttributeDimension'], function(_i, _v){
+					$.each(_v, function(_i2, _v2){
+						var data;
+						if(_instance.dimensions.length>1){
+							data = _instance.DU.getDataMember(_v2['UniqueName'], _instance.DI, _instance.dimensions);
+						}else{
+							data = _instance.DU.getDataMember(_v2, _instance.DI, _instance.dimensions);
+						}
+						//					
+                        _instance.attributeDimension.push(data);
+					})
+				})
+				
+				// valueMaps
+				_instance.valueMaps = [];
+				$.each(_instance.VM, function(_i0, _a0) {
+					var uniqueName = _a0['Value']['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+					dataMember.vmName = _a0['Name'];
+					dataMember.vmValueName = _a0['ValueName'];
+					
+					var rangeStop = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || undefined;
+//					if (rangeStop) {
+//						rangeStop.push(_instance.CUSTOMIZED.get('rangeStopMaxValue'));
+//					}
+					
+					dataMember.colorGroups = (_a0['CustomScale'] && _a0['CustomScale']['RangeStop']) || _instance.CUSTOMIZED.get('CustomScale_RangeStop');
+					_instance.valueMaps.push(dataMember);
+				});
+				
+				// tooltip measures
+				_instance.tooltipMeasures = [];
+				$.each(_instance.TTM, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					
+					_instance.tooltipMeasures.push(dataMember);
+				});
+				
+				// legend
+				_instance.legend = _instance.LGDM || {};
+				
+				// setting pie-chart top-icon
+				var buttonPanelId = _instance.itemid + '_topicon';
+				var topIconPanel = $('#' + buttonPanelId);
+				//if($('#'+_instance.itemid + '_tracking_data_container').length == 0){
+				//	var trackingDataContainerId = _instance.itemid + '_tracking_data_container';
+				//	var trackingDataContainerHtml = '<li id="' + trackingDataContainerId + '" style="font-size: 14px; padding-top: 3px;"></li>';
+				//	topIconPanel.append(trackingDataContainerHtml);		
+				//}
+				//dogfoot 코로플레스 불러오기 오류 수정 20210413 syjin
+				//gDashboard.itemGenerateManager.renderButtons(_instance);
+				break;
+			case 'CARD_CHART':
+				_instance.CE = WISE.util.Object.toArray(_meta.Card || []);
+				_instance.SD = WISE.util.Object.toArray((_meta.SeriesDimensions && _meta.SeriesDimensions.SeriesDimension) || []);
+				_instance.SL = WISE.util.Object.toArray(_meta.SparklineArgument || []);
+				_instance.QU = WISE.libs.Dashboard.item.QueryUtility;
+				_instance.CTN = WISE.libs.Dashboard.item.ChartUtility.Constants;
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				generateHiddenMeasures();
+				
+				_instance.panelManager = new WISE.libs.Dashboard.item.CardGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+
+				_instance.cards = [];
+				_instance.measures = [];
+				_instance.dimensions = [];
+				var seq = 0;
+				$.each(_instance.CE, function(_i0, _a0) {
+					var o = {wiseId: new Date().valueOf() + (seq++)};
+					
+					if ($.type(_a0['ActualValue']) === 'object') {
+						var actualUniqueName = _a0['ActualValue']['UniqueName'];
+						var actualDataMember = _instance.DU.getDataMember(actualUniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+						o.actual = actualDataMember;
+					}
+					
+					if ($.type(_a0['TargetValue']) === 'object') {
+						var targetUniqueName = _a0['TargetValue']['UniqueName'];
+						var targetDataMember = _instance.DU.getDataMember(targetUniqueName, _instance.DI, _instance.dimensions, _instance.measures);
+						o.target = targetDataMember;
+					}
+					
+					/* DeltaOptions>> 
+					* ValueType = "ActualValue", "AbsoluteVariation", "PercentVariation", "PercentOfTarget" - AbsoluteVariation
+					* ResultIndicationMode = "GreaterIsGood", "LessIsGood", "WarningIfGreater", "WarningIfLess", "NoIndication" - GreaterIsGood
+					* ResultIndicationThresholdType = "Absolute", "Percent" - Percent
+					* ResultIndicationThreshold = "50" - 0
+					* */
+					o.deltaOptions = _a0['DeltaOptions'];
+					
+					o.visibleSparkline = _a0['ShowStartEndValues'] === undefined ? true : false;
+					
+					/* SparklineOptions>> 
+					* Visible -> _a0['ShowStartEndValues']
+					* ViewType = "Line", "Area", "Bar", "WinLoss" - Line
+					* HighlightStartEndPoints = true / false - true
+					* HighlightMinMaxPoints = true / false - true
+					* */
+					o.sparklineOptions = _a0['SparklineOptions'];
+					o.Name = typeof _a0.Name == 'undefined' ? '' : _a0.Name;
+					_instance.cards.push(o);
+					
+					if (_instance.IO && _instance.IO['IsDrillDownEnabled']) {
+						_instance.drillDownIndex = 1;
+						return false;
+					}
+				});
+				
+				// setting series-dimensions informations
+				_instance.seriesDimensions = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SD, _instance.DI);
+				
+				// setting sparkline informations
+				_instance.sparklineElements = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SL, _instance.DI);
+
+				if (_meta.Values && _meta.Values.length > 0) {
+					_instance.measures = _meta.Values;
+				}
+
+				if (_instance.seriesDimensions.length > 0) {
+					_instance.dimensions = _instance.dimensions.concat(_instance.seriesDimensions);
+				}
+				break;
+			case 'DATA_GRID':
+				_instance.SL = WISE.util.Object.toArray(_meta.SparklineArgument || []);
+				_instance.DGU = WISE.libs.Dashboard.item.DataGridUtility;
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				generateHiddenMeasures();
+				_instance.sparklineElements = _instance.CU.Series.Fn.getSeriesDimensions(_instance.SL, _instance.DI);
+				_instance.columns = _instance.generateColumns(_meta);
+				break;
+			case 'PIVOT_GRID':
+				var adhocInfoJson;
+				topNCheck();
+				if(gDashboard.reportType == 'AdHoc'){
+					adhocInfoJson = gDashboard.structure.ReportMasterInfo.reportJson;
+				}else{
+					if(gDashboard.structure.MapOption.DASHBOARD_XML.WEB != undefined){
+						if(gDashboard.structure.MapOption.DASHBOARD_XML.WEB.PIVOT_GRID_ELEMENT != undefined){
+							$.each(WISE.util.Object.toArray(gDashboard.structure.MapOption.DASHBOARD_XML.WEB.PIVOT_GRID_ELEMENT),function(_i, _pivotGridElement){
+								var CtrlNM;
+								if(WISE.Constants.editmode == 'viewer'){
+									CtrlNM = _pivotGridElement.CTRL_NM +"_"+WISE.Constants.pid;	
+								}else{
+									CtrlNM = _pivotGridElement.CTRL_NM;
+								}
+								
+								if(CtrlNM == _instance.ComponentName){
+									adhocInfoJson = _pivotGridElement;		
+								}
+							});								
+						}
+					}
+				}
+				
+				pivotAdhocSetting(adhocInfoJson);
+				_instance.V = WISE.util.Object.toArray((_meta.Values && _meta.Values.Value) || []);
+				_instance.R = WISE.util.Object.toArray((_meta.Rows && _meta.Rows.Row) || []);
+				_instance.C = WISE.util.Object.toArray((_meta.Columns && _meta.Columns.Column) || []);
+				_instance.HM = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Measure) || []);
+				_instance.HD = WISE.util.Object.toArray((_meta.HiddenMeasures && _meta.HiddenMeasures.Dimension) || []);
+				_instance.IO = _meta.InteractivityOptions == undefined ? {MasterFilterMode: 'Off', IgnoreMasterFilters: false}: _meta.InteractivityOptions;
+				
+				var gridSortList = [];
+				if(WISE.Constants.editmode == 'viewer'){
+					if (typeof adhocInfoJson !== 'undefined') {
+						if(gDashboard.reportType == 'AdHoc'){
+							gridSortList = WISE.util.Object.toArray(adhocInfoJson.DATASORT_ELEMENT.DATA_SORT);	
+						}
+					}
+					$.each(WISE.util.Object.toArray(_instance.DI.Dimension),function(_i,_dim){
+						$.each(gridSortList, function(_i,_sort){
+							if((_sort.SORT_FLD_NM == _dim.UNI_NM || _sort.SORT_FIELD_NM == _dim.UNI_NM) && _sort.BASE_FLD_NM != _sort.SORT_FLD_NM){
+								_dim.SortByMeasure = _sort.BASE_FLD_NM == undefined ? _sort.BASE_FIELD_NM : _sort.BASE_FLD_NM;
+							}
+						});
+					});
+					$.each(WISE.util.Object.toArray(_instance.DI.Measure),function(_i,_mea){
+						$.each(WISE.util.Object.toArray(_instance.V),function(_k,_value){
+							if(_mea.DataMember == _value.UNI_NM){
+								_mea.SummaryType = WISE.libs.Dashboard.item.DataUtility.AdHoc.getSummaryType(_value.SUMMARY_TYPE);
+							}
+						});
+					});
+				}else{
+					adhocInfoJson = undefined;
+				}
+				
+				_instance.DU = WISE.libs.Dashboard.item.DataUtility;
+				
+				_instance.V_Concat = [];
+				if(gDashboard.reportType == 'AdHoc' && 	_instance.fieldManager == null){
+					$.each(_instance.V, function(_i0, _a0) {
+						_a0.UniqueName = _a0['UNI_NM'];
+					});
+					
+					$.each(_instance.R, function(_i0, _a0) {
+						_a0.UniqueName = _a0['UNI_NM'];
+					});
+					
+					$.each(_instance.C, function(_i0, _a0) {
+						_a0.UniqueName= _a0['UNI_NM'];
+					});
+				}
+				_instance.dataFields = [];
+				$.each(_instance.V, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					dataMember.UNI_NM =  _a0['UNI_NM'];
+					if(_a0.HIDDEN){
+						if(WISE.Constants.editmode == 'viewer'){
+							_instance.HM.push(_a0);
+						}
+					}else{
+						_instance.dataFields.push(dataMember);	
+					}
+				});
+				
+				$.each(_instance.deltaItems, function(_i0, _a0) {
+					$.each(_instance.V,function(_i1,_a1){
+						if(_a1.UniqueName === _a0['BASE_UNI_NM']){
+							var uniqueName = _a1['UniqueName'];
+							var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+							dataMember.name = _a0['CAPTION'];
+							dataMember.caption = _a0['CAPTION'];
+		//					dataMember.captionBySummaryType = _a0['CAPTION']+"("+dataMember.summaryType+")";
+							dataMember.captionBySummaryType = dataMember.summaryType+"_"+_a0['CAPTION'];
+							//2020.01.30 mksong sqlike config 수정 dogfoot
+							dataMember.nameBySummaryType = dataMember.summaryType+"("+_a0['CAPTION']+")";
+							dataMember.nameBySummaryType2 = dataMember.summaryType+"_"+_a0['CAPTION'];
+							
+							_instance.dataFields.push(dataMember);
+							return false;
+						}
+					})
+				});
+				
+				_instance.rows = [];
+				$.each(_instance.R, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					dataMember.UNI_NM =  _a0['UNI_NM'];
+					/* goyong ktkang 주제영역 정렬 기준 CS기분으로 추가  20210607 */
+					if(WISE.Context.isCubeReport && gDashboard.reportType == 'AdHoc') {
+						dataMember.CubeUniqueName = _a0['cubeUniqueName'];
+					}
+					_instance.rows.push(dataMember);
+					if(_instance.topBottomInfo.APPLY_FLD_NM == dataMember.name){
+						level = _i0;
+					}
+				});
+				
+				if(!userJsonObject.menuconfig.Menu.QRY_CASH_USE){
+					$.each(_instance.HD,function(_i,_hd){
+						var dataMember = _instance.DU.getDataMember(_hd.UniqueName, _instance.DI);
+						_instance.rows.push(dataMember);
+					});
+				}
+
+				
+				_instance.columns = [];
+				$.each(_instance.C, function(_i0, _a0) {
+					var uniqueName = _a0['UniqueName'];
+					var dataMember = _instance.DU.getDataMember(uniqueName, _instance.DI);
+					dataMember.UNI_NM =  _a0['UNI_NM'];
+					/* goyong ktkang 주제영역 정렬 기준 CS기분으로 추가  20210607 */
+					if(WISE.Context.isCubeReport && gDashboard.reportType == 'AdHoc') {
+						dataMember.CubeUniqueName = _a0['cubeUniqueName'];
+					}
+					_instance.columns.push(dataMember);
+					if(_instance.topBottomInfo.APPLY_FLD_NM == dataMember.name){
+						level = _i0;
+					}
+				});
+				generateHiddenMeasures();
+				
+				if(WISE.Constants.editmode == 'viewer' && _instance.isAdhocItem && _instance.fieldManager != undefined){
+					if(_instance.fieldManager.dataItemNo == 0){
+						gDashboard.datasetMaster.renderDatasetForViewer(_instance.dataSourceId, gDashboard.structure.ReportMasterInfo.id);
+						_instance.dragNdropController.loadItemData(_instance);
+						_instance.dragNdropController.addSortableOptionsForOpen(_instance);
+					}
+				}
+				break;
+			case 'TREEMAP':
+				generateChartValues();
+				topNCheck();
+				generateArgument(_instance.A);
+				// panelManager initialized
+				_instance.panelManager = new WISE.libs.Dashboard.item.TreeMapGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				//2020.02.04 mksong SQLLIKE doSqlLike 파이 적용 dogfoot
+				_instance.panelManager.dataSourceId = _instance.dataSourceId;
+				_instance.panelManager.renderType = _instance.renderType;
+				_instance.panelManager.values = _instance.values;
+				_instance.panelManager.arguments = _instance.arguments;
+				_instance.panelManager.seriesDimensions = _instance.seriesDimensions;
+				_instance.panelManager.HiddenMeasures = _instance.HiddenMeasures;		
+				
+				var dxConfig = _instance.getDxItemConfig(_instance.meta);
+				_instance.dxItem = $("#" + _instance.itemid).dxTreeMap(dxConfig).dxTreeMap("instance");
+				break;
+			case 'PYRAMID_CHART':
+			case 'FUNNEL_CHART':
+				generateChartValues();
+				generateArgument(_instance.A);
+				// panelManager initialized
+				_instance.panelManager = new WISE.libs.Dashboard.item.TreeMapGenerator.PanelManager();
+				_instance.panelManager.itemid = _instance.itemid;
+				_instance.panelManager.dataSourceId = _instance.dataSourceId;
+				_instance.panelManager.values = _instance.values;
+				_instance.panelManager.arguments = _instance.arguments;
+				_instance.panelManager.seriesDimensions = _instance.seriesDimensions;
+				_instance.panelManager.HiddenMeasures = _instance.HiddenMeasures;		
+				
+				var dxConfig = _instance.getDxItemConfig(_instance.meta);
+//				_instance.dxItem = $("#" + _instance.itemid).dxFunnel(dxConfig).dxFunnel("instance");
+				break;
+		}
+		
+		if(_instance.type === 'SIMPLE_CHART' || _instance.type === 'PIE_CHART' || _instance.type === 'STAR_CHART'||_instance.type === 'CARD_CHART'
+			||_instance.type === 'IMAGE' || _instance.type === 'TEXT_BOX' || _instance.type === 'PIVOT_GRID'|| _instance.type === 'RANGE_BAR_CHART'|| _instance.type === 'RANGE_AREA_CHART'|| _instance.type === 'TIME_LINE_CHART'){
+			if(_instance.type !== 'IMAGE' && _instance.type !== 'TEXT_BOX' && _instance.type !== 'CARD_CHART' && _instance.type !== 'PIVOT_GRID'){
+				_instance.renderType = _instance.__getRenderType();
+				if(typeof _instance.panelManager !== 'undefined')
+				_instance.panelManager.renderType = _instance.renderType;
+			}
+			if (!_instance.initialized) {
+				if (_instance.type == 'PIVOT_GRID' && _instance.isDownLoad) {
+					var isAdHoc = gDashboard.reportType == 'AdHoc' ? true : false;
+					gDashboard.itemGenerateManager.renderButtons(_instance, isAdHoc, true);
+				}
+				else {
+					self.isDirectExportBtn = false;
+					gDashboard.itemGenerateManager.renderButtons(_instance);
+//					_instance.renderButtons(_instance.itemid);
+					if($('#'+_instance.itemid+'_topicon').length != 0){
+						_instance.initialized = true;	
+					}else{
+						_instance.initialized = false;
+					}	
+				}
+			}
+		}
+		// to display no-data text
+		if (!_instance.CUSTOMIZED.get('searchOnStart','Config')) {
+			_instance.bindData([]); 
+		}
+	}
+	
+	// 2020.05.21 ajkim 아이템별 getherFields 공통 처리 dogfoot
+	this.getherFields = function(_fieldManager, _type, _isAdhoc) {
+		var index = _fieldManager.index;
+		
+//		if(WISE.Constants.editmode == 'viewer'){
+//			index = index + '_' + gDashboard.structure.ReportMasterInfo.id;
+//		}
+		
+//		if(_isAdhoc && WISE.Constants.editmode == 'viewer'){
+//			var tempIdx = index.split('_');
+//			index = 0 + '_' + tempIdx[1];
+//		}
+		var getPanelData = function(_title, selector, selector2){
+			/* DOGFOOT ktkang 통계 분석 부분 추가  20201102 */
+			if(_panelManager[_title + 'ContentPanel' + index] !== undefined) {
+				var values = _panelManager[_title + 'ContentPanel' + index].children(selector);
+				if (values.length === 0 && selector2 !== null) {	
+					values = _panelManager[_title + 'ContentPanel' + index].children(selector2);	
+				}
+				return values;
+			}
+			/* 20210212 AJKIM 다운로드 확장 기능 추가 dogfoot*/
+			if(_panelManager[_title + 'ContentPanel'] !== undefined) {
+				var values = _panelManager[_title + 'ContentPanel'].children(selector);
+				if (values.length === 0 && selector2 !== null) {	
+					values = _panelManager[_title + 'ContentPanel'].children(selector2);	
+				}
+				return values;
+			}
+		}
+		
+		// 2020.05.21 ajkim 측정값 검사 메소드 추가 dogfoot
+		var valueCheck = function(values){
+			if(values.length === 0){	
+				WISE.alert('측정값 항목에 아무것도 넣지 않으셨습니다.<br> 하나 이상의 데이터를 넣고 조회하시기 바랍니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		/*dogfoot 버블팩 차원 1개일때 메세지 출력 shlim 20201123*/
+		var bubblePackCheck = function(values){
+			if(values.length < 2 ){	
+				WISE.alert('차원이 부족합니다.<br> 두개 이상의 데이터를 넣고 조회하시기 바랍니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		var argumentsCheck = function(values){
+			if(values.length === 0){	
+				WISE.alert('차원 항목에  하나 이상의 데이터를 넣고 조회하시기 바랍니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		var scatterplotCheck = function(values){
+			if(values.length === 0){	
+				WISE.alert('x축과 y축에 데이터 항목을 넣고 조회하시기 바랍니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		var seriesCheck = function(values){
+			if(values.length === 0){
+				/*dogfoot 타임라인 차트 알림창 문구 수정 shlim 20200909*/	
+				WISE.alert('차원 항목에  하나 이상의 데이터를 넣고 조회하시기 바랍니다.');
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		
+		var valueLenCheck = function(values){
+			if(values.length === 1){	
+				WISE.alert('차트 조회를 위한 측정값 항목이<br> 최소 2개 이상 필요합니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		
+		// 2020.05.21 ajkim 차원 검사 메소드 추가 dogfoot
+		var dimCheck = function(diemnsions){
+			if(diemnsions.length === 0){	
+				WISE.alert('차원 항목에 아무것도 넣지 않으셨습니다. 하나 이상의 데이터를 넣고 조회하시기 바랍니다.');	
+				gProgressbar.hide();	
+				return false;	
+			}
+			return true;
+		}
+		
+		// 2020.05.21 ajkim 측정값 속성 추가 공통 처리 dogfoot
+		var measureFieldOption = function(_elem){
+			var caption = $(_elem).children().get(0).innerText;
+			var measure = {
+					caption: caption,		
+	    			currencyCulture: undefined,	
+	    			format: 'fixedPoint',	
+	    			precision: 0,	
+	    			precisionOption: '반올림',	
+	    			type: 'measure',	
+					uniqueName:  $(_elem).attr('dataitem'),	
+					/* DOGFOOT ktkang 대시보드 주제영역 기능 추가 20200618 */
+					cubeUniqueName: $(_elem).attr('cubeUniNm')
+			};
+			switch(type){
+				case 'SIMPLE_CHART':
+				case 'RANGE_BAR_CHART':
+				case 'RANGE_AREA_CHART':
+				case 'TIME_LINE_CHART':
+				case 'HISTOGRAM_CHART':
+				case 'WORD_CLOUD':
+				case 'RECTANGULAR_ARAREA_CHART':
+				case 'WATERFALL_CHART':
+				case 'BIPARTITE_CHART':
+				case 'FUNNEL_CHART':
+				case 'PYRAMID_CHART':
+				case 'SANKEY_CHART':
+				case 'DIVERGING_CHART':
+				case 'SCATTER_PLOT':
+				case 'SCATTER_PLOT2':
+				case 'COORDINATE_LINE':
+				case 'BOX_PLOT':
+				case 'DEPENDENCY_WHEEL':
+				case 'SEQUENCES_SUNBURST':
+				case 'LIQUID_FILL_GAUGE':
+				case 'PARALLEL_COORDINATE':
+				case 'BUBBLE_PACK_CHART':
+				case 'WORD_CLOUD_V2':
+				case 'DENDROGRAM_BAR_CHART':
+				case 'CALENDAR_VIEW_CHART':
+				case 'CALENDAR_VIEW2_CHART':
+				case 'CALENDAR_VIEW3_CHART':
+				case 'COLLAPSIBLE_TREE_CHART':
+				case 'STAR_CHART':
+				case 'HEATMAP':
+				case 'HEATMAP2':
+				case 'COORDINATE_LINE':
+				case 'COORDINATE_DOT':
+				case 'SYNCHRONIZED_CHARTS':
+				case 'TREEMAP':
+				case 'CHOROPLETH_MAP':
+					/* DOGFOOT syjin 카카오 지도 추가  20200820 */
+				case 'KAKAO_MAP':	
+				case 'KAKAO_MAP2':	
+				case 'FORCEDIRECT':
+				case 'FORCEDIRECTEXPAND':
+				/* DOGFOOT ktkang 버블차트2 오류 수정  20200716 */
+				case 'BUBBLE_CHART':
+				case 'BUBBLE_D3':
+				case "HISTORY_TIMELINE":
+				case "ARC_DIAGRAM":
+				case "RADIAL_TIDY_TREE":
+				case "SCATTER_PLOT_MATRIX":
+				case 'TEXTBOX':
+		    		var summaryType = $(_elem).find('.on >.summaryType').attr('summarytype');
+					var uniNm = $(_elem).attr('UNI_NM');	
+					var options = $(_elem).children('.seriesoption').data('dataItemOptions');
+					caption = $(_elem).attr('caption');	
+					measure.caption = caption;
+					measure.captionBySummaryType = caption+"(" + summaryType + ")";
+					measure.name = uniNm;
+					measure.nameBySummaryType = summaryType + "_" + caption;
+					measure.summaryType = summaryType;
+					measure.options = options;
+					break;
+				case 'PIE_CHART':
+					measure.captionBySummaryType = caption + "(sum)";
+					measure.UNI_NM = $(_elem).attr('uni_nm');
+					measure.name = _elem.innerText;
+					measure.nameBySummaryType ="sum_" + caption;
+					break;
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BIPARTITE_CHART':
+//				case 'SANKEY_CHART':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//				case 'HEATMAP':
+//				case 'TREEMAP':
+//				case 'CHOROPLETH_MAP':
+//				case 'FORCEDIRECT':
+//				case 'FORCEDIRECTEXPAND':
+//					measure.captionBySummaryType = caption + "(sum)";
+//					measure.name = $(_elem).attr('UNI_NM');
+//					measure.nameBySummaryType ="sum_" + caption;
+//					break;
+//				case 'BUBBLE_D3':
+//					measure.captionBySummaryType = caption+"(sum)";
+//					measure.name = caption;
+//					measure.nameBySummaryType = "sum_"+caption;
+//					measure.nameByCountType = "count_"+caption
+//					break;
+				case 'CARD_CHART':
+					var summaryType = $(_elem).find('.on >.summaryType').attr('summarytype');
+					var uniNm = $(_elem).attr('UNI_NM');	
+					var options = $(_elem).children('.seriesoption').data('dataItemOptions');
+					caption = $(_elem).attr('caption');	
+					measure.summaryType = summaryType;
+					measure.caption = caption;
+					//2020.07.31 MKSGON 카드 CAPTIONBYSUMMARYTYPE 오류 수정 DOGFOOT
+					measure.captionBySummaryType = summaryType + "_" + caption;
+					measure.name = uniNm;
+					measure.nameBySummaryType = summaryType + "_" + caption;
+					measure.options = options;
+					break;
+				case 'PIVOT_GRID':
+					var summaryType = $(_elem).find('.on >.summaryType').attr('summarytype');
+					var options = $(_elem).children('.seriesoption').data('dataItemOptions');
+					
+					measure.captionBySummaryType = caption + '(' + summaryType + ')',
+					measure.name = caption,
+					measure.nameBySummaryType = summaryType + '_' + caption,
+					measure.wiseUniqueName = $(_elem).attr('UNI_NM'),
+					/* goyong ktkang 주제영역 정렬 기준 CS기분으로 추가  20210607 */
+					measure.cubeUniqueName = $(_elem).attr('cubeUniNm'),
+					measure.options = options
+		    		break;
+			}
+
+    		return measure;	
+    	};
+    	
+    	// 2020.05.21 ajkim 차원 속성 추가 공통처리 dogfoot
+    	var dimensionFieldOption = function(_elem){
+    		var caption = $(_elem).children().get(0).innerText;
+			var dimension   = {
+					caption: caption,		
+					rawCaption: undefined,
+	    			type: 'dimension',	
+	    			/* DOGFOOT ktkang 대시보드 주제영역 기능 추가 20200618 */
+					uniqueName:  $(_elem).attr('dataitem'),
+					cubeUniqueName: $(_elem).attr('cubeUniNm')
+			};
+			switch(type){
+				case 'SIMPLE_CHART':
+				case 'RANGE_BAR_CHART':
+				case 'RANGE_AREA_CHART':
+				case 'TIME_LINE_CHART':
+				case 'CARD_CHART':
+					caption = $(_elem).attr('caption');
+					var uniNm = $(_elem).attr('UNI_NM');
+					
+					dimension.caption = caption;
+					dimension.name = uniNm;
+					break;
+				case 'PIE_CHART':
+					dimension.name = caption;
+					dimension.UNI_NM = $(_elem).attr('uni_nm');
+					break;
+				case 'HISTOGRAM_CHART':
+				case 'WORD_CLOUD':
+				case 'RECTANGULAR_ARAREA_CHART':
+				case 'WATERFALL_CHART':
+				case 'FUNNEL_CHART':
+				case 'PYRAMID_CHART':
+				case 'BIPARTITE_CHART':
+				case 'SANKEY_CHART':
+				case 'DIVERGING_CHART':
+				case 'SCATTER_PLOT':
+				case 'SCATTER_PLOT2':
+				case 'COORDINATE_LINE':
+				case 'BOX_PLOT':
+				case 'DEPENDENCY_WHEEL':
+				case 'SEQUENCES_SUNBURST':
+				case 'LIQUID_FILL_GAUGE':
+				case 'BUBBLE_D3':
+				case 'PARALLEL_COORDINATE':
+				case 'BUBBLE_PACK_CHART':
+				case 'WORD_CLOUD_V2':
+				case 'DENDROGRAM_BAR_CHART':
+				case 'CALENDAR_VIEW_CHART':
+				case 'CALENDAR_VIEW2_CHART':
+				case 'CALENDAR_VIEW3_CHART':
+				case 'COLLAPSIBLE_TREE_CHART':
+				case 'STAR_CHART':
+				case 'HEATMAP':
+				case 'TREEMAP':
+				case 'CHOROPLETH_MAP':
+					/* DOGFOOT syjin 카카오 지도 추가  20200820 */
+				case 'KAKAO_MAP':	
+				case 'KAKAO_MAP2':	
+				case 'HIERARCHICAL_EDGE':
+				case 'FORCEDIRECT':
+				/* DOGFOOT ktkang 버블차트2 오류 수정  20200716 */
+				case 'BUBBLE_CHART':
+				case 'FORCEDIRECTEXPAND':
+				case "HISTORY_TIMELINE":
+				case "ARC_DIAGRAM":
+				case "RADIAL_TIDY_TREE":
+				case "SCATTER_PLOT_MATRIX":
+				case 'TEXTBOX':
+					dimension.name = $(_elem).attr('UNI_NM');
+					dimension.sortByMeasures = $(_elem).find('.measureList').find('.on').attr('dataitem');
+					dimension.sortOrder = $(_elem).attr('class').indexOf('arrayUp') > 0 ? 'asc' : 'desc';
+					break;
+				case 'PIVOT_GRID':
+					dimension.wiseUniqueName = $(_elem).attr('UNI_NM');
+					dimension.cubeUniqueName = $(_elem).attr('cubeUniNm')
+					dimension.name = caption;
+			}
+
+    		return dimension;	
+    	};
+
+		//2020.09.28 mksong 주소타입 지정 dogfoot
+		var addressFieldOption = function(_elem){
+    		var caption = $(_elem).children().get(0).innerText;
+			var addressField   = {
+					caption: caption,		
+					rawCaption: undefined,
+	    			type: 'dimension',	
+	    			/* DOGFOOT ktkang 대시보드 주제영역 기능 추가 20200618 */
+					uniqueName:  $(_elem).attr('dataitem'),
+					cubeUniqueName: $(_elem).attr('cubeUniNm')
+			};
+			addressField.name = $(_elem).attr('UNI_NM');
+			/* DOGFOOT syjin 주소 타입 지정 SelectBox로 변경 20201023 */
+			//addressField.addressType = $(_elem).find('.addressTypeList').find('.on').attr('addressType');
+			//2020.11.02 syjin 카카오맵 selectBox 반응형 처리 dogfoot
+			var componentName;
+			$.each(self.dxItemBasten, function(db_i, db_v){
+				if(db_v['type'] == 'KAKAO_MAP'){
+                    componentName = db_v['ComponentName'];
+				}
+			})
+			var selectValue = $("#"+componentName+"addressSelectLabel").dxSelectBox('instance').option('value');
+			switch(selectValue){
+				case '시도':
+				    addressField.addressType = 'Sido';
+				break;
+
+				case '시도+시군구':
+				    addressField.addressType = 'SiGunGu';
+				break;
+
+				case '시도+시군구+읍면동':
+				    addressField.addressType = 'EupMyeonDong';
+				break;
+			}
+			
+			addressField.sortOrder = $(_elem).attr('class').indexOf('arrayUp') > 0 ? 'asc' : 'desc';
+
+    		return addressField;	
+    	};
+    	
+    	// 2020.05.21 ajkim 필드 세팅 간소화 dogfoot
+    	var fieldSetting = function(fieldList, resultList, _option, isHidden){
+    		_.each(fieldList, function(_elem, _i) {	
+        		var child = $(_elem).children();	
+        		allSelectedFields.push(child);	
+        		var meta = _option(child);	
+        		if(isHidden) meta.ishidden = true;
+        		resultList.push(meta);	
+        	});
+    	}
+    	
+    	var fieldDeltaSetting = function(fieldList, resultList, _option, isHidden){
+    		_.each(fieldList, function(_elem, _i) {	
+        		var child = _elem;	
+        		allSelectedFields.push(child);	
+        		var meta = _option(child);	
+        		if(isHidden) meta.ishidden = true;
+        		resultList.push(meta);	
+        	});
+    	}
+    	
+    	var fieldSettingNoOption = function(fieldList, resultList){
+    		_.each(fieldList, function(_elem, _i) {
+    			var child = $(_elem).children();
+    			allSelectedFields.push(child);
+    			var column = {'UniqueName': null};
+    			column['UniqueName'] = $(child).attr('dataitem');
+    			/*dogfoot shlim 20200714 데이터 그리드 주제영역 추가*/
+    			column['cubeUniqueName'] = $(child).attr('cubeUniNm');
+    			resultList.push(column);
+    		});
+    	}
+    	
+		var _panelManager = _fieldManager.panelManager;
+		var all = _panelManager['allContentPanel'].children();
+		var allSelectedFields = [];
+		
+		var type = 'PIVOT_GRID';
+		if(!_isAdhoc)
+			type = _type
+		
+		switch(type){
+			case 'SIMPLE_CHART':
+				
+				var values = getPanelData('chartValue', 'ul.analysis-data', 'ul.more');
+				var parameters = getPanelData('chartParameter', 'ul.analysis-data', 'ul.display-move');
+				var seriesList = getPanelData('chartSeries', 'ul.analysis-data', 'ul.display-move');
+				var hide_column_list_meaList = getPanelData('chart_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+				_fieldManager.seriesDimensions = [];	
+				_fieldManager.hiddenMeasures = [];	
+		    	_fieldManager.Panes = {};
+		    	
+		    	if(!valueCheck(values)) return;
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption)
+		    	
+		    	_.each(hide_column_list_meaList, function(_elem, _i) {	
+		    		var child = $(_elem).children();	
+		    		allSelectedFields.push(child);	
+		    		var measureMeta = measureFieldOption(child);	
+		    		measureMeta.ishidden = true;	
+		    		_fieldManager.measures.push(measureMeta);	
+		    		_fieldManager.hiddenMeasures.push(measureMeta);	
+		    	});
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);	
+		    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);	
+		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);	
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);	
+		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);	
+					
+		    	_fieldManager.initialized = true;	
+				break;
+			case 'PIE_CHART':
+				var values = getPanelData('pieValue', 'ul.analysis-data', null);
+		    	var hyperparameters = getPanelData('pieParameter', 'ul.analysis-data', null);
+		    	var seriesList = getPanelData('pieSeries', 'ul.analysis-data', null);
+				var hide_column_list_meaList = getPanelData('pie_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				if(!valueCheck(values)) return;
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+				_fieldManager.seriesDimensions = [];	
+				_fieldManager.hiddenMeasures = [];	
+		    	_fieldManager.values = [];
+		    	
+		    	_fieldManager.Values = {};
+		    	
+		    	fieldSetting(values, _fieldManager.values, measureFieldOption);
+		    	fieldSetting(hyperparameters, _fieldManager.arguments, dimensionFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption);
+		    	fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.values);
+		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);
+		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+				break;
+			case 'KAKAO_MAP':
+				var latitude = getPanelData('kakaoMapLatitude', 'ul.analysis-data', null);
+				var longitude = getPanelData('kakaoMapLongitude', 'ul.analysis-data', null);
+				var address = getPanelData('kakaoMapAddress', 'ul.analysis-data', null);
+				var measures = getPanelData('kakaoMapValue', 'ul.analysis-data', null);
+				var markerDimensions = getPanelData('kakaoMapParameter', 'ul.analysis-data', null);
+
+				//if(!valueCheck(values)) return;
+				_fieldManager.latitude = [];
+				_fieldManager.longitude = [];
+				_fieldManager.address = [];
+				_fieldManager.measures = [];
+				_fieldManager.dimensions = [];
+				_fieldManager.fields = [];
+				//2020.09.24 mksong 마커차원 불러오기 오류 수정  dogfoot
+				_fieldManager.markerDimension = [];
+				
+				_fieldManager.arguments = [];	
+				_fieldManager.seriesDimensions = [];	
+				_fieldManager.hiddenMeasures = [];	
+				
+				_fieldManager.Values = {};
+				
+		    	fieldSetting(latitude, _fieldManager.dimensions, measureFieldOption);
+		    	fieldSetting(longitude, _fieldManager.dimensions, measureFieldOption);
+		    	//2020.09.28 mksong 주소타입 지정 dogfoot
+		    	fieldSetting(address, _fieldManager.address, addressFieldOption);
+		    	fieldSetting(measures, _fieldManager.measures, measureFieldOption);
+		    	//2020.09.24 mksong 마커차원 불러오기 오류 수정  dogfoot
+		    	fieldSetting(markerDimensions, _fieldManager.markerDimension,  dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Latitude = _fieldManager.setLatitudeByField(_fieldManager.latitude);
+		    	_fieldManager.Longitude = _fieldManager.setLongitudeByField(_fieldManager.longitude);
+		    	_fieldManager.Address = _fieldManager.setAddressByField(_fieldManager.address);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+				
+				//2020.09.24 mksong 마커차원 불러오기 오류 수정  dogfoot
+		    	_fieldManager.MarkerDimension = _fieldManager.setMarkerDimensionsByField(_fieldManager.markerDimension);
+//		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+//		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+		    	break;
+//			case 'HISTOGRAM_CHART':
+			case 'WORD_CLOUD':
+			case 'RECTANGULAR_ARAREA_CHART':
+			case 'WATERFALL_CHART':
+//			case 'BIPARTITE_CHART':
+//			case 'SANKEY_CHART':
+			case 'BUBBLE_D3':
+			case 'DIVERGING_CHART':
+//			case 'SCATTER_PLOT':
+			case 'BOX_PLOT':
+			case 'SEQUENCES_SUNBURST':
+			case 'LIQUID_FILL_GAUGE':
+			case 'PARALLEL_COORDINATE':
+			case 'WORD_CLOUD_V2':
+			case 'HEATMAP':
+			case 'HEATMAP2':
+			case 'SYNCHRONIZED_CHARTS':
+			case 'TREEMAP':
+			case 'KAKAO_MAP2':	
+			case 'CHOROPLETH_MAP':
+				var valueTitle = 
+					_fieldManager.focusItemType === 'onewayAnova'? 'onewayAnovaObserved':
+					_fieldManager.focusItemType === 'twowayAnova'? 'twowayAnovaObserved':
+					_fieldManager.focusItemType === 'onewayAnova2'? 'onewayAnova2Observed':
+					/*dogfoot 통계 분석 추가 shlim 20201102*/
+					_fieldManager.focusItemType === 'logisticRegression' ? 'logisticRegressionDpndn' :
+					_fieldManager.focusItemType === 'multipleLogisticRegression' ? 'multipleLogisticRegressionDpndn' :
+					_fieldManager.focusItemType === 'spearmansCorrelation' ? 'spearmansCorrelationNumerical' :
+					_fieldManager.focusItemType === 'pearsonsCorrelation' ? 'pearsonsCorrelationNumerical' :
+					/* DOGFOOT ktkang 가설검정 T-test 추가  20210204 */
+					_fieldManager.focusItemType === 'tTest' ? 'tTestNumerical' :
+					_fieldManager.focusItemType === 'zTest' ? 'zTestNumerical' :
+					_fieldManager.focusItemType === 'chiTest' ? 'chiTestNumerical' :
+					_fieldManager.focusItemType === 'fTest' ? 'fTestNumerical' :
+					_type === 'HISTOGRAM_CHART'? 'histogramchartValue' : _type === 'WORD_CLOUD'? 'wordcloudValue' :
+					_type === 'RECTANGULAR_ARAREA_CHART'? 'RectangularAreaChartValue' : _type === 'WATERFALL_CHART'? 'waterfallchartValue' :
+//					_type === 'BIPARTITE_CHART'? 'bipartitechartValue' : _type === 'SANKEY_CHART'? 'sankeychartValue' :
+					_type === 'BUBBLE_D3'? 'bubbled3Value' : _type === 'PARALLEL_COORDINATE'? 'parallelValue' :
+					_type === 'HEATMAP'? 'heatmapValue' : _type === 'HEATMAP2'? 'heatmap2Value' : _type === 'TREEMAP'? 'treemapValue' : 
+					_type === 'KAKAO_MAP2'? 'kakaoMap2Value' :
+					_type === 'CHOROPLETH_MAP'? 'mapValue' : 
+					_type === 'BUBBLE_PACK_CHART'? 'bubblepackchartValue' : _type === 'WORD_CLOUD_V2'? 'wordcloudv2Value' : 
+					_type === 'DENDROGRAM_BAR_CHART'? 'dendrogrambarchartValue' : _type === 'CALENDAR_VIEW_CHART'? 'calendarviewchartValue' :
+					_type === 'DIVERGING_CHART'? 'divergingchartValue': _type === 'SCATTER_PLOT'? 'scatterplotValue': _type === 'BOX_PLOT'? 'boxplotValue':
+					_type === 'DEPENDENCY_WHEEL'? 'dependencywheelValue': _type === 'SEQUENCES_SUNBURST'? 'sequencessunburstValue':  _type === 'LIQUID_FILL_GAUGE'? 'liquidfillgaugeValue': _type === 'SYNCHRONIZED_CHARTS'? 'syncchartValue':'';
+				
+				var parameterTitle = 
+					_fieldManager.focusItemType === 'onewayAnova'? 'onewayAnovaFactor':
+					_fieldManager.focusItemType === 'twowayAnova'? 'twowayAnovaFactor':
+					_fieldManager.focusItemType === 'onewayAnova2'? 'onewayAnova2Factor':
+					/*dogfoot 통계 분석 추가 shlim 20201102*/
+					_fieldManager.focusItemType === 'logisticRegression' ? 'logisticRegressionIndpn' :
+					_fieldManager.focusItemType === 'multipleLogisticRegression' ? 'multipleLogisticRegressionIndpn' :
+					_type === 'HISTOGRAM_CHART'? 'histogramchartParameter' : _type === 'WORD_CLOUD'? 'wordcloudParameter' :
+					_type === 'RECTANGULAR_ARAREA_CHART'? 'RectangularAreaChartParameter' : _type === 'WATERFALL_CHART'? 'waterfallchartParameter' :
+//					_type === 'BIPARTITE_CHART'? 'bipartitechartParameter' : _type === 'SANKEY_CHART'? 'sankeychartParameter' :
+					_type === 'BUBBLE_D3'? 'bubbled3Parameter' : _type === 'PARALLEL_COORDINATE'? 'parallelParameter' :
+					_type === 'HEATMAP'? 'heatmapParameter' : _type === 'HEATMAP2'? 'heatmap2Parameter' : _type === 'TREEMAP'? 'treemapParameter' : _type === 'HIERARCHICAL_EDGE'? 'hierarchicalParameter' :
+					_type === 'KAKAO_MAP2'? 'kakaoMap2Parameter' :
+					_type === 'CHOROPLETH_MAP'? 'mapParameter' : 
+					_type === 'BUBBLE_PACK_CHART'? 'bubblepackchartParameter' : _type === 'WORD_CLOUD_V2'? 'wordcloudv2Parameter' : 
+					_type === 'DENDROGRAM_BAR_CHART'? 'dendrogrambarchartParameter' : _type === 'CALENDAR_VIEW_CHART'? 'calendarviewchartParameter' :
+					_type === 'DIVERGING_CHART'? 'divergingchartParameter': _type === 'SCATTER_PLOT'? 'scatterplotParameter': _type === 'BOX_PLOT'? 'boxplotParameter':
+					_type === 'DEPENDENCY_WHEEL'? 'dependencywheelParameter': _type === 'SEQUENCES_SUNBURST'? 'sequencessunburstParameter':  _type === 'LIQUID_FILL_GAUGE'? 'liquidfillgaugeParameter':_type === 'SYNCHRONIZED_CHARTS'? 'syncchartParameter':'';
+				
+				var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				if(!valueCheck(values)) return;
+
+                if(type == "CHOROPLETH_MAP"){
+                	var state = getPanelData('mapState', 'ul.analysis-data', 'ul.display-move');
+                	var city = getPanelData('mapCity', 'ul.analysis-data', 'ul.display-move');
+                	var dong = getPanelData('mapDong', 'ul.analysis-data', 'ul.display-move');
+
+                	//if(!locationCheck(state, city, dong)) return;
+                }
+
+
+				/* DOGFOOT shlim 평행좌표계 측정값 하나일때 경고창 20200820 */
+				if(_type ==='PARALLEL_COORDINATE' || _type === 'SCATTER_PLOT'){if(!valueLenCheck(values)) return};
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	
+		    	if(_type === 'DIVERGING_CHART'){
+		    		var seriesList = getPanelData('divergingchartSeries', 'ul.analysis-data', 'ul.display-move');
+		    		 var hide_column_list_meaList = getPanelData('divergingchart_hide_column_list_mea', 'ul.analysis-data', null);
+		    		_fieldManager.hiddenMeasures = [];	
+		    		_fieldManager.seriesDimensions = [];
+		    		fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption);
+		    		fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    		_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+		    		_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+		    	}else if(_type.indexOf('HEATMAP') > -1 || _type === 'SYNCHRONIZED_CHARTS'){
+		    		 var hide_column_list_meaList;
+		    		 if(_type === 'HEATMAP2') hide_column_list_meaList = getPanelData('heatmap2_hide_measure_list', 'ul.analysis-data', null)
+		    		 else if(type === 'HEATMAP') hide_column_list_meaList = getPanelData('heatmap_hide_measure_list', 'ul.analysis-data', null);
+		    		 else hide_column_list_meaList = getPanelData('syncchart_hide_measure_list', 'ul.analysis-data', null);
+		    		 _fieldManager.hiddenMeasures = [];	
+		    		fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    		_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+		    	}
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	// jhseo 추가
+		    	fieldSetting(state, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(city, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(dong, _fieldManager.dimensions, dimensionFieldOption);
+
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+
+				break;
+				
+			case 'HISTOGRAM_CHART':
+				var values = getPanelData('histogramchartValue', 'ul.analysis-data', 'ul.more');
+				
+				if(!valueCheck(values)) return;
+				_fieldManager.measures = [];	
+		    	_fieldManager.Values = [];
+		    	_fieldManager.Arguments = [];	
+		    	
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+				break;
+			case 'SCATTER_PLOT':
+			case 'COORDINATE_LINE':
+			case 'COORDINATE_DOT':
+				/*dogfoot 통계 분석 추가 shlim 20201102*/
+				var x = _fieldManager.focusItemType === 'simpleRegression'? getPanelData('simpleRegressionIndpn', 'ul.analysis-data', 'ul.more') :
+					_fieldManager.focusItemType === 'multipleRegression'? getPanelData('multipleRegressionIndpn', 'ul.analysis-data', 'ul.more') :
+					_fieldManager.focusItemType === 'logisticRegression'? getPanelData('logisticRegressionDpndn', 'ul.analysis-data', 'ul.more') :
+					_fieldManager.focusItemType === 'multipleLogisticRegression'? getPanelData('multipleLogisticRegressionDpndn', 'ul.analysis-data', 'ul.more') :
+					_type === 'COORDINATE_LINE'?  getPanelData('coordinatelineX', 'ul.analysis-data', 'ul.more'): _type === 'COORDINATE_DOT'?  getPanelData('coordinatedotX', 'ul.analysis-data', 'ul.more') : getPanelData('scatterplotX', 'ul.analysis-data', 'ul.more');
+				var y = _fieldManager.focusItemType === 'simpleRegression'? getPanelData('simpleRegressionDpndn', 'ul.analysis-data', 'ul.more') :
+				        _fieldManager.focusItemType === 'multipleRegression'? getPanelData('multipleRegressionDpndn', 'ul.analysis-data', 'ul.more') :
+				        _fieldManager.focusItemType === 'logisticRegression'? getPanelData('logisticRegressionIndpn', 'ul.analysis-data', 'ul.more') :
+			        	_fieldManager.focusItemType === 'multipleLogisticRegression'? getPanelData('multipleLogisticRegressionIndpn', 'ul.analysis-data', 'ul.more') :
+		        		_type === 'COORDINATE_LINE'?  getPanelData('coordinatelineY', 'ul.analysis-data', 'ul.more') : _type === 'COORDINATE_DOT'?  getPanelData('coordinatedotY', 'ul.analysis-data', 'ul.more') :  getPanelData('scatterplotY', 'ul.analysis-data', 'ul.more');
+						
+				var parameters = _fieldManager.focusItemType === 'simpleRegression'? getPanelData('simpleRegressionVector', 'ul.analysis-data', 'ul.more') :
+				                 _fieldManager.focusItemType === 'multipleRegression'? getPanelData('multipleRegressionVector', 'ul.analysis-data', 'ul.more') :
+			                	 _type === 'COORDINATE_LINE'?  getPanelData('coordinatelineParameter', 'ul.analysis-data', 'ul.more') : _type === 'COORDINATE_DOT'?  getPanelData('coordinatedotParameter', 'ul.analysis-data', 'ul.more') : getPanelData('scatterplotParameter', 'ul.analysis-data', 'ul.more');
+				
+//				var x = getPanelData('scatterplotX', 'ul.analysis-data', 'ul.more');
+//				var y = getPanelData('scatterplotY', 'ul.analysis-data', 'ul.more');
+//				var z = getPanelData('scatterplotZ', 'ul.analysis-data', 'ul.more');
+// 			    var parameters = getPanelData('scatterplotParameter', 'ul.analysis-data', 'ul.display-move');
+// 			    var hide_column_list_meaList = getPanelData('scatterplot_hide_column_list_mea', 'ul.analysis-data', null);
+ 			    
+ 			    if(!scatterplotCheck(x)) return;
+ 			    if(!scatterplotCheck(y)) return;
+ 			   
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	_fieldManager.hiddenMeasures = [];
+		    	
+		    	fieldSetting(x, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(y, _fieldManager.dimensions, dimensionFieldOption);
+//		    	fieldSetting(z, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+//		    	fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+//		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+//		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+				break;
+			case 'SCATTER_PLOT_MATRIX':
+				
+				if(gDashboard.reportType != "StaticAnalysis"){
+					var x1 = getPanelData('scatterPlotMatrixX1', 'ul.analysis-data', 'ul.more');
+					var y1 = getPanelData('scatterPlotMatrixY1', 'ul.analysis-data', 'ul.more');
+					var x2 = getPanelData('scatterPlotMatrixX2', 'ul.analysis-data', 'ul.more');
+					var y2 = getPanelData('scatterPlotMatrixY2', 'ul.analysis-data', 'ul.more');
+	 			    var parameters = getPanelData('scatterPlotMatrixParameter', 'ul.analysis-data', 'ul.display-move');
+					
+	 			   	if(!scatterplotCheck(x1)) return;
+				    if(!scatterplotCheck(y1)) return;
+				    if(!scatterplotCheck(x2)) return;
+				    if(!scatterplotCheck(y2)) return;
+	 			   
+					_fieldManager.measures = [];	
+					_fieldManager.dimensions = [];	
+					_fieldManager.Arguments = [];	
+			    	_fieldManager.Values = [];
+			    	_fieldManager.hiddenMeasures = [];
+			    	
+			    	fieldSetting(x1, _fieldManager.dimensions, dimensionFieldOption);
+			    	fieldSetting(y1, _fieldManager.dimensions, dimensionFieldOption);
+			    	fieldSetting(x2, _fieldManager.dimensions, dimensionFieldOption);
+			    	fieldSetting(y2, _fieldManager.dimensions, dimensionFieldOption);
+			    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+			    	
+			    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+			    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+			    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+					
+ 				}else{
+ 					var valueTitle = _fieldManager.focusItemType === 'spearmansCorrelation' ? 'spearmansCorrelationNumerical' : 'pearsonsCorrelationNumerical'
+// 					var x1 = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+//					var y1 = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+//					var x2 = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+//					var y2 = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+//	 			    var parameters = getPanelData(valueTitle, 'ul.analysis-data', 'ul.display-move');
+					
+//	 			   	if(!scatterplotCheck(x1)) return;
+//				    if(!scatterplotCheck(y1)) return;
+//				    if(!scatterplotCheck(x2)) return;
+//				    if(!scatterplotCheck(y2)) return;
+	 			   
+					_fieldManager.measures = [];	
+					_fieldManager.dimensions = [];	
+					_fieldManager.Arguments = [];	
+			    	_fieldManager.Values = [];
+			    	_fieldManager.hiddenMeasures = [];
+			    	
+			    	fieldSetting(getPanelData(valueTitle, 'ul.analysis-data', 'ul.more'), _fieldManager.dimensions, dimensionFieldOption);
+//			    	fieldSetting(x1, _fieldManager.dimensions, dimensionFieldOption);
+//			    	fieldSetting(y1, _fieldManager.dimensions, dimensionFieldOption);
+//			    	fieldSetting(x2, _fieldManager.dimensions, dimensionFieldOption);
+//			    	fieldSetting(y2, _fieldManager.dimensions, dimensionFieldOption);
+//			    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+			    	
+			    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+			    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+			    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+ 				}
+				break;
+			case 'HISTORY_TIMELINE':
+				var startDate = getPanelData('historyTimelineStart', 'ul.analysis-data', 'ul.more');
+				var endDate = getPanelData('historyTimelineEnd', 'ul.analysis-data', 'ul.more');
+ 			    var parameters = getPanelData('historyTimelineParameter', 'ul.analysis-data', 'ul.display-move');
+				
+ 			    if(!argumentsCheck(startDate)) return;
+ 			    if(!argumentsCheck(endDate)) return;
+ 			    if(!argumentsCheck(parameters)) return;
+ 			   
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	_fieldManager.hiddenMeasures = [];
+		    	
+		    	fieldSetting(startDate, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(endDate, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;
+			case 'SCATTER_PLOT2':
+				var x = getPanelData('scatterplot2X', 'ul.analysis-data', 'ul.more');
+				var y = getPanelData('scatterplot2Y', 'ul.analysis-data', 'ul.more');
+				var z = getPanelData('scatterplot2Z', 'ul.analysis-data', 'ul.more');
+ 			    var parameters = getPanelData('scatterplot2Parameter', 'ul.analysis-data', 'ul.display-move');
+// 			    var hide_column_list_meaList = getPanelData('scatterplot2_hide_column_list_mea', 'ul.analysis-data', null);
+				
+ 			    if(!scatterplotCheck(x)) return;
+ 			    if(!scatterplotCheck(y)) return;
+ 			   
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	_fieldManager.hiddenMeasures = [];
+		    	
+		    	fieldSetting(x, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(y, _fieldManager.dimensions, dimensionFieldOption);
+		    	fieldSetting(z, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+//		    	fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+//		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+				break;
+			case 'DENDROGRAM_BAR_CHART':
+			case 'CALENDAR_VIEW_CHART':
+			case 'CALENDAR_VIEW2_CHART':
+			case 'CALENDAR_VIEW3_CHART':
+			case 'COLLAPSIBLE_TREE_CHART':
+				var valueTitle = _type === 'DENDROGRAM_BAR_CHART'? 'dendrogrambarchartValue' : _type === 'CALENDAR_VIEW_CHART'? 'calendarviewchartValue' : 	_type === 'CALENDAR_VIEW2_CHART'? 'calendarview2chartValue' :
+								_type === 'CALENDAR_VIEW3_CHART'? 'calendarview3chartValue' :_type === 'COLLAPSIBLE_TREE_CHART'? 'collapsibletreechartValue' :'';
+				
+				var parameterTitle = _type === 'DENDROGRAM_BAR_CHART'? 'dendrogrambarchartParameter' : _type === 'CALENDAR_VIEW_CHART'? 'calendarviewchartParameter': _type === 'CALENDAR_VIEW2_CHART'? 'calendarview2chartParameter':
+									_type === 'CALENDAR_VIEW3_CHART'? 'calendarview3chartParameter':_type === 'COLLAPSIBLE_TREE_CHART'? 'collapsibletreechartParameter':'';
+				
+				
+				var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				if(!valueCheck(values)) return;
+				if(!argumentsCheck(parameters)) return;
+				/* DOGFOOT shlim 평행좌표계 측정값 하나일때 경고창 20200820 */
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;
+			/*dogfoot 버블팩 차트 분리 shlim 20201123*/
+			case 'BUBBLE_PACK_CHART':
+				var valueTitle =  _type === 'BUBBLE_PACK_CHART'? 'bubblepackchartValue' :'';
+	
+				var parameterTitle = _type === 'BUBBLE_PACK_CHART'? 'bubblepackchartParameter':'';
+				
+				
+				var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				if(!valueCheck(values)) return;
+				if(!bubblePackCheck(parameters)) return;
+				
+//				if(!argumentsCheck(parameters)) return;
+				/* DOGFOOT shlim 평행좌표계 측정값 하나일때 경고창 20200820 */
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+				_fieldManager.Values = [];
+				
+				fieldSetting(values, _fieldManager.measures, measureFieldOption);
+				fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+				
+				_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+				_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+				_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;
+			case 'RANGE_BAR_CHART':				
+				//var values = getPanelDeltaData('rangebarchartValue', 'li.wise-column-chooser', 'ul.more');
+				var values = getPanelData('rangebarchartValue', 'ul.analysis-data', 'ul.more');
+				var parameters = getPanelData('rangebarchartParameter', 'ul.analysis-data', 'ul.display-move');
+				var valuesList=[];
+				var deltacheck =false;
+//				var seriesList = getPanelData('rangebarchartSeries', 'ul.analysis-data', 'ul.display-move');
+//				var hide_column_list_meaList = getPanelData('rangebarchart_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+//				_fieldManager.seriesDimensions = [];	
+//				_fieldManager.hiddenMeasures = [];	
+		    	_fieldManager.Panes = {};
+		    	
+		    	_.each(values, function(_elem, _i) {
+		    		var child = $(_elem).children();		    		
+		    		var deltaColumn = {'ActualValue': {}, 'TargetValue': {}};		    		
+		    		var column = {'UniqueName': null};
+		    		column['UniqueName'] = $(child).attr('dataitem');
+		    		if($(child).attr('dataType') == 'delta'){
+		    			$.each($(child).parent().children('li'), function(_k,_li){
+		    				var delta = {};
+							delta['UniqueName'] = $(_li).attr('dataitem');
+							if(delta.UniqueName == undefined){
+								deltacheck = true;
+								return;
+							}else{
+							    valuesList.push(_li);	
+							}
+		    			});	
+		    		}
+		    	});
+
+		    	if(!valueCheck(values)) return;
+		    	if(deltacheck){
+		    		WISE.alert('측정값의 대상 컬럼이 존재하지 않습니다.<br> 추가 후 다시 조회해주십시오.');
+		    		gProgressbar.hide();
+					return;
+		    	}
+		    	//if(!valueLenCheck(values)) return;
+		    	fieldDeltaSetting(valuesList, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+//		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption)
+		    	
+//		    	_.each(hide_column_list_meaList, function(_elem, _i) {	
+//		    		var child = $(_elem).children();	
+//		    		allSelectedFields.push(child);	
+//		    		var measureMeta = measureFieldOption(child);	
+//		    		measureMeta.ishidden = true;	
+//		    		_fieldManager.measures.push(measureMeta);	
+//		    		_fieldManager.hiddenMeasures.push(measureMeta);	
+//		    	});
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);	
+		    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);	
+//		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);	
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);	
+//		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);	
+					
+		    	_fieldManager.initialized = true;	
+				break;
+			case 'RANGE_AREA_CHART':				
+				var values = getPanelData('rangeareachartValue', 'ul.analysis-data', 'ul.more');
+				var parameters = getPanelData('rangeareachartParameter', 'ul.analysis-data', 'ul.display-move');
+				var valuesList=[];
+				var deltacheck =false;
+//				var seriesList = getPanelData('rangeareachartSeries', 'ul.analysis-data', 'ul.display-move');
+//				var hide_column_list_meaList = getPanelData('rangeareachart_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+//				_fieldManager.seriesDimensions = [];	
+//				_fieldManager.hiddenMeasures = [];	
+				_fieldManager.Panes = {};
+				
+				
+				_.each(values, function(_elem, _i) {
+		    		var child = $(_elem).children();		    		
+		    		var deltaColumn = {'ActualValue': {}, 'TargetValue': {}};		    		
+		    		var column = {'UniqueName': null};
+		    		column['UniqueName'] = $(child).attr('dataitem');
+		    		if($(child).attr('dataType') == 'delta'){
+		    			$.each($(child).parent().children('li'), function(_k,_li){
+		    				var delta = {};
+							delta['UniqueName'] = $(_li).attr('dataitem');
+							if(delta.UniqueName == undefined){
+								deltacheck = true;
+								return;
+							}else{
+							    valuesList.push(_li);	
+							}
+		    			});	
+		    		}
+		    	});
+				
+				if(!valueCheck(values)) return;
+				if(deltacheck){
+		    		WISE.alert('측정값의 대상 컬럼이 존재하지 않습니다.<br> 추가 후 다시 조회해주십시오.');
+		    		gProgressbar.hide();
+					return;
+		    	}
+				//if(!valueLenCheck(values)) return
+				fieldDeltaSetting(valuesList, _fieldManager.measures, measureFieldOption);
+				//fieldSetting(values, _fieldManager.measures, measureFieldOption);
+				fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+//		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption)
+				
+//		    	_.each(hide_column_list_meaList, function(_elem, _i) {	
+//		    		var child = $(_elem).children();	
+//		    		allSelectedFields.push(child);	
+//		    		var measureMeta = measureFieldOption(child);	
+//		    		measureMeta.ishidden = true;	
+//		    		_fieldManager.measures.push(measureMeta);	
+//		    		_fieldManager.hiddenMeasures.push(measureMeta);	
+//		    	});
+				
+				_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);	
+				_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);	
+//		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);	
+				_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);	
+//		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);	
+				
+				_fieldManager.initialized = true;	
+				break;
+			case 'TIME_LINE_CHART':				
+				var values = getPanelData('timelinechartValue', 'ul.analysis-data', 'ul.more');
+				var parameters = getPanelData('timelinechartParameter', 'ul.analysis-data', 'ul.display-move');
+				var seriesList = getPanelData('timelinechartSeries', 'ul.analysis-data', 'ul.display-move');
+				var startList = getPanelData('timelinechartStartDate', 'ul.analysis-data', 'ul.display-move');
+				var endList = getPanelData('timelinechartEndDate', 'ul.analysis-data', 'ul.display-move');
+//				var hide_column_list_meaList = getPanelData('timelinechart_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];
+				_fieldManager.seriesDimensions = [];
+				_fieldManager.startDate = [];	
+				_fieldManager.endDate = [];
+//				_fieldManager.hiddenMeasures = [];	
+		    	_fieldManager.Panes = {};
+		    	
+//		    	if(!valueCheck(values)) return;
+		    	if(!valueCheck(values)) return;
+		    	if(!argumentsCheck(parameters)) return;
+		    	if(!seriesCheck(seriesList)) return;
+		    	if(!seriesCheck(startList)) return;
+		    	if(!seriesCheck(endList)) return;
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption)
+		    	fieldSetting(startList, _fieldManager.startDate, dimensionFieldOption);
+		    	fieldSetting(endList, _fieldManager.endDate, dimensionFieldOption);
+		    	
+//		    	_.each(hide_column_list_meaList, function(_elem, _i) {	
+//		    		var child = $(_elem).children();	
+//		    		allSelectedFields.push(child);	
+//		    		var measureMeta = measureFieldOption(child);	
+//		    		measureMeta.ishidden = true;	
+//		    		_fieldManager.measures.push(measureMeta);	
+//		    		_fieldManager.hiddenMeasures.push(measureMeta);	
+//		    	});
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);	
+		    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);	
+		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);	
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);
+		    	_fieldManager.StartDate = _fieldManager.setStartDateByField(_fieldManager.startDate);
+		    	_fieldManager.EndDate = _fieldManager.setEndDateByField(_fieldManager.endDate);
+//		    	_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);	
+					
+		    	_fieldManager.initialized = true;	
+				break;
+			case 'HIERARCHICAL_EDGE':
+				var parameterTitle = _type === 'HISTOGRAM_CHART'? 'histogramchartParameter' : _type === 'WORD_CLOUD'? 'wordcloudParameter' :
+					_type === 'RECTANGULAR_ARAREA_CHART'? 'RectangularAreaChartParameter' : _type === 'WATERFALL_CHART'? 'waterfallchartParameter' :
+					_type === 'BUBBLE_D3'? 'bubbled3Parameter' : _type === 'PARALLEL_COORDINATE'? 'parallelParameter' :
+					_type === 'HEATMAP'? 'heatmapParameter' : _type === 'HEATMAP2'? 'heatmap2Parameter' : _type === 'TREEMAP'? 'treemapParameter' : _type === 'HIERARCHICAL_EDGE'? 'hierarchicalParameter' :
+					_type === 'CHOROPLETH_MAP'? 'mapParameter' : '';
+				
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;
+			case 'BIPARTITE_CHART':
+			case 'SANKEY_CHART':
+			case 'DEPENDENCY_WHEEL':
+			case 'RADIAL_TIDY_TREE':
+			case "ARC_DIAGRAM":
+				var parameterTitle = _type === 'BIPARTITE_CHART'? 'bipartitechartParameter' : _type === 'SANKEY_CHART'? 'sankeychartParameter' :
+					_type === 'DEPENDENCY_WHEEL'? 'dependencywheelParameter': _type === 'RADIAL_TIDY_TREE'? 'radialTidyTreeParameter' : 'arcdiagramParameter';
+				
+//				var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+//				if(!valueCheck(values)) return;
+				
+				_fieldManager.measures = [];
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	
+//		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+//		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;			
+			case 'FORCEDIRECT':
+			case 'FORCEDIRECTEXPAND':
+				var valueTitle = _type === 'FORCEDIRECT'? 'forceDirectValue' : _type === 'FORCEDIRECTEXPAND'? 'forceDirectExpandValue' : '';
+				var parameterTitle = _type === 'FORCEDIRECT'? 'forceDirectParameter' : _type === 'FORCEDIRECTEXPAND'? 'forceDirectExpandParameter': '';
+				
+				//var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				//if(!valueCheck(values)) return;
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	
+		    	//fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	//_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;				
+			case 'STAR_CHART':
+				var values = getPanelData('starchartValue', 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData('starchartParameter', 'ul.analysis-data', 'ul.display-move');
+			    var seriesList = getPanelData('starchartSeries', 'ul.analysis-data', 'ul.display-move');
+			    
+				if(!valueCheck(values)) return;
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+		    	_fieldManager.seriesDimensions = [];
+		    	
+		    	_fieldManager.Panes = {};
+		    	
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);
+		    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);
+				break;
+			case 'COMBOBOX':
+			case 'LISTBOX':
+			case 'TREEVIEW':
+				var dimTitle = _type === 'COMBOBOX'? 'cb_dimfield' : _type === 'LISTBOX'?  'dimfield' : _type === 'TREEVIEW'? 'tv_dimfield' : '';
+				var hcTitle = _type === 'COMBOBOX'? 'combobox_hide_column_list_mea' : _type === 'LISTBOX'?  'listbox_hide_column_list_mea' : _type === 'TREEVIEW'? 'treeview_hide_column_list_mea': '';
+				
+				var dims = getPanelData(dimTitle, 'ul.analysis-data', null);
+		    	var hide_column_list_meaList =  getPanelData(hcTitle, 'ul.analysis-data', null);
+		    	
+		    	if(!dimCheck(dims)) return;
+		    	
+		    	_fieldManager.dimensions = [];	
+				_fieldManager.hiddenMeasures = [];	
+				_fieldManager.FilterDimensions = {'Dimension':[]};
+				_fieldManager.HiddenMeasures = {'Measure':[]};
+				
+				fieldSettingNoOption(dims, _fieldManager.FilterDimensions['Dimension']);
+				fieldSettingNoOption(hide_column_list_meaList, _fieldManager.HiddenMeasures['Measure']);
+				
+				_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+				break;
+			case 'TEXTBOX':
+				if(gDashboard.reportType === 'RAnalysis'){
+					var columnList = getPanelData('rField', 'ul.analysis-data', null);
+					_fieldManager.measures = [];	
+					_fieldManager.dimensions = [];
+					
+					_.each(columnList, function(_elem, _i) {
+			    		var child = $(_elem).children();
+			    		if($(child).attr('dataType') == 'dimension'){
+			    			fieldSetting([$(_elem)], _fieldManager.dimensions, dimensionFieldOption)
+			    		}else {
+			    			fieldSetting([$(_elem)], _fieldManager.measures, measureFieldOption);
+			    		}
+			    	});
+					
+					_fieldManager.DataItems = _fieldManager.setDataItemByFieldR(allSelectedFields,dataItemOptionList);
+				}else{
+					var values = getPanelData('textboxValue', 'ul.analysis-data', 'ul.more');
+					var hide_column_list_meaList =  getPanelData('textbox_hide_column_list_mea', 'ul.analysis-data', null);
+					
+					_fieldManager.values = [];	
+					_fieldManager.measures = [];	
+					_fieldManager.hiddenMeasures = [];	
+					_fieldManager.Values = [];
+			    	
+			    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+			    	fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+			    	
+			    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+			    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+			    	_fieldManager.Arguments = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+				}
+				break;
+			case 'FUNNEL_CHART':
+			case 'PYRAMID_CHART':
+				var valueTitle = _type === 'FUNNEL_CHART'? 'funnelchartValue' : 'pyramidchartValue';
+				var parameterTitle = _type === 'FUNNEL_CHART'? 'funnelchartParameter' : 'pyramidchartParameter';
+				
+				var values = getPanelData(valueTitle, 'ul.analysis-data', 'ul.more');
+			    var parameters = getPanelData(parameterTitle, 'ul.analysis-data', 'ul.display-move');
+				
+				if(!valueCheck(values)) return;
+				
+				_fieldManager.measures = [];
+				_fieldManager.dimensions = [];	
+				_fieldManager.Arguments = [];	
+		    	_fieldManager.Values = [];
+		    	
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.dimensions, dimensionFieldOption);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+		    	_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.measures);
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.dimensions);
+				break;
+			case 'CARD_CHART':
+				var values = getPanelData('cardValue', 'ul.analysis-data', null);
+				var seriesList = getPanelData('cardSeries', 'ul.analysis-data', null);
+				var sparkLineList = getPanelData('cardSparkLine', 'ul.analysis-data', null);
+				var hide_column_list_meaList = getPanelData('card_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.values = [];
+				_fieldManager.measures = [];
+				_fieldManager.dimensions = [];
+				_fieldManager.hiddenMeasures = [];
+				_fieldManager.seriesDimensions = [];
+				_fieldManager.sparklineArgument = [];
+		    	
+				_fieldManager.Values = {};
+				
+				if(!valueCheck(values)) return;
+				
+				fieldSetting(values, _fieldManager.values, measureFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.seriesDimensions, dimensionFieldOption);
+		    	fieldSetting(sparkLineList, _fieldManager.sparklineArgument, measureFieldOption);
+		    	fieldSetting(hide_column_list_meaList, _fieldManager.hiddenMeasures, measureFieldOption, true);
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+				if (typeof _fieldManager.DataItems.Measure !== 'undefined') {
+					_fieldManager.setActualAndTargetValues(_fieldManager.DataItems.Measure);
+				}
+				_fieldManager.Values = _fieldManager.setValuesByField(_fieldManager.values);
+				_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+				_fieldManager.SparklineArgument = _fieldManager.setSparklineArgumentByField(_fieldManager.sparklineArgument);
+				_fieldManager.HiddenMeasures = _fieldManager.setHiddenMeasuresByField(_fieldManager.hiddenMeasures);
+				break;
+			case 'DATA_GRID':
+			/* 20210212 AJKIM 다운로드 확장 기능 추가 dogfoot*/
+				var columnList = getPanelData('data', 'ul.analysis-data', null);
+				if(!_fieldManager.focusItemType)
+					columnList = getPanelData('downloadexpand', 'ul.analysis-data', null);
+				else if(_fieldManager.focusItemType !== 'dataGrid') {
+					if(_fieldManager.focusItemType.indexOf('Anova') > -1) {
+						columnList = $.merge(getPanelData(_fieldManager.focusItemType + 'Observed', 'ul.analysis-data', null), getPanelData(_fieldManager.focusItemType + 'Factor', 'ul.analysis-data', null));
+						/*if(_fieldManager.focusItemType === 'onewayAnova2') {
+							columnList = $.merge(columnList, getPanelData(_fieldManager.focusItemType + 'Item', 'ul.analysis-data', null));
+						}*/
+					} else if(_fieldManager.focusItemType.indexOf('Correlation') > -1 || _fieldManager.focusItemType.indexOf('Test') > -1) {
+						columnList = getPanelData(_fieldManager.focusItemType + 'Numerical', 'ul.analysis-data', null);
+					} else if(_fieldManager.focusItemType.indexOf('Regression') > -1) {
+						columnList = $.merge(getPanelData(_fieldManager.focusItemType + 'Indpn', 'ul.analysis-data', null), getPanelData(_fieldManager.focusItemType + 'Dpndn', 'ul.analysis-data', null));
+						columnList = $.merge(columnList, getPanelData(_fieldManager.focusItemType + 'Vector', 'ul.analysis-data', null));
+					} else if(_fieldManager.focusItemType.indexOf('multivariate') > -1) {
+						columnList = $.merge(getPanelData(_fieldManager.focusItemType + 'Numerical', 'ul.analysis-data', null), getPanelData(_fieldManager.focusItemType + 'Parameter', 'ul.analysis-data', null));
+					}
+				}
+				var sparkLineList = getPanelData('sparkLine', 'ul.analysis-data', null);
+				var hide_column_list_meaList = getPanelData('grid_hide_column_list_mea', 'ul.analysis-data', null);
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];
+				_fieldManager.GridColumns = {'GridDimensionColumn' : [], 'GridMeasureColumn':[], 'GridSparklineColumn':[], 'GridDeltaColumn':[]};				
+				_fieldManager.SparklineArgument = [];		    	
+				_fieldManager.GridDimensionColumn = [];
+				_fieldManager.GridMeasureColumn = [];
+				_fieldManager.GridSparklineColumn = [];
+				_fieldManager.GridDeltaColumn = [];				
+				_fieldManager.HiddenMeasures = {'Measure':[]};
+				
+				/* DOGFOOT ktkang 통계 분석 부분 추가  20201102 */
+				if(!_fieldManager.focusItemType || _fieldManager.focusItemType === 'dataGrid') {
+					if(columnList.length === 0){
+						WISE.alert('필드를 1개 이상 올려야 조회가 가능합니다.');
+						gProgressbar.hide();
+						return;
+					}
+				} else {
+					if(_fieldManager.focusItemType.indexOf('Anova') > -1) {
+						var observed = getPanelData(_fieldManager.focusItemType + 'Observed', 'ul.analysis-data', null);
+						var factors = getPanelData(_fieldManager.focusItemType + 'Factor', 'ul.analysis-data', null);
+						if(observed.length === 0) {
+							WISE.alert('관측변수를 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+						if(factors.length === 0) {
+							WISE.alert('요인변수를 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+						if(_fieldManager.focusItemType === 'twowayAnova' && factors.length < 2) {
+							WISE.alert('요인변수를 2개 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+					} else if(_fieldManager.focusItemType.indexOf('Correlation') > -1 || _fieldManager.focusItemType.indexOf('Test') > -1) {
+						var numerical = getPanelData(_fieldManager.focusItemType + 'Numerical', 'ul.analysis-data', null);
+						if(numerical.length === 0) {
+							WISE.alert('수치변수를 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+						/* DOGFOOT ktkang Z검정 옵션 추가  20210216 */
+						if(_fieldManager.focusItemType.indexOf('zTest') > -1) {
+							if(numerical.length > 1) {
+								WISE.alert('Z-test는 단일표본만 가능합니다.');
+								gProgressbar.hide();
+								return;
+							}
+						}
+					} else if(_fieldManager.focusItemType.indexOf('multivariate') > -1) {
+						var numerical = getPanelData(_fieldManager.focusItemType + 'Numerical', 'ul.analysis-data', null);
+						if(numerical.length === 0) {
+							WISE.alert('수치변수를 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+						
+						var parameter = getPanelData(_fieldManager.focusItemType + 'Parameter', 'ul.analysis-data', null);
+						if(parameter.length === 0) {
+							WISE.alert('차원변수를 올려야 조회가 가능합니다.');
+							gProgressbar.hide();
+							return;
+						} else if(parameter.length > 1) {
+							WISE.alert('차원변수는 1개만 가능합니다.');
+							gProgressbar.hide();
+							return;
+						}
+					}
+				}
+				
+				_.each(columnList, function(_elem, _i) {
+		    		var child = $(_elem).children();		    		
+		    		var dimensionColumn = {'Dimension': {}, 'wiseOrder': null};
+		    		var measureColumn = {'Measure': {}, 'wiseOrder': null};
+		    		var sparklineColumn = {'SparklineValue': {}, 'wiseOrder': null};
+		    		var sparklineArgument = {'sparklineArgument': {}, 'wiseOrder': null};
+		    		var deltaColumn = {'ActualValue': {}, 'TargetValue': {}};		    		
+		    		var column = {'UniqueName': null};
+		    		column['UniqueName'] = $(child).attr('dataitem');
+		    		if($(child).attr('dataType') == 'dimension'){
+		    			allSelectedFields.push(child);
+		    			dimensionColumn['Dimension'] = column;
+		    			dimensionColumn['wiseOrder'] = _i;
+		    			dimensionColumn['displayMode'] = $(child).attr('detailtype');
+		    			dimensionColumn['Weight'] = $(child).data('dataGridColumnWeight');
+		    			_fieldManager.GridDimensionColumn.push(dimensionColumn);	
+		    		} else if($(child).attr('dataType') == 'sparkline'){
+		    			var sparklineOptions = {'HighlightStartEndPoints': null, 'HighlightMinMaxPoints': null, 'ShowStartEndValues': null};
+		    			
+		    			allSelectedFields.push(child);
+		        		sparklineColumn['SparklineValue'] = column;
+		        		sparklineColumn['wiseOrder'] = _i;
+		        		sparklineOptions['HighlightStartEndPoints'] = $(child).attr('highlightstartendpoints');
+		        		sparklineOptions['HighlightMinMaxPoints'] = $(child).attr('highlightminmaxpoints');
+		        		
+		        		sparklineColumn['SparklineOptions'] = sparklineOptions;
+		        		_fieldManager.GridSparklineColumn.push(sparklineColumn);
+		    		}else if($(child).attr('dataType') == 'delta'){
+		    			var deltaOptions = {'AlwaysShowZeroLevel': null, 'ResultIndicationMode': null, 'ResultIndicationThresholdType': null, 'ResultIndicationThreshold': null, 'ValueType': null};
+		    			var ActualField;
+		    			$.each($(child).parent().children('li'), function(_k,_li){
+		    				allSelectedFields.push($(_li));
+		    				var delta = {};
+		    				delta['UniqueName'] = $(_li).attr('dataitem');
+		    				if(_k == 0){
+		    					ActualField = $(_li);
+		    					deltaColumn['ActualValue'] = delta;
+		    				}else{
+		    					if(delta.UniqueName == undefined){
+		    						WISE.alert('델타의 대상 컬럼이 존재하지 않습니다. 추가 후 다시 조회해주십시오.');
+		    						return;
+		    					}
+		    					deltaColumn['TargetValue'] = delta;
+		    				}
+		    			});
+		    			
+		    			deltaColumn['wiseOrder'] = _i;
+		    			deltaOptions['AlwaysShowZeroLevel'] = ActualField.attr('AlwaysShowZeroLevel');
+		    			deltaOptions['ResultIndicationMode'] = ActualField.attr('ResultIndicationMode');
+		    			deltaOptions['ResultIndicationThresholdType'] = ActualField.attr('ResultIndicationThresholdType');
+		    			deltaOptions['ResultIndicationThreshold'] = ActualField.attr('ResultIndicationThreshold');
+		    			deltaOptions['ValueType'] = ActualField.attr('ValueType');
+		    			deltaColumn['DeltaOptions'] = deltaOptions;
+		    			_fieldManager.GridDeltaColumn.push(deltaColumn);
+		    			
+		    		}else{
+		    			allSelectedFields.push(child);
+		    			measureColumn['Measure'] = column;
+		    			measureColumn['wiseOrder'] = _i;
+		    			measureColumn['displayMode'] = $(child).attr('detailtype');
+		    			measureColumn['Weight'] = $(child).data('dataGridColumnWeight');
+		    			_fieldManager.GridMeasureColumn.push(measureColumn);
+		    		}
+		    	});
+				
+				_.each(sparkLineList, function(_elem) {
+					var child = $(_elem).children();		
+					var column = {'UniqueName': null};
+					column['UniqueName'] = $(child).attr('dataitem');			
+					/* DOGFOOT ktkang 대시보드 주제영역 기능 추가 20200618 */		
+					column['cubeUniqueName'] = $(child).attr('cubeUniNm');
+					if($(child).attr('dataType') == 'sparklineArgument'){
+		    			allSelectedFields.push(child);
+		        		_fieldManager.SparklineArgument = column;
+		    		}
+		    	});
+				
+				
+				
+		    	_.each(columnList, function(_elem) {
+					var child = $(_elem).children();
+		    		//allSelectedFields.push(child);
+					var sparklineColumn = {'SparklineValue': {}, 'wiseOrder': null};
+					
+					if( $(child).attr('datatype') == 'sparkline'){
+					//	_fieldManager.SparklineArgument['UniqueName'] = $(child).attr('dataitem');
+					}
+					
+		    		
+		    	});
+				
+		    	fieldSettingNoOption(hide_column_list_meaList, _fieldManager.HiddenMeasures['Measure'], measureFieldOption, true);
+				
+				_fieldManager.GridColumns['GridDimensionColumn'] = _fieldManager.GridDimensionColumn;
+				_fieldManager.GridColumns['GridMeasureColumn'] = _fieldManager.GridMeasureColumn;
+				_fieldManager.GridColumns['GridSparklineColumn'] = _fieldManager.GridSparklineColumn;
+				_fieldManager.GridColumns['GridDeltaColumn'] = _fieldManager.GridDeltaColumn;
+				
+				//통계 부분
+				var dataItemOptionList;
+				
+				if(_fieldManager.focusItemType && _fieldManager.focusItemType !== 'dataGrid') {
+					if(_fieldManager.focusItemType.indexOf('Anova') > -1) {
+						dataItemOptionList = $.merge(_panelManager[_fieldManager.focusItemType + 'ObservedContentPanel'+index].children('a.otherBtn'), _panelManager[_fieldManager.focusItemType + 'FactorContentPanel'+index].children('a.otherBtn'));
+					} else if(_fieldManager.focusItemType.indexOf('Correlation') > -1 || _fieldManager.focusItemType.indexOf('Test') > -1) {
+						dataItemOptionList = _panelManager[_fieldManager.focusItemType + 'NumericalContentPanel'+index].children('a.otherBtn');
+					} else if(_fieldManager.focusItemType.indexOf('Regression') > -1) {
+						dataItemOptionList = $.merge(_panelManager[_fieldManager.focusItemType + 'DpndnContentPanel'+index].children('a.otherBtn'), _panelManager[_fieldManager.focusItemType + 'IndpnContentPanel'+index].children('a.otherBtn'), _panelManager[_fieldManager.focusItemType + 'VectorContentPanel'+index].children('a.otherBtn'));
+					} else if(_fieldManager.focusItemType.indexOf('multivariate') > -1) {
+						dataItemOptionList = $.merge(_panelManager[_fieldManager.focusItemType + 'ParameterContentPanel'+index].children('a.otherBtn'), _panelManager[_fieldManager.focusItemType + 'NumericalContentPanel'+index].children('a.otherBtn'));
+					}
+				} else if(_panelManager['dataContentPanel'+index]){
+					dataItemOptionList = _panelManager['dataContentPanel'+index].children('a.otherBtn');
+				}
+		    	
+				_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields,dataItemOptionList);
+		    	
+				break;
+			case 'PIVOT_GRID':
+				var measures;
+				var rows;
+				var cols;
+				var hide_column_list;
+				var values;
+				var parameters;
+				var seriesList;
+				
+				if(!_isAdhoc){
+					measures = getPanelData('datafield', 'ul.analysis-data', null);
+					rows = getPanelData('row', 'ul.analysis-data', null);
+					cols = getPanelData('col', 'ul.analysis-data', null);
+					hide_column_list = getPanelData('pivot_hide_column_list_mea', 'ul.analysis-data', null);
+				}else{
+					values = measures = getPanelData('datafieldAdHoc', 'ul.analysis-data', null);
+					parameters = rows = getPanelData('rowAdHoc', 'ul.analysis-data', null);
+					seriesList = cols = getPanelData('colAdHoc', 'ul.analysis-data', null);
+					hide_column_list = getPanelData('adhoc_hide_column_list_mea', 'ul.analysis-data', null);	
+				}
+				
+				
+				if (measures.length ===0 && rows.length ===0 && cols.length ===0) {
+		    		WISE.alert('데이터 항목에 아무것도 넣지 않으셨습니다. 하나 이상의 데이터를 넣고 조회하시기 바랍니다.');
+		    		gProgressbar.hide();
+		    		return false;
+		    	}
+
+				if(!_isAdhoc){
+					_fieldManager.dimensions = [];
+					_fieldManager.hiddenMeasures = [];
+					_fieldManager.Values = {'Value':[]};
+					_fieldManager.Rows = {'Row':[]};
+					_fieldManager.Columns = {'Column':[]};
+			    	_fieldManager.HiddenMeasures = {'Measure':[]};
+			    	
+					fieldSettingNoOption(measures, _fieldManager.Values['Value']);
+					fieldSettingNoOption(rows, _fieldManager.Rows['Row']);
+					fieldSettingNoOption(cols, _fieldManager.Columns['Column']);
+					fieldSettingNoOption(hide_column_list, _fieldManager.HiddenMeasures['Measure']);
+				}else{
+					_fieldManager.dimensions = [];
+					_fieldManager.measures = [];
+					_fieldManager.arguments = [];
+					_fieldManager.seriesDimensions = [];
+					
+					_fieldManager.Panes = {};
+					
+					_fieldManager.Values = {'Value':[]};
+					_fieldManager.Rows = {'Row':[]};
+					_fieldManager.Columns = {'Column':[]};
+			    	_fieldManager.HiddenMeasures = {'Measure':[],'Dimension':[]};
+					
+			    	_.each(measures, function(_elem, _i) {
+			    		var child = $(_elem).children();
+			    		allSelectedFields.push(child);
+			    		var value = {'UniqueName': null};
+			    		value['UniqueName'] = $(child).attr('dataitem');
+			    		value['wiseUniqueName'] = $(child).attr('UNI_NM');
+			    		value['cubeUniqueName'] = $(child).attr('cubeUniNm');
+			    		_fieldManager.Values['Value'].push(value);
+			    		var measureMeta = measureFieldOption(child);
+			    		_fieldManager.measures.push(measureMeta);
+			    	});
+			    	
+			    	_.each(rows, function(_elem, _i) {
+			    		var child = $(_elem).children();
+			    		allSelectedFields.push(child);
+			    		var row = {'UniqueName': null};
+			    		row['UniqueName'] = $(child).attr('dataitem');
+			    		row['wiseUniqueName'] = $(child).attr('UNI_NM');
+			    		row['cubeUniqueName'] = $(child).attr('cubeUniNm');
+			    		_fieldManager.Rows['Row'].push(row);
+			    		var dimensionMeta = dimensionFieldOption(child);
+			    		_fieldManager.arguments.push(dimensionMeta);
+			    		_fieldManager.dimensions.push(dimensionMeta);
+			    	});
+			    	
+			    	_.each(cols, function(_elem, _i) {
+			    		var child = $(_elem).children();
+			    		allSelectedFields.push(child);
+			    		var column = {'UniqueName': null};
+			    		column['UniqueName'] = $(child).attr('dataitem');
+			    		column['wiseUniqueName'] = $(child).attr('UNI_NM');
+			    		column['cubeUniqueName'] = $(child).attr('cubeUniNm');
+			    		_fieldManager.Columns['Column'].push(column);
+			    		var dimensionMeta = dimensionFieldOption(child);
+			    		_fieldManager.seriesDimensions.push(dimensionMeta);
+			    	});
+			    	
+			    	_.each(hide_column_list, function(_elem, _i) {
+						var child = $(_elem).children();
+						allSelectedFields.push(child);
+						var column = {'UniqueName': null};
+						column['UniqueName'] = $(child).attr('dataitem');
+						//2020.02.13 mksong 비정형 주제영역 정렬 컬럼 추가 dogfoot
+			    		column['wiseUniqueName'] = $(child).attr('UNI_NM');
+			    		column['cubeUniqueName'] = $(child).attr('cubeUniNm');
+			    		if($(child).attr('data-field-type') == 'measure'){
+			    			_fieldManager.HiddenMeasures['Measure'].push(column);	
+			    		}else{
+			    			_fieldManager.HiddenMeasures['Dimension'].push(column);
+			    		}
+					});
+			    	
+			    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);
+			    	_fieldManager.SeriesDimensions = _fieldManager.setSeriesDimensionsByField(_fieldManager.seriesDimensions);
+					_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);
+					_fieldManager.initialized = true;
+			    	
+				}
+				
+				_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);
+				break;
+				/* DOGFOOT ktkang 버블차트2 오류 수정  20200716 */
+			case 'BUBBLE_CHART':
+
+				var values = getPanelData('bubbleChartValue', 'ul.analysis-data', 'ul.more');
+				var parameters = getPanelData('bubbleChartX', 'ul.analysis-data', 'ul.display-move');
+				var seriesList = getPanelData('bubbleChartY', 'ul.analysis-data', 'ul.display-move');
+				
+				_fieldManager.measures = [];	
+				_fieldManager.dimensions = [];	
+				_fieldManager.arguments = [];	
+		    	_fieldManager.Panes = {};
+		    	
+		    	if(!valueCheck(values)) return;
+		    	fieldSetting(values, _fieldManager.measures, measureFieldOption);
+		    	fieldSetting(parameters, _fieldManager.arguments, dimensionFieldOption);
+		    	fieldSetting(seriesList, _fieldManager.arguments, dimensionFieldOption)
+		    	
+		    	_fieldManager.DataItems = _fieldManager.setDataItemByField(allSelectedFields);	
+		    	_fieldManager.Panes = _fieldManager.setPanesByField(_fieldManager.measures);	
+		    	_fieldManager.Arguments = _fieldManager.setArgumentsByField(_fieldManager.arguments);	
+					
+		    	_fieldManager.initialized = true;	
+				break;
+		}
+
+	}
+	
+	//2020.05.21 ajkim 데이터 유무 체크 메소드 dogfoot
+	this.noDataCheck = function(checkData, _instance){
+    	//2020.05.04 AJKIM 데이터 항목 없을 때 이미지 추가 DOGFOOT
+		if (!checkData || ($.type(checkData) === 'array' && checkData.length === 0)) {
+			gDashboard.itemGenerateManager.removeLoadingImg(self);
+			$('#'+_instance.itemid + ' .nodata-layer').remove();
+			$('#'+self.itemid + ' .zerodata-layer').remove();
+			var nodataHtml = '<div class="nodata-layer" style="z-index:99999999999"></div>';
+			$("#" + _instance.itemid).children().css('display','none');
+			$("#" + _instance.itemid).prepend(nodataHtml);
+			$("#" + _instance.itemid).css('display', 'block');
+			
+			if(gDashboard.itemGenerateManager.viewedItemList.indexOf(_instance.ComponentName) < 0 ){
+				gDashboard.itemGenerateManager.viewedItemList.push(_instance.ComponentName);
+			}
+
+			if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+				gProgressbar.setStopngoProgress(true);
+				gProgressbar.hide();	
+				gDashboard.updateReportLog();
+			}	
+			return true;
+		}else {
+			$('#'+self.itemid + ' .zerodata-layer').remove();
+			$('#' + _instance.itemid + ' .nodata-layer').remove();
+			$("#" + _instance.itemid).children().css('display','block');
+			return false;
+		}
+    }
+    
+	this.loadingImgRender = function(_instance){
+    	//2020.05.04 AJKIM 데이터 항목 없을 때 이미지 추가 DOGFOOT
+		var loadingImgHtml = '<div class="loading-item-layer" style="z-index:99999999999"></div>';
+		$("#" + _instance.itemid).children().css('display','none');
+		$("#" + _instance.itemid).prepend(loadingImgHtml);
+		$("#" + _instance.itemid).css('display', 'block');
+    }
+	
+	this.removeLoadingImg = function(_instance){
+		$('#'+_instance.itemid + ' .loading-item-layer').remove();
+		$("#" + _instance.itemid).children().css('display','block');
+	}
+	
+	//2020.05.21 ajkim 필터 스트링에 있는 필드 존재 유무 검사 메소드 dogfoot
+    this.fieldCheck = function(_filterString, _dimensions){
+		if(_filterString === undefined || _filterString === [] || _filterString === ""  || !_filterString)
+			return;
+		var removedData = true;
+		if($.type(_filterString[0]) === 'string'){
+			removedData = true;
+			$.each(_dimensions, function(_i, _dimension){
+				if(_dimension.name === _filterString[0])
+					removedData = false;
+			});
+			if(removedData)
+				_filterString.splice(0, 3);
+		}else{
+			var removeCount = 0;
+			$.each(_filterString, function(_i, _filter){
+				removedData = true;
+				$.each(_dimensions, function(_j, _dimension){
+					if(_filter === undefined) return false;
+					if($.type(_filter) === 'string'){
+						removedData = false;
+						return false;
+					}
+					else if($.type(_filter[0]) === 'array'){
+						fieldCheck(_filter);
+						if(_filter.length === 0)
+							_filterString.splice(_i - removeCount, 2);
+						removedData = false;
+						return false;
+					}
+					else if(_dimension.name === _filter[0]){
+						removedData = false;
+						return false;
+					}
+				});
+				if(removedData){
+					_filterString.splice(_i - removeCount, 2);
+					removeCount += 2;
+				}
+			});
+		}
+    }
+    
+    // 20200601 ajkim 목록 아이템 전용 필드 체크 dogfoot
+    this.fieldCheckForList = function(_filterString, _dimensions){
+		if(_filterString === undefined || _filterString === [] || _filterString === ""  || !_filterString)
+			return;
+		var removedData = true;
+		if($.type(_filterString[0]) === 'string'){
+			removedData = true;
+			$.each(_dimensions, function(_i, _dimension){
+				if(_dimension.Name === _filterString[0])
+					removedData = false;
+			});
+			if(removedData)
+				_filterString.splice(0, 3);
+		}else{
+			var removeCount = 0;
+			$.each(_filterString, function(_i, _filter){
+				removedData = true;
+				$.each(_dimensions, function(_j, _dimension){
+					if(_filter === undefined) return false;
+					if($.type(_filter) === 'string'){
+						removedData = false;
+						return false;
+					}
+					else if($.type(_filter[0]) === 'array'){
+						fieldCheck(_filter);
+						if(_filter.length === 0)
+							_filterString.splice(_i - removeCount, 2);
+						removedData = false;
+						return false;
+					}
+					else if(_dimension.Name === _filter[0]){
+						removedData = false;
+						return false;
+					}
+				});
+				if(removedData){
+					_filterString.splice(_i - removeCount, 2);
+					removeCount += 2;
+				}
+			});
+		}
+    }
+    
+  //2020.05.21 ajkim 모든 아이템이 그려졌는지 검사하는 메소드 dogfoot
+    this.progressCheck = function(_instance){
+    	if(gDashboard.itemGenerateManager.viewedItemList.indexOf(_instance.ComponentName) < 0 ){
+			gDashboard.itemGenerateManager.viewedItemList.push(_instance.ComponentName);
+		}
+
+		if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+			gProgressbar.hide();	
+			gDashboard.updateReportLog();
+		}	
+		
+		$.each(gDashboard.itemGenerateManager.dxItemBasten, function(_i, _d) {
+			if(_d.type != 'IMAGE'){
+				if(_d.dimensions.length == 0 && _d.measures.length == 0){
+					gProgressbar.hide();
+				}	
+			}
+		});
+    }
+    
+  //2020.05.21 ajkim 필터링된 데이터 항목 유무 체크 dogfoot
+    this.checkFilteredData = function(tempData, _instance){
+		var newDataSource = new DevExpress.data.DataSource({
+			store: tempData,
+			paginate: false
+		});
+    	if(_instance.meta.FilterString!=undefined && _instance.meta.FilterString.length > 0){
+			if(_instance.seriesDimensions && _instance.seriesDimensions.length > 0)
+				self.fieldCheck(_instance.meta.FilterString, _instance.dimensions.concat(_instance.seriesDimensions));
+			else
+    			self.fieldCheck(_instance.meta.FilterString, _instance.dimensions);
+			
+			newDataSource.filter(_instance.meta.FilterString);
+    	}
+    	newDataSource.load();
+		tempData = newDataSource.items();
+		self.noDataCheck(tempData, _instance);
+
+		return newDataSource;
+    }
+    
+    // 20200601 ajkim 목록 아이템 전용 필드 체크 dogfoot
+    this.getFilteredDataForList = function(_data, _instance){
+    	var newDataSource = new DevExpress.data.DataSource({
+			store: _data,
+			paginate: false
+		});
+    	if(_instance.meta.FilterString !=undefined && _instance.meta.FilterString.length > 0){
+			self.fieldCheckForList(_instance.meta.FilterString, WISE.util.Object.toArray(_instance.meta.DataItems.Dimension));
+			
+			newDataSource.filter(_instance.meta.FilterString);
+    	}
+    	newDataSource.load();
+    	_data = newDataSource.items();
+		self.noDataCheck(_data, _instance);
+
+		return newDataSource.items();
+    }
+	
+//	this.doQueryData = function(_instance){
+//		var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+//		
+//		var queryData;
+//		
+//		var dimensions = [];
+//		var measures = [];
+//		
+//
+//
+//    	var selectSqlConfig = function(){
+//			dimensions = [];
+//			measures = [];
+//    		switch(_instance.type){
+//				case 'SIMPLE_CHART':
+//					dimensions = dimensions.concat(_.clone(_instance.dimensions));
+//					dimensions = dimensions.concat(_.clone(_instance.seriesDimensions));
+//					measures = measures.concat(_.clone(_instance.measures));
+//					measures = measures.concat(_.clone(_instance.HiddenMeasures));
+//					break;
+//				case 'DATA_GRID':
+//				case 'PIE_CHART':
+//					dimensions = _instance.diemnsions;
+//					measures = measures.concat(_.clone(_instance.measures));
+//					measures = measures.concat(_.clone(_instance.HiddenMeasures));
+//					break;
+//				case 'CARD_CHART':
+//	
+//					break;		
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BUBBLE_D3':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//					dimensions = dimensions.concat(_.clone(_instance.dimensions));
+//					dimensions = dimensions.concat(_.clone(_instance.seriesDimensions));
+//					measures = _instance.measures;
+//				case 'HEATMAP':
+//				case 'TREEMAP':
+//				case 'CHOROPLETH_MAP':
+//				case 'PIVOT_GRID':
+//					break;
+//    		}
+//	    };
+//	      
+//	    var doQueryByFromJson = function(){
+//			var tempData;
+//			
+//	    	switch(_instance.type){
+//				case 'SIMPLE_CHART':
+//					
+//					var tempDataConfig = SQLikeUtil.fromJson(dimensions, measures, []);
+//					if (_instance.IO.IgnoreMasterFilters) {
+//						tempDataConfig.From = [];
+//						tempDataConfig.Where = [];
+//					}
+//					tempData = SQLikeUtil.doSqlLike(_instance.dataSourceId, tempDataConfig, _instance.itemNm);
+//					self.checkFilteredData(tempData, _instance);
+//					break;
+//				case 'DATA_GRID':
+//					var tempDataConfig = SQLikeUtil.fromJson(dimensions, measures, _instance.filteredData);
+//					if(_instance.IO){
+//						if(_instance.IO.IgnoreMasterFilters){
+//							tempDataConfig.Where = [];
+//							tempDataConfig.From = [];
+//						}
+//					}
+//
+//					SQLikeUtil.doSqlLikeAjax(_instance.dataSourceId, tempDataConfig, _instance, self.generateDxItem);
+//					break;
+//				case 'STAR_CHART':
+//					var tempDataConfig = SQLikeUtil.fromJson(dimensions, measures, []);
+//
+//					tempData = SQLikeUtil.doSqlLike(_instance.dataSourceId, tempDataConfig);
+//
+//					self.noDataCheck(tempData, _instance);
+//					_instance.filteredData = tempData;
+//					break;
+//				case 'CARD_CHART':
+//					break;
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BUBBLE_D3':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//				case 'HEATMAP':
+//				case 'TREEMAP':
+//				case 'CHOROPLETH_MAP':
+//				case 'PIVOT_GRID':
+//					break;
+//	    	}
+//	    	
+//	    	return tempData;
+//	    	
+//	    };
+//	      
+//	    var doQueryByFromJsonForNoSummaryType = function(){
+//			var tempData;
+//	    	switch(_instance.type){
+//				case 'CARD_CHART':
+//	
+//					break;
+//				case 'PIE_CHART':
+//					
+//					break;
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BUBBLE_D3':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//				case 'HEATMAP':
+//				case 'TREEMAP':
+//				case 'CHOROPLETH_MAP':
+//				case 'PIVOT_GRID':
+//					break;
+//			}
+//			
+//			return tempData;
+//	    }
+//	     
+//	    selectSqlConfig();
+//	    switch(_instance.type){
+//		    case 'SIMPLE_CHART':
+//			case 'DATA_GRID':
+//			case 'STAR_CHART':
+//				return doQueryByFromJson();
+//				break;
+//			case 'CARD_CHART':
+//	
+//				break;
+//			case 'PIE_CHART':
+//	
+//				break;
+//			case 'HISTOGRAM_CHART':
+//			case 'WORD_CLOUD':
+//			case 'RECTANGULAR_ARAREA_CHART':
+//			case 'WATERFALL_CHART':
+//			case 'BUBBLE_D3':
+//			case 'PARALLEL_COORDINATE':
+//			
+//			case 'HEATMAP':
+//			case 'TREEMAP':
+//			case 'CHOROPLETH_MAP':
+//			case 'PIVOT_GRID':
+//	    }
+//	   
+//	};
+//
+//	this.doQuerySparkLineData = function(_instance){
+//		var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+//		switch(_instance.type){
+//			case 'DATA_GRID':
+//				var dimensions = _instance.dimensions.concat(_instance.sparklineElements);
+//				var measures = [];
+//				measures = measures.concat(_.clone(_instance.measures));
+//				measures = measures.concat(_.clone(_instance.HiddenMeasures));
+//				var sparklineDataConfig = SQLikeUtil.fromJson(dimensions, measures, _data, {orderBy: _instance.sparklineElements, exceptDimensionOrderBy: true});
+//				
+//				if(_instance.IO){
+//					if(_instance.IO.IgnoreMasterFilters){
+//						sparklineDataConfig.Where = [];
+//						sparklineDataConfig.From = [];
+//					}
+//				}
+//
+//				return SQLikeUtil.doSqlLike(_instance.dataSourceId, sparklineDataConfig, false);
+//		}
+//	}
+//	   
+//	this.doQueryCSVData = function(_instance, _options){
+//		var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+//		var dimensions = [];
+//		var measures = [];
+//		var selectSqlConfig = function(){
+//			switch(_instance.type){
+//				case 'SIMPLE_CHART':
+//					dimensions = dimensions.concat(_.clone(_instance.dimensions));
+//					dimensions = dimensions.concat(_.clone(_instance.seriesDimensions));
+//					measures = measures.concat(_.clone(_instance.measures));
+//					measures = measures.concat(_.clone(_instance.HiddenMeasures));
+//					break;
+//				case 'DATA_GRID':
+//				case 'PIE_CHART':
+//					dimensions = _instance.diemnsions;
+//					measures = measures.concat(_.clone(_instance.measures));
+//					measures = measures.concat(_.clone(_instance.HiddenMeasures));
+//					break;
+//				case 'TREEMAP':
+//					/**
+//					 * 데이터 중복 제거 코드
+//					 */
+//					var ValueArray = new Array();
+//					var FieldArray = new Array();
+//					var selectArray = new Array();
+//					
+//					var Dimension = WISE.util.Object.toArray(_instance.meta.DataItems.Dimension);
+//					var Measure =  WISE.util.Object.toArray(_options.measureKey);
+//					
+//					$.each(Dimension,function(_i,_Dim){
+//						selectArray.push(_Dim.DataMember);
+//						FieldArray.push(_Dim.DataMember);
+//					});
+//
+//					$.each(Measure,function(_i,_Mea){
+//						selectArray.push('|sum|');
+//						selectArray.push(_Mea.name);
+//						//2020.02.04 mksong SQLLIKE doSqlLike 트리맵 적용 dogfoot
+//						selectArray.push('|as|');
+//						selectArray.push(_Mea.captionBySummaryType);
+//					});
+//					//2020.02.04 mksong SQLLIKE doSqlLike 트리맵 적용 dogfoot
+//					var sqlConfig ={};
+//					sqlConfig.Select = selectArray;
+//					sqlConfig.From = _options.data;
+//					sqlConfig.Where = gDashboard.itemGenerateManager.sqlConfigWhere;
+//					sqlConfig.GroupBy = FieldArray;
+//					return sqlConfig;
+//					break;
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BUBBLE_D3':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//				case 'HEATMAP':
+//				case 'CARD_CHART':
+//				case 'CHOROPLETH_MAP':
+//				case 'PIVOT_GRID':
+//					break;
+//
+//			}
+//		};
+//		
+//		var doQueryByFromJson = function(){
+//
+//		};
+//
+//		var doQueryByFromJsonForNoSummaryType = function(){
+//			var csvData;
+//			switch(_instance.type){
+//				case 'SIMPLE_CHART':
+//					var csvDataConfig = SQLikeUtil.fromJsonforNoSummaryType(dimensions, measures, []);
+//					return SQLikeUtil.doSqlLike(_instance.dataSourceId, csvDataConfig, _instance.itemNm);
+//				case 'PIE_CHART':
+//					var csvDataConfig = SQLikeUtil.fromJsonforNoSummaryType(_instance.dimensions, measures, _instance.filteredData);
+//					if(_instance.IO){
+//						if(_instance.IO.IgnoreMasterFilters){
+//							csvDataConfig.Where = [];
+//							csvDataConfig.From = [];
+//						}
+//					}
+//
+//					csvData = SQLikeUtil.doSqlLike(_instance.dataSourceId, csvDataConfig, false);
+//
+//					self.checkFilteredData(csvData, _instance);
+//					_instance.filteredData = csvData;
+//					break;
+//				case 'PIE_CHART':
+//	
+//					break;
+//				case 'HISTOGRAM_CHART':
+//				case 'WORD_CLOUD':
+//				case 'RECTANGULAR_ARAREA_CHART':
+//				case 'WATERFALL_CHART':
+//				case 'BUBBLE_D3':
+//				case 'PARALLEL_COORDINATE':
+//				case 'STAR_CHART':
+//				case 'HEATMAP':
+//				case 'TREEMAP':
+//					break;
+//				case 'CHOROPLETH_MAP':
+//				case 'PIVOT_GRID':
+//					break;
+//			}
+//
+//			return csvData;
+//		};
+//
+//		selectSqlConfig();
+//		switch(_instance.type){
+//		    case 'SIMPLE_CHART':
+//				return doQueryByFromJsonForNoSummaryType();
+//			case 'CARD_CHART':
+//				
+//				break;
+//			case 'PIE_CHART':
+//				return doQueryByFromJsonForNoSummaryType();
+//				break;
+//			case 'HISTOGRAM_CHART':
+//			case 'WORD_CLOUD':
+//			case 'RECTANGULAR_ARAREA_CHART':
+//			case 'WATERFALL_CHART':
+//			case 'BUBBLE_D3':
+//			case 'PARALLEL_COORDINATE':
+//			case 'STAR_CHART':
+//			case 'HEATMAP':
+//			case 'TREEMAP':
+//				var csvDataConfig = selectSqlConfig();
+//				if(_instance.IO){
+//					if(_instance.IO.IgnoreMasterFilters){
+//						csvDataConfig.Where = [];
+//						csvDataConfig.From = [];
+//					}
+//				}
+//
+//				return SQLikeUtil.doSqlLike(_instance.dataSourceId, csvDataConfig, false);
+//				break;
+//			case 'CHOROPLETH_MAP':
+//			case 'PIVOT_GRID':
+//	    }
+//
+//	};
+//	
+//	this.generateDxItem = function(_instance, _options){
+//		
+//		var dxItem;
+//		
+//		switch(_instance.type){
+//		    case 'SIMPLE_CHART':
+//	    		if(self.noDataCheck(_instance.measures, _instance)) return false;
+//	    		else{
+//	    			var dxConfigs = _instance.getDxItemConfig(_instance.meta, _options);
+//	    			_instance.dxItem = $('#'+_instance.itemid).dxChart(dxConfigs).dxChart('instance');
+//	    			_instance.IO && _instance.IO.IsDrillDownEnabled && _instance.initDrillDownOperation();
+//				}
+//				break;
+//			case 'DATA_GRID':
+//				var dxConfigs = _instance.getDxItemConfigs(_instance.meta);
+//				_instance.dxItem = $("#" + _instance.itemid).dxDataGrid(dxConfigs).dxDataGrid("instance");
+//
+//
+//				if(self.noDataCheck(_options, _instance)) return false;
+//				else{
+//					_instance.globalData = _options;
+//					_instance.filteredData = _instance.globalData;
+//					_instance.csvData = _instance.filteredData;
+//
+//					var dMtopNval = new Array();
+//					if(_instance.meta['DataItems']['Dimension']){
+//						dMtopNval = _instance.meta['DataItems']['Dimension'];
+//						
+//						if(dMtopNval.length == undefined){
+//							_instance.dimensionTopN.push(dMtopNval);
+//						}else{
+//							_instance.dimensionTopN = dMtopNval;
+//						}
+//
+//						for(var i = 0; i < _instance.dimensionTopN.length; i++){
+//							if(_instance.dimensionTopN[i].TopNEnabled){
+//								_instance.topNEnabeled = true;
+//							}
+//						}
+//					}
+//					/* LSH topN
+//					*  topN 계산을 위한 함수
+//					* */
+//					if(_instance.topNEnabeled){
+//						var first=[];
+//						
+//						//데이터 Array 계산 형식에 맞게 변경 
+//						first.push({items:_options});
+//						_options = first;
+//						_instance.preDimCheck=0;
+//						//차원이 여러개일때 topN기능이 걸린 차원의 위치를 찾기위한 싸이클
+//						for(var i = 0; i < _instance.dimensionTopN.length; i++){
+//							_options = _instance.__getTopNData(_options,_instance.dimensions,_instance.dimensionTopN[i].DataMember,_instance.dimensionTopN[i].TopNEnabled);
+//						}
+//						
+//						for(var i = 0; i < _instance.dimensionTopN.length; i++){
+//							_options = _instance.__getTopNsortData(_options,_instance.dimensions,_instance.dimensionTopN[i].DataMember);
+//						}
+//						
+//
+//						var topNarray=[];
+//						$.each(_options,function(_i,_e){
+//							$.each(_e.items,function(_j,_k){
+//								topNarray.push(_k); 
+//							}) 
+//						})
+//
+//						_options = topNarray;
+//					}
+//
+//					gDashboard.customFieldManager.addSummaryFieldData(_instance, _options);
+//
+//					if (_instance.columnNamesForSparklineCell.length > 0) {
+//						//2020.02.07 mksong sqllike 적용 dogfoot
+//						var sparklineData = gDashboard.itemGenerateManager.doQuerySparkLineData(_instance);
+//						
+//						$.each(_options, function(_i0, _no0) {
+//							_no0['rawData'] = sparklineData;
+//						});
+//					}
+//
+//					if(gDashboard.reportType == 'DashAny' && gDashboard.downloadFull && queriedData.length < 100) {
+//						_instance.contentReady = true;
+//					}
+//
+//					_instance.dxItem.option('dataSource',self.checkFilteredData(_options, _instance));
+//
+//					console.log(_instance.itemid + '-ITEMVIEW END : '+ new Date());
+//					_instance.queryState = false;
+//
+//				}
+//			case 'CARD_CHART':
+//				
+//				break;
+//			case 'PIE_CHART':
+//				var dataSource = _instance.__getPieData();
+//		
+//				// array for each pie chart item
+//				_instance.dxItem = [];
+//				
+//				//2020.02.13 mksong 조회시 그려진 아이템 초기화 되도록 수정 dogfoot
+//				$('#'+_instance.itemid).css('display','block');
+//				/* render pie chart */
+//				$.each(_instance.panelManager.pieContainers, function(_i, _e) {
+//					var dxConfig = _instance.__getPieConfig(dataSource, _e, _i);
+//
+//					if(dxConfig) {
+//						if (_instance.IO['IsDrillDownEnabled']) {
+//							dxConfig.dataSource = _instance.metadata.filter(function (item) { return item.leveling == 0});;
+//						}
+//						// push pie chart item to dxItem array
+//						_instance.dxItem.push(_e.container.dxPieChart(dxConfig).dxPieChart('instance'));                
+//					} else {
+//						$(_e.container).remove();                
+//					}
+//				});
+//
+//				break;
+//			case 'WATERFALL_CHART':
+//			case 'HISTOGRAM_CHART':
+//			case 'HEATMAP':
+//			case 'PARALLEL_COORDINATE':
+//				var dxConfig = _instance.getDxItemConfig(_instance.meta);
+//		
+//				var measureKey = _instance.measures[0];
+//				_instance.currentMeasureName = measureKey.caption;
+//				if(_instance.type === 'HISTOGRAM_CHART')
+//					_instance.fHistogramChart(_options, _instance.measures, _instance.dimensions, _instance.deleteDuplecateData(_options,measureKey));
+//				else if(_instance.type === 'WATERFALL_CHART')
+//					_instance.fWaterfallChart(_options, _instance.measures, _instance.dimensions, _instance.deleteDuplecateData(_options,measureKey));
+//				else if(_instance.type === 'HEATMAP')
+//					_instance.fHeatMap(_options, _instance.measures, _instance.dimensions, _instance.deleteDuplecateData(_options,measureKey));
+//				else if(_instance.type === 'PARALLEL_COORDINATE')
+//					_instance.fParallelCoordinates2(_options, _instance.measures, _instance.dimensions, _instance.deleteDuplecateData(_options,measureKey));
+//					
+//					//		dxConfig.dataSource = self.deleteDuplecateData(_data,measureKey);
+//				$('#' + _instance.itemid + '_title > .lm_title').text(_instance.Name);
+//				
+//				//2020.02.13 mksong 조회시 그려진 아이템 초기화 되도록 수정 dogfoot
+//				$('#'+_instance.itemid).css('display','block');
+//				_instance.dxItem = $("#" + _instance.itemid).dxChart(dxConfig).dxChart("instance")
+//				break;
+//			case 'WORD_CLOUD':
+//			case 'RECTANGULAR_ARAREA_CHART':
+//			case 'BUBBLE_D3':
+//			
+//			case 'STAR_CHART':
+//				var dxConfigs = _instance.getDxItemConfig(_instance.meta, _options);
+//				_instance.dxItem = $("#" + _instance.itemid).dxPolarChart(dxConfigs).dxPolarChart('instance');
+//				break;
+//			
+//			case 'TREEMAP':
+//				var dxConfig = _instance.getDxItemConfig(_instance.meta);
+//				
+//				var measureKey = _instance.measures[0];
+//				if(measureKey == undefined){
+//					_instance.currentMeasureName = "";
+//				}else{
+//					_instance.currentMeasureName = measureKey.caption;
+//				}
+//				
+//				// _instance.currentMeasureName = measureKey.caption;
+//				dxConfig.dataSource = _instance.deleteDuplecateData(_options,measureKey);
+//				var page = window.location.pathname.split('/');
+//				if (page[page.length - 1] === 'viewer.do') {
+//					$('#' + _instance.itemid + '_title').text(_instance.meta.Name);
+//				}else{
+//					$('#' + _instance.itemid + '_title > .lm_title').text(_instance.Name);
+//				}
+//				
+//				//2020.02.13 mksong 조회시 그려진 아이템 초기화 되도록 수정 dogfoot
+//				$('#'+_instance.itemid).css('display','block');
+//				_instance.dxItem = $("#" + _instance.itemid).dxTreeMap(dxConfig).dxTreeMap("instance");
+//				break;
+//			case 'CHOROPLETH_MAP':
+//			case 'PIVOT_GRID':
+//	    }
+//		
+//		if(!_instance.functionBinddata){			
+//			self.progressCheck(_instance);
+//			
+//		}else{
+//			gProgressbar.hide();
+//			_instance.functionBinddata = false;
+//		}
+//
+//		$('#'+_instance.itemid).css('display', 'block');
+//	}
+	
+    // 2020.05.21 ajkim 아이템별 renderButtons 공통 처리 dogfoot
+	this.renderButtons = function(_instance, _isAdhoc, isDirectExportBtn){
+		self.isDirectExportBtn = isNull(isDirectExportBtn) ? false : isDirectExportBtn;
+		var buttonPanelId = _instance.itemid + '_topicon';
+		var topIconPanel = $('#' + buttonPanelId);
+		
+		var trackingDataContainerBtn = function(type){
+			var _itemid = _instance.itemid;
+			if (_instance.measures && _instance.measures.length > 1) {
+				if($('#'+_instance.itemid + '_tracking_data_container').length == 0){
+					var trackingDataContainerId = _instance.itemid + '_tracking_data_container';
+					var trackingDataContainerHtml = '<li id="' + trackingDataContainerId + '" style="font-size: 14px; padding-top: 3px;"></li>';
+					topIconPanel.append(trackingDataContainerHtml);
+				}
+				
+				$('#'+_itemid + '_tracking_data_container').empty();
+				var valueListId = _itemid + '_topicon_vl';
+				var popoverid = _itemid + '_topicon_vl_popover';
+				
+				var listHtml = '<li id="' + valueListId + '" href="#" style="position:relative; left: -5px; top: -6px"><img src="' + WISE.Constants.context + '/resources/main/images/ico_sigma.png" alt="Select Panel" title="기준 측정값 선택"></li>';
+				$('#' + _itemid + '_tracking_data_container').append(listHtml);
+				
+				if($('#' + popoverid).length == 0 ){
+					$('<div id="'+popoverid+'">').dxPopover({
+						height: 'auto',
+						width: 'auto',
+						position: 'bottom',
+						visible: false
+					}).appendTo('#wrap');
+				}
+				
+				if($('#' + popoverid).length == 0 ){
+					$('<div id="'+popoverid+'">').dxPopover({
+						height: 'auto',
+						width: 'auto',
+						position: 'bottom',
+						visible: false
+					}).appendTo('#wrapper');
+				}
+				var p = $('#' + popoverid).dxPopover('instance');
+
+				var meaList = [];
+				$.each(_instance.measures, function(_i, _vo) {
+					meaList.push(_vo.caption);
+//					if(_vo.caption !== _instance.currentMeasureName)
+//						temphtml += '<div class="select-style" style="text-align:center;" data-key="' + (_vo.uniqueName) + '"><span data-key="' + (_vo.uniqueName) + '">' + _vo.caption + '</span></a></div>';
+//					else
+//						temphtml += '<div class="select-style selected" style="text-align:center;" data-key="' + (_vo.uniqueName) + '"><span data-key="' + (_vo.uniqueName) + '">' + _vo.caption + '</span></a></div>';
+				});
+				
+				
+				var temphtml = "<div>";
+				temphtml += '<div class="add-item noitem">';
+				temphtml += '<div class="select-measure-radio-group" style="word-break:keep-all;">';
+				temphtml += '</div>'
+				temphtml += '</div>';
+				temphtml += '</div>'; 
+			    
+				p.option({
+					target: '#'+valueListId,
+					contentTemplate: function(contentElement) {
+						$(temphtml).appendTo(contentElement);
+						
+						var radioGroup = $(".select-measure-radio-group").dxRadioGroup({
+					        items: meaList,
+					        value: _instance.currentMeasureName,
+					        width: '100%',
+					        onValueChanged: function(e){
+					        	p.hide();
+//								var targetPanelId = _e.target.getAttribute('data-key');
+								var selectedMeasure;
+								var index = meaList.indexOf(e.value);
+								
+								selectedMeasure = _instance.measures[index];
+								
+								var page = window.location.pathname.split('/');
+								if (page[page.length - 1] === 'viewer.do') {
+									$('#' + _instance.itemid + '_title').text(_instance.meta.Name);
+								}else{
+									$('#' + _instance.itemid + '_title > .lm_title').text(_instance.Name);
+								}
+								_instance.currentMeasureName = selectedMeasure.caption;
+								var dxConfig = _instance.getDxItemConfig(_instance.meta);
+//								dxConfig.dataSource = _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure);
+
+								if(type === 'TREEMAP'){
+									_instance.dxItem = $("#" + _instance.itemid).dxTreeMap(dxConfig).dxTreeMap("instance");
+								}else if(type === 'FUNNEL_CHART' || type === 'PYRAMID_CHART'){
+									_instance.dxItem = $("#" + _instance.itemid).dxFunnel(dxConfig).dxFunnel("instance");
+								}else if(type === 'HISTOGRAM_CHART'){
+									/*dogfoot d3 차트 기준 측정값 선택 오류 수정 shlim 20200701*/
+									//_instance.fHistogramChart(_instance.filteredData);
+									_instance.fHistogramChart(_instance.filteredData, _instance.measures, _instance.dimensions, 
+						                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+								}else if(type === 'WATERFALL_CHART'){
+//									_instance.fWaterfallChart(_instance.filteredData);
+									_instance.fWaterfallChart(_instance.filteredData, _instance.measures, _instance.dimensions, 
+		                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+								}else if(type === 'BIPARTITE_CHART'){
+									_instance.fBipartiteChart(_instance.filteredData);
+								}else if(type === 'SANKEY_CHART'){
+									_instance.fSankeyChart(_instance.filteredData);
+								}else if(type === 'LIQUID_FILL_GAUGE'){
+									_instance.fLiquidFillGauge(_instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'DIVERGING_CHART'){
+//						    		_instance.fDivergingChart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+									_instance.bindData([])
+								}else if(type === 'BOX_PLOT'){
+					    			_instance.fBoxPlot(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'SEQUENCES_SUNBURST'){
+					    			_instance.fSequencesSunburst(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'HEATMAP'){
+									_instance.fHeatMap(_instance.filteredData);
+								}else if(type === 'HEATMAP2'){
+									_instance.fHeatMap2(_instance.filteredData);
+								}else if(type === 'SYNCHRONIZED_CHARTS'){
+									_instance.fSynchronizedChart(_instance.filteredData);
+								}else if(type === 'PARALLEL_COORDINATE'){
+									_instance.fParallelCoordinates2(_instance.filteredData);
+								}else if(type === 'BUBBLE_PACK_CHART'){
+									//_instance.fBubblePackChart(_instance.filteredData);
+									_instance.fBubblePackChart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'WORD_CLOUD_V2'){
+									_instance.fWordCloudV2(_instance.filteredData);
+								}else if(type === 'DENDROGRAM_BAR_CHART'){
+									_instance.fDendrogramBarChart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'CALENDAR_VIEW_CHART'){
+									_instance.fCalendarViewChart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'CALENDAR_VIEW2_CHART'){
+									_instance.fCalendarView2Chart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'CALENDAR_VIEW3_CHART'){
+									_instance.fCalendarView3Chart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'COLLAPSIBLE_TREE_CHART'){
+									_instance.fCollapsibleTreeChart(_instance.filteredData, null, null, _instance.deleteDuplecateData([],selectedMeasure));
+								}else if(type === 'RECTANGULAR_ARAREA_CHART'){
+//									_instance.fRectangularAreaChartCoordinates2(_instance.filteredData);
+									_instance.fRectangularAreaChartCoordinates2(_instance.filteredData, _instance.measures, _instance.dimensions, 
+		                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+								}else if(type === 'WORD_CLOUD'){
+//									_instance.fWordCloudCoordinates2(_instance.filteredData);
+									_instance.fWordCloudCoordinates2(_instance.filteredData, _instance.measures, _instance.dimensions, 
+		                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+								}else if(type === 'BUBBLE_D3'){
+//									_instance.fBubbleD3(_instance.filteredData);
+									_instance.fBubbleD3(_instance.filteredData, selectedMeasure, _instance.dimensions, _instance.tempData);
+								}else if(type === 'HIERARCHICAL_EDGE'){
+									_instance.fHierarchicalEdge2(_instance.filteredData);
+								}else if(type === 'FORCEDIRECT'){
+									_instance.fForceDirect(_instance.filteredData);
+								}else if(type === 'FORCEDIRECTEXPAND'){
+									_instance.fForceDirectExpand(_instance.filteredData);
+								}else if(type === 'PYRAMID_CHART' || type === 'FUNNEL_CHART'){
+									_instance.renderChart(_instance.filteredData);
+								}
+								gProgressbar.setStopngoProgress(true);
+								gProgressbar.hide();
+					        }
+					    }).dxRadioGroup("instance");
+//						$('.select-style').on('click',function(_e){
+//							p.hide();
+//							var targetPanelId = _e.target.getAttribute('data-key');
+//							var selectedMeasure;
+//							$.each(_instance.measures,function(_i,_mea){
+//								if(_mea.uniqueName == targetPanelId){
+//									selectedMeasure = _mea;
+//									return false;
+//								}
+//							});
+//							var page = window.location.pathname.split('/');
+//							if (page[page.length - 1] === 'viewer.do') {
+//								$('#' + _instance.itemid + '_title').text(_instance.meta.Name);
+//							}else{
+//								$('#' + _instance.itemid + '_title > .lm_title').text(_instance.Name);
+//							}
+//							_instance.currentMeasureName = selectedMeasure.caption;
+//							var dxConfig = _instance.getDxItemConfig(_instance.meta);
+//							$('.select-style.selected').removeClass('selected');
+//							$(_e.currentTarget).addClass('selected');
+//							dxConfig.dataSource = _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure);
+//
+//							if(type === 'TREEMAP'){
+//								_instance.dxItem = $("#" + _instance.itemid).dxTreeMap(dxConfig).dxTreeMap("instance");
+//							}else if(type === 'FUNNEL_CHART' || type === 'PYRAMID_CHART'){
+//								_instance.dxItem = $("#" + _instance.itemid).dxFunnel(dxConfig).dxFunnel("instance");
+//							}else if(type === 'HISTOGRAM_CHART'){
+//								/*dogfoot d3 차트 기준 측정값 선택 오류 수정 shlim 20200701*/
+//								//_instance.fHistogramChart(_instance.filteredData);
+//								_instance.fHistogramChart(_instance.filteredData, _instance.measures, _instance.dimensions, 
+//					                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+//							}else if(type === 'WATERFALL_CHART'){
+////								_instance.fWaterfallChart(_instance.filteredData);
+//								_instance.fWaterfallChart(_instance.filteredData, _instance.measures, _instance.dimensions, 
+//	                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+//							}else if(type === 'BIPARTITE_CHART'){
+//								_instance.fBipartiteChart(_instance.filteredData);
+//							}else if(type === 'SANKEY_CHART'){
+//								_instance.fSankeyChart(_instance.filteredData);
+//							}else if(type === 'HEATMAP'){
+//								_instance.fHeatMap(_instance.filteredData);
+//							}else if(type === 'PARALLEL_COORDINATE'){
+//								_instance.fParallelCoordinates2(_instance.filteredData);
+//							}else if(type === 'RECTANGULAR_ARAREA_CHART'){
+////								_instance.fRectangularAreaChartCoordinates2(_instance.filteredData);
+//								_instance.fRectangularAreaChartCoordinates2(_instance.filteredData, _instance.measures, _instance.dimensions, 
+//	                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+//							}else if(type === 'WORD_CLOUD'){
+////								_instance.fWordCloudCoordinates2(_instance.filteredData);
+//								_instance.fWordCloudCoordinates2(_instance.filteredData, _instance.measures, _instance.dimensions, 
+//	                                    _instance.deleteDuplecateData(_instance.filteredData,selectedMeasure));
+//							}else if(type === 'BUBBLE_D3'){
+////								_instance.fBubbleD3(_instance.filteredData);
+//								_instance.fBubbleD3(_instance.filteredData, selectedMeasure, _instance.dimensions, _instance.tempData);
+//							}else if(type === 'HIERARCHICAL_EDGE'){
+//								_instance.fHierarchicalEdge2(_instance.filteredData);
+//							}else if(type === 'FORCEDIRECT'){
+//								_instance.fForceDirect(_instance.filteredData);
+//							}else if(type === 'FORCEDIRECTEXPAND'){
+//								_instance.fForceDirectExpand(_instance.filteredData);
+//							}else if(type === 'PYRAMID_CHART' || type === 'FUNNEL_CHART'){
+//								_instance.renderChart(_instance.filteredData);
+//							}
+//							gProgressbar.setStopngoProgress(true);
+//							gProgressbar.hide();
+//								
+//						});
+					},
+	//				visible:false
+				})
+				$('#'+_itemid + '_tracking_data_container').off('click').on('click',function(){
+					if($('#' + valueListId).length !== 0)
+						p.option('visible', !(p.option('visible')));
+				});		
+			/*dogfoot 측정값 1개일때 tracking 부분 숨김처리 shlim 20200629*/
+			}else{
+				$('#'+_itemid + '_tracking_data_container').empty();
+			}
+		}
+
+		var trackingDataContainerBtnChoropleth = function() {
+			var _itemid = _instance.itemid;
+			$('#'+_itemid + '_tracking_data_container').empty();
+			if (_instance.valueMaps && _instance.valueMaps.length > 1) {
+				// value-panel selection
+				var valueListId = _itemid + '_topicon_vl';
+				var popoverid = _itemid + '_topicon_vl_popover';
+				
+				var listHtml = '<li><a id="' + valueListId + '" href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico-sigma.png" alt="Select Panel" title="기준 측정값 선택"></li>';
+				$('#' + _itemid + '_tracking_data_container').append(listHtml);
+				
+				var p = $('#editPopover').dxPopover('instance');
+				
+				var temphtml = "<div style='width:150px;'>";
+				temphtml += '<div class="add-item noitem">';
+				$.each(_instance.valueMaps, function(_i, _vo) {
+					temphtml += '<div class="select-style" data-key="' + (_instance.itemid + '_' + _vo.uniqueName) + '"><span data-key="' + (_instance.itemid + '_' + _vo.uniqueName) + '">' + _vo.caption + '</span></a>';
+				});
+				temphtml += '</div>';
+				temphtml += '</div>'; 
+				
+				p.option({
+					target: '#'+valueListId,
+					contentTemplate: function(contentElement) {
+						$(temphtml).appendTo(contentElement);
+						$('.select-style').on('click',function(_e){
+							p.hide();
+							var targetPanelId = _e.target.getAttribute('data-key');
+							_instance.panelManager.activeValuePanel(_instance.itemid,targetPanelId);
+						});
+					},
+	//				visible:false
+				})
+				$('#' + _itemid + '_topicon').off('click').on('click',function(){
+					p.option('visible', !(p.option('visible')));
+				});
+			}
+		}
+
+
+		var renderSimpleSeriesSelectorBtn = function(){
+			var renderSimpleSeriesSelector = false;
+			$.each(_instance.P, function(_i, _pane) {
+				for( var key in _pane['Series'] ) {
+				
+					if ( key=='Range' || key=='Weighted' || key=='OpenHighLowClose')
+					{
+						if (WISE.util.Object.toArray(_pane['Series']['Range']).length > 0) {
+							renderSimpleSeriesSelector = false;
+							return false;
+						}
+						if (WISE.util.Object.toArray(_pane['Series']['Weighted']).length > 0) {
+							renderSimpleSeriesSelector = false;
+							return false;
+						}
+						if (WISE.util.Object.toArray(_pane['Series']['OpenHighLowClose']).length > 0) {
+							renderSimpleSeriesSelector = false;
+							return false;
+						}
+					}
+				}
+			});
+			
+			if (renderSimpleSeriesSelector) {
+				_instance.seriesChangeType = 'image';
+				if(_instance.CUSTOMIZED){
+					_instance.seriesChangeType = _instance.CUSTOMIZED.get('series.change.type') || 'image';
+				}
+				
+				// change series type
+				var seriesTypeChangepanelId = _instance.itemid + '_topicon_chgseries';
+				var chgSeriesHtml = _instance.chgSeriesButton = $('<li><div id="' + seriesTypeChangepanelId + '" class="dx-lookup-hack" style="height: 26px !important;"></div></li>');
+				topIconPanel.append(chgSeriesHtml);
+				
+				var seriesList = [];
+				$.each(_instance.CUSTOMIZED.get('series.change.list'), function(_i0, _s0) {
+					$.each(_instance.CU.Series.Simple.SERIES_TYPE, function(_i1, _s1) {
+						if (_s0 === _s1.type) {
+							seriesList.push(_s1);
+						}
+					});
+				});
+
+				var width;
+		    	switch((_instance.seriesChangeType).toLowerCase()) {
+		    	case 'text':
+		    		width = 180;
+//		    		width = 200;
+		    		break;
+		    	case 'image':
+		    		width = 80;
+		    		break;
+		    	case 'imagetext':
+		    		width = 200;
+//		    		width = 220;
+		    		break;
+		    	}
+				
+				_instance.seriesTypeSelector = $("#" + seriesTypeChangepanelId).dxLookup({
+				    items: seriesList,
+				    grouped: false,
+				    displayExpr: "name",
+				    valueExpr: "type",
+				    showPopupTitle: false,
+				    searchEnabled: false,
+				    showCancelButton: false,
+				    width: width,
+				    noDataText: gMessage.get('WISE.message.page.common.nodata'),
+				    placeholder: gMessage.get('WISE.message.page.common.graph'),
+				    onValueChanged: function(_e) {
+				    	if (_instance.filteredData && _e.value !== '') {
+				    		var seriesType = _instance.CU.Series.Simple.getSeriesType(_e.value);
+				    		var series = _instance.dxItem.option('series');
+				    		_.each(series, function(_s) {
+				    			_s.type = seriesType;
+				    		});
+				    		
+				    		_instance.dxItem.option('series', series);
+				    		
+				    		_instance.selectedChartType = seriesType;
+				    	} else {
+				    		_instance.option('value', '');
+				    	}
+				    },
+				    itemTemplate: function(_data) {
+				    	var template;
+				    	
+				    	switch((_instance.seriesChangeType).toLowerCase()) {
+				    	case 'text':
+				    		template = '<div>' + _data.name + '</div>';
+				    		break;
+				    	case 'image':
+				    		template = '<div><img src="' + WISE.Constants.context + '/images/chart/' + _data.type + '.png" style="width:20px;height:20px;" alt="' + _data.name + '" title="' + _data.name + '" /></div>';
+				    		break;
+				    	case 'imagetext':
+				    		template = '<div><img src="' + WISE.Constants.context + '/images/chart/' + _data.type + '.png" style="width:20px;height:20px;vertical-align: middle;margin-right:5px;" />' + _data.name + '</div>';
+				    		break;
+				    	}
+				        return template;
+				    }
+				}).dxLookup('instance');
+			}
+		}
+		
+		var chartOptionPopupHtml = function(){
+			/* goyong ktkang 뷰어에서 차트 기능 사용하도록 수정  20210514 */
+			var chartOptionId = _instance.itemid + '_chartoption_pop';
+			/* goyong ktkang 탭컨테이너에서 차트 기능 오류 수정  20210604 */
+			var chartOptionPopupHtml = 			
+			"			<li class=\"img\">" + 
+			"				<a href=\"#\" id=\"rotation\" class=\"functiondo_" + _instance.itemid + "\">" + 
+			"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_rotate.png\" alt=\"\" title=\"회전\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>" + 
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"editLegend\" class=\"functiondo_" + _instance.itemid + "\">" + 
+			"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_showColorLegend.png\" alt=\"\" title=\"범례\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>" +
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"editStyle\" class=\"functiondo_" + _instance.itemid + "\">" + 
+			"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_bar2.png\" alt=\"\" title=\"계열 유형\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"+
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"editPalette\" class=\"functiondo_" + _instance.itemid + "\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_globalColor.png\" alt=\"\" title=\"팔레트\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>";
+			//2020.02.17 mksong 뷰어에서 비정형 옵션 제거 dogfoot
+			topIconPanel.append(chartOptionPopupHtml);
+		}
+		
+		var exportBtn = function(){
+			//20201112 AJKIM 통계분석 다운로드 아이콘 제거 dogfoot
+			if(gDashboard.reportType === 'StaticAnalysis') return;
+			/* DOGFOOT shlim 싱글뷰 그리드만 내려받기 보이도록 수정 20210125*/
+//			if(gDashboard.isSingleView && _instance.type != "DATA_GRID") return;
+			// 2019.12.16 수정자 : mksong 뷰어 비정형 GoldenLayout 적용시 주석 제거  dogfoot
+			$('#export_popover').dxPopover({
+				height: 'auto',
+				width: 195,
+				position: 'bottom',
+				visible: false,
+			});
+			var exportDataId = _instance.itemid + '_topicon_exp';
+			//2020.02.20 MKSONG 다운로드 아이콘 통일 DOGFOOT
+			var exportHtml = '<li id="' + exportDataId + '" title="내보내기" class="img"><img src="' + WISE.Constants.context + '/resources/main/images/ico-download_new.png" alt="이미지 다운로드"></li>';
+			if(topIconPanel.find('#'+exportDataId).length !== 0) return;
+			if(topIconPanel.find('.lm_maximise').length === 0)
+				topIconPanel.append(exportHtml);
+			else if(WISE.Constants.editmode === 'viewer')
+				//2021-06-28 Jhseo 고용정보원_다운로드 버튼 맨 끝으로 옮김
+				topIconPanel.find('.lm_maximise').next().next().after(exportHtml);
+			else{
+				if(topIconPanel.find('.lm_close').length !== 0)
+					topIconPanel.find('.lm_close').before(exportHtml);
+				else if(topIconPanel.find('.lm_close').length !== 0)
+					topIconPanel.find('.lm_close').before(exportHtml);
+				else
+					topIconPanel.append(exportHtml);
+			}
+
+			$('#'+exportDataId).off('click').click(function(){
+				var p = $('#export_popover').dxPopover('instance');
+				p.option({
+					target: topIconPanel,
+					contentTemplate: function() {
+						var html = '';
+						html += '<div class="add-item noitem" style="padding:0px;">';
+						html += '	<span class="add-item-head on">다운로드</span>';
+						html += '	<ul class="add-item-body">';
+						switch(_instance.type){
+							case 'SIMPLE_CHART':
+							case 'PIE_CHART':
+							case 'TREEMAP':
+							case 'RANGE_BAR_CHART':
+							case 'RANGE_AREA_CHART':
+							case 'TIME_LINE_CHART':
+							case 'PYRAMID_CHART':
+							case 'FUNNEL_CHART':
+//								html += '		<li id="typeImg" class="exportFunction" title="이미지 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_exportImages.png" alt="이미지 다운로드"><span>이미지 다운로드</span></a></li>';
+								html += '		<li id="typeXlsx" class="exportFunction" title="EXCEL 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_xlsx.png" alt="XLSX 다운로드"><span>XLSX 다운로드</span></a></li>';
+								html += '		<li id="typeXls" class="exportFunction" title="EXCEL 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_xls.png" alt="XLS 다운로드"><span>XLS 다운로드</span></a></li>';
+//								html += '		<li id="typeCsv" class="exportFunction" title="CSV 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_ept_hcexcell.png" alt="CSV 다운로드"><span>CSV 다운로드</span></a></li>';
+//								html += '		<li id="typeTxt" class="exportFunction" title="TXT 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_ept_txt.png" alt=""><span>TXT 다운로드</span></a></li>';
+								break;
+							case 'DATA_GRID':
+							case 'PIVOT_GRID':
+								html += '		<li id="typeXlsx" class="exportFunction" title="EXCEL 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_xlsx.png" alt="XLSX 다운로드"><span>XLSX 다운로드</span></a></li>';
+								html += '		<li id="typeXls" class="exportFunction" title="EXCEL 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_xls.png" alt="XLS 다운로드"><span>XLS 다운로드</span></a></li>';
+//								html += '		<li id="typeCsv" class="exportFunction" title="CSV 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_ept_hcexcell.png" alt="CSV 다운로드"><span>CSV 다운로드</span></a></li>';
+//								html += '		<li id="typeTxt" class="exportFunction" title="TXT 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_ept_txt.png" alt=""><span>TXT 다운로드</span></a></li>';
+								break;
+							case 'STAR_CHART':
+							/* DOGFOOT mksong 2020-08-05 카드 이미지 다운로드 */
+							case 'CARD_CHART':
+							/*dogfoot d3 차트 다운로드 기능 추가 shlim 20200729*/
+							case 'PARALLEL_COORDINATE':
+							case 'BUBBLE_PACK_CHART':
+							case 'WORD_CLOUD_V2':
+							case 'DENDROGRAM_BAR_CHART':
+							case 'CALENDAR_VIEW_CHART':
+							case 'CALENDAR_VIEW2_CHART':
+							case 'CALENDAR_VIEW3_CHART':
+							case 'COLLAPSIBLE_TREE_CHART':
+							case 'HISTOGRAM_CHART':
+							case 'WATERFALL_CHART':
+							case 'BIPARTITE_CHART':
+							case 'SANKEY_CHART':
+							case 'HEATMAP':
+							case 'HEATMAP2':
+							case 'SYNCHRONIZED_CHARTS':
+							case 'RECTANGULAR_ARAREA_CHART':
+							case 'WORD_CLOUD':
+							case 'BUBBLE_D3':
+							case 'DIVERGING_CHART':
+							case 'SCATTER_PLOT':
+							case 'SCATTER_PLOT2':
+							case 'COORDINATE_LINE':
+							case 'COORDINATE_DOT':
+							case "HISTORY_TIMELINE":
+							case "ARC_DIAGRAM":
+							case "RADIAL_TIDY_TREE":
+							case "SCATTER_PLOT_MATRIX":
+							case 'BOX_PLOT':
+							case 'DEPENDENCY_WHEEL':
+							case 'SEQUENCES_SUNBURST':
+							case 'LIQUID_FILL_GAUGE':
+							case 'FORCEDIRECT':
+							case 'FORCEDIRECTEXPAND':
+							case 'HIERARCHICAL_EDGE':
+							//2020.10.07 MKSONG 카카오맵 다운로드 아이콘 추가  dogfoot
+							case 'KAKAO_MAP':
+								html += '		<li id="typeImg" class="exportFunction" title="이미지 다운로드"><a href="#"><img src="' + WISE.Constants.context + '/resources/main/images/ico_exportImages.png" alt="이미지 다운로드"><span>이미지 다운로드</span></a></li>';
+								break;
+						}
+						
+						html += '	</ul>';
+						html += '</div>';
+                        return html;
+					},
+					onContentReady: function() {
+						$('.exportFunction').each(function(){
+							$(this).click(function(){
+							/* 20210212 AJKIM 다운로드 확장 기능 추가 dogfoot*/
+								var menu = menuConfigManager.getMenuConfig.Menu.ITEM_DOWNLOAD;
+								var exportType = $(this).attr('id');
+								if(exportType == 'typeCsv'){
+									if(!menu || (menu && !menu.Expand) || gDashboard.reportType === 'DSViewer'){
+										gDashboard.downloadManager.downloadCSV(_instance);
+									}else if(menu.Expand){
+										//확장 실행
+										gDashboard.openDownloadExpand(_instance, "typeCsv");
+									}
+									
+								}else if(exportType == 'typeTxt'){
+									if(!menu || (menu && !menu.Expand) || gDashboard.reportType === 'DSViewer'){
+										gDashboard.downloadManager.downloadTXT(_instance);
+									}else if(menu.Expand){
+										//확장 실행
+										gDashboard.openDownloadExpand(_instance, "typeTxt");
+									}
+								}else if(exportType == 'typeXlsx' || exportType == 'typeXls'){
+										/* 2020.12.18 mksong 주택금융공사 다운로드 방식 기존으로 변경 dogfoot */
+										var downType = '';
+										if(exportType == 'typeXlsx') {
+											downType = 'xlsx';
+										} else {
+											downType = 'xls';
+										}
+										var paramItemsStr = gDashboard.downloadManager.extractParamItemsStr();
+										var originItemName = gDashboard.reportType != 'AdHoc' ? _instance.meta.Name : "";
+										var contentList = [];
+										var reportName = gDashboard.reportUtility.reportInfo.ReportMasterInfo.name;
+								   		   	reportName = reportName.replace(/\//g,'_');
+								   		   	reportName = reportName.replace(/\\/g,'_');
+										var itemName = _instance.Name;
+										var memoText = _instance.memoText;
+										/*dogfoot 페이징 데이터 전체 다운로드 처리 shlim 20210223*/
+										var totalCountOver = false;
+										
+										if(_instance.type != "PIE_CHART" && _instance.type != 'DATA_GRID'
+											 && _instance.type != 'PIVOT_GRID') {
+											var ds = _instance.dxItem.getDataSource()
+
+											if(ds._totalCount>=userJsonObject.excelDownloadServerCount && userJsonObject.excelDownloadServerCount != 0) {
+												totalCountOver = true;
+											}else if(userJsonObject.gridDataPaging === "Y"){
+												totalCountOver = true;
+											}
+										} else {
+											totalCountOver = false;
+										}
+										
+										if(totalCountOver){
+											var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+
+											var contentList = [];
+											var downFile = SQLikeUtil.doSqlLikeExcel(contentList, _instance);
+											if(downFile) {
+												$('#downFileName').val(downFile.fileName);
+												$('#downFilePath').val(downFile.filePath);
+
+												$('#downForm').submit();
+												
+												var param = {
+													'pid': WISE.Constants.pid,
+													'userId':userJsonObject.userId,
+													'reportType':gDashboard.reportType,
+													'itemid' : '',
+													'itemNm' : ''
+												}
+												$.ajax({
+													type : 'post',
+													data : param,
+													cache : false,
+													url : WISE.Constants.context + '/report/exportLog.do',
+													complete: function() {
+														// 2020.01.16 mksong 프로그레스바 hide 시점 변경 dogfoot
+		//													gProgressbar.hide();
+													}
+												});
+											}
+										}else{												
+										/* dogfoot 다운로드 타입별 설정 기능 shlim 20210319 */
+											var dwType;
+										    if(typeof userJsonObject.menuconfig != "undefined"){
+										    	if(typeof userJsonObject.menuconfig.Menu.DOWNLOAD_TYPE){
+										    		dwType = userJsonObject.menuconfig.Menu.DOWNLOAD_TYPE.DownLoadType
+										    	}else{
+										    		dwType = "Default";
+										    	}
+										    }else{
+										    	dwType = "Default";
+										    }
+													    
+										    switch(dwType){
+											    case "Default" :
+											    	if(_instance.type != "PIVOT_GRID"){
+														gDashboard.downloadManager.downloadXLSX(_instance, exportType);
+													}else{
+														var paramItemsStr = gDashboard.downloadManager.extractParamItemsStr();
+														var sortedItemIdx = [];
+														sortedItemIdx.push(_instance.itemid);
+														var sqlLikeDownParam = {
+															idx: 0
+															,reportName: reportName
+															,itemName : itemName
+															,originItemName: itemName
+															,pvExYn: 'Y'
+															,contentList: contentList
+															,sortedItemIdx: sortedItemIdx
+															,paramItemsStr: paramItemsStr
+															,downloadType: downType
+															,gridNumber: 0
+														};
+														gDashboard.downloadManager.sqlLikeExcelDown(_instance, sqlLikeDownParam);
+													}
+											    	break;
+											    case "Dev_nonExcelJs" :
+											    	_instance.dxItem.off('fileSaving').on('fileSaving',function(_e){
+														var formData = new FormData();
+														if(gDashboard.reportUtility.reportInfo.ReportMasterInfo.name == ""){
+															formData.append("reportName","NewReport");
+														}else{
+															formData.append("reportName",gDashboard.reportUtility.reportInfo.ReportMasterInfo.name);
+														}
+														/* DOGFOOT ktkang 파일 이름 js에서 encode하고 java에서는 decode 없던 오류 수정  20200727 */
+														formData.append("itemName",Base64.encode(_instance.Name));
+														// 2020.01.07 mksong 다운로드 아이템 이름 추가 dogfoot
+														formData.append("originItemName",originItemName);
+	
+														formData.append("exceldata", _e.data);
+	
+														//2020.11.30 mksong 다운로드 피벗그리드 기능 추가 dogfoot
+														if(_instance.type == 'PIVOT_GRID'){
+															formData.append("cols", _instance.columns);
+															formData.append("rows", _instance.rows);
+	
+															var totalView = {
+																'ShowColumnTotals' : _instance.Pivot.ShowColumnTotals, 
+																'ShowRowTotals': _instance.Pivot.ShowRowTotals, 
+																'ShowColumnGrandTotals': _instance.Pivot.ShowColumnGrandTotals, 
+																'ShowRowGrandTotals': _instance.Pivot.ShowRowGrandTotals,
+																'RowTotalsPosition' : _instance.Pivot.RowTotalsPosition,
+																'ColumnTotalsPosition' : _instance.Pivot.ColumnTotalsPosition
+															};
+															formData.append("totalView", totalView);
+														}
+	
+														var isRunning = false;
+														if(!isRunning){
+															$.ajax({
+																type : 'POST',
+																data : formData,
+																async : false,
+																url : WISE.Constants.context + '/download/saveXLSX.do',
+																contentType: false,
+																processData: false,
+																success : function(_data) {
+																	isRunning = true;
+																	if(_data.checkValue){
+																		_data.item = itemName;
+																		// 2020.01.07 mksong 다운로드 아이템 이름 추가 dogfoot
+																		_data.originItemName = originItemName;
+																		_data.itemtype = _instance.type;
+																		_data.memoText = memoText;
+																		/*dogfoot 캡션숨긴 아이템 리스트업 shlim 20200625*/
+																		if(typeof _instance.meta.ShowCaption != 'undefined'){
+																			if(!_instance.meta.ShowCaption){
+																				_data.hidecaption = itemName;
+																			}
+																		}
+																		contentList.push(_data);
+																		/* DOGFOOT ktkang 대용량 다운로드 기능 구현  20200903 */
+																		gDashboard.downloadManager.downloadStart(contentList, paramItemsStr, 'xlsx', false);
+																		
+																		var param = {
+																			'pid': WISE.Constants.pid,
+																			'userId':userJsonObject.userId,
+																			'reportType':gDashboard.reportType,
+																			'itemid' : '',
+																			'itemNm' : ''
+																		}
+																		$.ajax({
+																			type : 'post',
+																			data : param,
+																			cache : false,
+																			url : WISE.Constants.context + '/report/exportLog.do',
+																			complete: function() {
+																			}
+																		});
+																	}
+																}
+															});
+														}
+													    _e.cancel = true;
+													});
+											    	_instance.dxItem.exportToExcel();
+											    	break;
+											    case "Dev_ExcelJs" :
+											    	_instance.dxItem.off('fileSaving').on('fileSaving',function(_e){
+												    	var workbook = new ExcelJS.Workbook();
+												    	var worksheet = workbook.addWorksheet("Main sheet");
+														DevExpress.excelExporter
+														  .exportDataGrid({
+															worksheet: worksheet,
+															component: _e.component,
+														  })
+														  .then(function () {
+															workbook.xlsx.writeBuffer().then(function (buffer) {
+															  saveAs(
+																new Blob([buffer], {
+																  type: "application/octet-stream"
+																}),
+																_instance.Name + ".xlsx"
+															  );
+															});
+														  });
+														 _e.cancel = true;
+														});
+											    	_instance.dxItem.exportToExcel();
+											    	break;
+											    default:
+											    	break;
+									    	}
+										}
+
+										
+//										_instance.dxItem.off('fileSaving').on('fileSaving',function(_e){
+//											var formData = new FormData();
+//											if(gDashboard.reportUtility.reportInfo.ReportMasterInfo.name == ""){
+//												formData.append("reportName","NewReport");
+//											}else{
+//												formData.append("reportName",gDashboard.reportUtility.reportInfo.ReportMasterInfo.name);
+//											}
+//											/* DOGFOOT ktkang 파일 이름 js에서 encode하고 java에서는 decode 없던 오류 수정  20200727 */
+//											formData.append("itemName",Base64.encode(_instance.Name));
+//											// 2020.01.07 mksong 다운로드 아이템 이름 추가 dogfoot
+//											formData.append("originItemName",originItemName);
+//											
+//											formData.append("exceldata", _e.data);
+//											
+//											//2020.11.30 mksong 다운로드 피벗그리드 기능 추가 dogfoot
+//											if(_instance.type == 'PIVOT_GRID'){
+//												formData.append("cols", _instance.columns);
+//												formData.append("rows", _instance.rows);
+//												
+//												var totalView = {
+//													'ShowColumnTotals' : _instance.Pivot.ShowColumnTotals, 
+//													'ShowRowTotals': _instance.Pivot.ShowRowTotals, 
+//			 										'ShowColumnGrandTotals': _instance.Pivot.ShowColumnGrandTotals, 
+//													'ShowRowGrandTotals': _instance.Pivot.ShowRowGrandTotals,
+//													'RowTotalsPosition' : _instance.Pivot.RowTotalsPosition,
+//													'ColumnTotalsPosition' : _instance.Pivot.ColumnTotalsPosition
+//												};
+//												formData.append("totalView", totalView);
+//											}
+//											
+//											var isRunning = false;
+//									  		if(!isRunning){
+//									  			$.ajax({
+//									                type : 'POST',
+//									                data : formData,
+//									                async : false,
+//									                url : WISE.Constants.context + '/download/saveXLSX.do',
+//									                contentType: false,
+//									                processData: false,
+//									                success : function(_data) {
+//									                	isRunning = true;
+//														if(_data.checkValue){
+//															_data.item = itemName;
+//															// 2020.01.07 mksong 다운로드 아이템 이름 추가 dogfoot
+//															_data.originItemName = originItemName;
+//															_data.itemtype = _instance.type;
+//															_data.memoText = memoText;
+//															/*dogfoot 캡션숨긴 아이템 리스트업 shlim 20200625*/
+//															if(typeof _instance.meta.ShowCaption != 'undefined'){
+//																if(!_instance.meta.ShowCaption){
+//																	_data.hidecaption = itemName;
+//																}
+//															}
+//															contentList.push(_data);
+//															/* DOGFOOT ktkang 대용량 다운로드 기능 구현  20200903 */
+//															gDashboard.downloadManager.downloadStart(contentList, paramItemsStr, 'xlsx', false);
+//														}
+//													// 2019.12.10 수정자 : mksong 프로그레스바 오류 수정 DOGFOOT
+//									              	}
+//								  				});
+//									  		}
+//									  	    _e.cancel = true;
+//										});
+										
+										
+										gProgressbar.hide();
+//									}
+								}else if(exportType == 'typeImg'){
+									/*dogfoot d3 차트 다운로드 기능 추가 shlim 20200729*/
+									switch(_instance.type){
+										case 'PIE_CHART':
+											if (_instance.filteredData && _instance.filteredData.length > 0) {
+											var __pngBase64s = '';
+											
+											if (_instance.panelManager.pieContainerIdBucket.length === 1) {
+												_instance.dxItem[0].exportTo(_instance.itemNm, "png");
+//												var cid = _instance.panelManager.pieContainerIdBucket[0];
+//												var svgCode = $('#' +cid).dxPieChart('instance').svg();
+//												WISE.resources.dx.exports.image(svgCode);
+											} else {
+												var piePictureList = [];
+												var pieCount = 0;
+
+												var reportName = gDashboard.reportUtility.reportInfo.ReportMasterInfo.name;
+													reportName = reportName.replace(/\//g,'_');
+													reportName = reportName.replace(/\\/g,'_');
+                                                $.each(_instance.dxItem,function(_index,_pie){
+													_pie.off('fileSaving').on('fileSaving',function(_e){
+													var formData = new FormData();
+														if(gDashboard.reportUtility.reportInfo.ReportMasterInfo.name == ""){
+															formData.append("reportName","NewReport");
+														}else{
+														/* DOGFOOT ktkang 다운로드 시 파일 이름 에러 수정  20200618 */
+															formData.append("reportName",reportName);
+														}
+														formData.append("imagedata",_e.data);
+														formData.append("itemName",Base64.encode(_instance.itemNm));
+														var isRunning = false;
+														if(!isRunning){
+															$.ajax({
+																type : 'POST',
+																data : formData,
+																async : false,
+																url : WISE.Constants.context + '/download/saveImage.do',
+																contentType: false,
+																processData: false,
+																success : function(_data) {
+																	pieCount++;
+																	isRunning = true;
+																	if(_data.checkValue){
+																		piePictureList.push(_data.uploadPath);
+																	}
+																	if(_instance.dxItem.length == pieCount){
+																		/* DOGFOOT mksong 2020-08-10 파이 다운로드 불필요한 부분 제거 */
+																		isRunning = false;
+																		$.ajaxSettings.traditional = true;
+																		$.ajax({
+																			type : 'POST',
+																			data : {
+																				'pictureList' : piePictureList
+																			},
+																			async : false,
+																			url : WISE.Constants.context + '/download/mergeImage.do',
+																			success : function(_data) {
+																				isRunning = true;
+																				if(_data.checkValue){
+																					_data.item = _instance.itemNm;
+																					_data.itemtype = _instance.type;
+																					/*dogfoot 캡션숨긴 아이템 리스트업 shlim 20200625*/
+																					var contentList =[];
+																					contentList.push(_data);
+																					$('#downFileName').val(_data.item+'.png');
+																					$('#downFilePath').val(_data.uploadPath);
+
+																					$('#downForm').submit();
+																					
+																				}
+																			}
+																		});
+																	}
+																	// 2019.12.10 수정자 : mksong 프로그레스바 오류 수정 DOGFOOT
+																}
+															});
+														} 
+													_e.cancel = true;
+												});
+												_pie.exportTo('filename,png');
+                                                });
+												
+//												$.each(_instance.panelManager.pieContainerIdBucket, function(_i, _cid) {
+//													
+//													var img = document.createElement('img');
+//													var svg = $('#'+_cid).dxPieChart('instance').svg();
+//
+//													var svg64 = window.btoa(unescape(encodeURIComponent(svg)));
+//													var b64Start = 'data:image/svg+xml;base64,';
+//
+//													var image64 = b64Start + svg64;
+//													img.src = image64;
+//													
+//													imageList.push(img);
+//													
+//													var vTemp = verticalIndex;
+//													img.onload = function(){
+//														ctx.drawImage(imageList[_i], (_i % horizontal) * iWidth, vTemp * iHeight);
+//														loadCount++;
+//														if(loadCount === _instance.panelManager.pieContainerIdBucket.length){
+//														     var dt = canvas.toDataURL('image/png');
+//                                               
+//															dt = dt.replace(/^data:image\/[^;]*/, 'data:application/octet-stream');
+//															dt = dt.replace(/^data:application\/octet-stream/, 'data:application/octet-stream;headers=Content-Disposition%3A%20attachment%3B%20filename=Canvas.png');
+//
+//
+//															temp.href = dt;
+//															temp.download = _instance.Name + '.png';
+//																temp.click();
+//														}
+//													}
+//
+//													if((_i+1) % horizontal === 0){
+//														verticalIndex ++;
+//													}
+//												});
+												
+//												// 20200427 ajkim 파이차트 한 이미지로 내보내기 dogfoot
+//												var cWidth = $('#'+_instance.panelManager.itemid).children(0).width();
+//												var iWidth = $('#'+_instance.panelManager.itemid+" li").width();
+//												var iHeight = $('#'+_instance.panelManager.itemid+" li").height();
+//												var horizontal = Math.floor(cWidth/iWidth);
+//												var verticalIndex = 0;
+//												
+//												var cHeight = Math.ceil(_instance.panelManager.pieContainerIdBucket.length/horizontal) * iHeight;
+//												
+//												var temp = document.createElement('a');
+//                                               var canvas = document.createElement('canvas');
+//                                               canvas.width = cWidth;
+//                                               canvas.height = cHeight;
+//                                               var ctx = canvas.getContext("2d");
+//												ctx.fillStyle = "white";
+//												ctx.fillRect(0, 0, canvas.width, canvas.height);
+//												
+//												var imageList = [];
+//												var loadCount = 0;
+//												$.each(_instance.panelManager.pieContainerIdBucket, function(_i, _cid) {
+//													
+//													var img = document.createElement('img');
+//													var svg = $('#'+_cid).dxPieChart('instance').svg();
+//
+//													var svg64 = window.btoa(unescape(encodeURIComponent(svg)));
+//													var b64Start = 'data:image/svg+xml;base64,';
+//
+//													var image64 = b64Start + svg64;
+//													img.src = image64;
+//													
+//													imageList.push(img);
+//													
+//													var vTemp = verticalIndex;
+//													img.onload = function(){
+//														ctx.drawImage(imageList[_i], (_i % horizontal) * iWidth, vTemp * iHeight);
+//														loadCount++;
+//														if(loadCount === _instance.panelManager.pieContainerIdBucket.length){
+//														     var dt = canvas.toDataURL('image/png');
+//                                               
+//															dt = dt.replace(/^data:image\/[^;]*/, 'data:application/octet-stream');
+//															dt = dt.replace(/^data:application\/octet-stream/, 'data:application/octet-stream;headers=Content-Disposition%3A%20attachment%3B%20filename=Canvas.png');
+//
+//
+//															temp.href = dt;
+//															temp.download = _instance.Name + '.png';
+//																temp.click();
+//														}
+//													}
+//
+//													if((_i+1) % horizontal === 0){
+//														verticalIndex ++;
+//													}
+//												});
+//												
+//												// zip download
+//												/*
+//												$.each(self.panelManager.pieContainerIdBucket, function(_i, _cid) {
+//													
+//													if(self.panelManager.activePanelId && _cid.indexOf(self.panelManager.activePanelId) === -1) {
+//														return true;
+//													}
+//													
+//													var svgCode = $('#' +_cid).dxPieChart('instance').svg();
+//													
+//													var canvas = document.createElement('canvas');
+//													document.body.appendChild(canvas);
+//													
+//													canvg(canvas, svgCode,{ ignoreMouse: true, ignoreAnimation: true });
+//													
+//													var png = canvas.toDataURL('image/png');
+//													png = png.replace(/^data:image\/png;base64,/, '');
+//													
+//													__pngBase64s += png + '::space::';
+//													document.body.removeChild(canvas);
+//												});
+//												__pngBase64s = __pngBase64s.substring(0, __pngBase64s.length - ('::space::'.length))
+//													
+//												var iframe = document.createElement('iframe');
+//												var iframeName = 'iframeDL_' + new Date().valueOf();
+//												iframe.setAttribute('name', iframeName);
+//												iframe.setAttribute('style', 'width: 0; height: 0; border: none;');
+//												document.body.appendChild(iframe);
+//												
+//												var form = document.createElement('form');
+//												form.setAttribute('name', 'frmDL_' + new Date().valueOf());
+//												form.setAttribute('target', iframeName);
+//												form.setAttribute('method', 'post');
+//												form.setAttribute('action', WISE.Constants.context + '/file/down/base64/png/zip.do');
+//												document.body.appendChild(form);
+//												
+//												var input = document.createElement('input');
+//												input.setAttribute('type', 'hidden');
+//												input.setAttribute('name', 'base64');
+//												input.setAttribute('value', __pngBase64s);
+//												form.appendChild(input);
+//												
+//												form.submit();
+//												
+//												var remove = function() {
+//													form.removeChild(input);
+//													document.body.removeChild(form);
+//													document.body.removeChild(iframe);
+//												};
+//												
+//												setTimeout(remove, 10000);*/
+											}
+										}
+										else {
+											WISE.alert(gMessage.get('WISE.message.page.common.nodata'));
+										}
+											break;
+										//2020.10.07 MKSONG 카카오맵 다운로드 아이콘 추가  dogfoot
+										case 'KAKAO_MAP':
+										case 'HISTOGRAM_CHART':
+										case 'WATERFALL_CHART':
+										case 'BIPARTITE_CHART':
+										case 'SANKEY_CHART':
+										case 'PARALLEL_COORDINATE':
+										case 'BUBBLE_PACK_CHART':
+										case 'WORD_CLOUD_V2':
+										case 'DENDROGRAM_BAR_CHART':
+										case 'CALENDAR_VIEW_CHART':
+										case 'CALENDAR_VIEW2_CHART':
+										case 'CALENDAR_VIEW3_CHART':
+										case 'COLLAPSIBLE_TREE_CHART':
+										case 'HEATMAP':
+										case 'HEATMAP2':
+										case 'SYNCHRONIZED_CHARTS':
+										case 'COORDINATE_DOT':
+										case 'RECTANGULAR_ARAREA_CHART':
+										case 'WORD_CLOUD':
+										case 'BUBBLE_D3':
+										case 'FORCEDIRECT':
+										case 'FORCEDIRECTEXPAND':
+										case 'HIERARCHICAL_EDGE':
+										case 'DIVERGING_CHART':
+										case 'SCATTER_PLOT':
+										case 'SCATTER_PLOT2':
+										case 'COORDINATE_LINE':
+										case "HISTORY_TIMELINE":
+										case "ARC_DIAGRAM":
+										case "RADIAL_TIDY_TREE":
+										case "SCATTER_PLOT_MATRIX":
+										case 'BOX_PLOT':
+										case 'DEPENDENCY_WHEEL':
+										case 'SEQUENCES_SUNBURST':
+										case 'LIQUID_FILL_GAUGE':
+											gProgressbar.show();
+											var svg = $('#'+_instance.itemid).find('svg')[0];
+											
+											//20201116 AJKIM 신경망 바 다운로드 오류 수정 dogfoot
+											if(_instance.type === 'DENDROGRAM_BAR_CHART'){
+												$('#'+_instance.itemid+' .ballG').remove();
+											}
+//											var mapRoot = svg.getRoot();
+											//var containerId = WISE.Constants.editmode === 'viewer' ? '#reportContainer' : '#canvas-container';
+											var svgNode = getSVGString(svg);
+//											svgString2Image( svgString, svg.clientWidth, svg.clientHeight, 'png', save ); // passes Blob and filesize String to the callback
+	//
+//											function save( dataBlob, filesize ){
+//												saveAs( dataBlob, _instance.Name ); // FileSaver.js function
+//											}
+										
+											 self.saveImg = function(imgData){
+												 	//2020.11.03 mksong resource Import 동적 구현 dogfoot
+													//2020.11.10 mksong 동적로딩 d3 오류 수정 dogfoot
+													var blob = new Blob([imgData],{type: "image/png;charset=utf-8"});
+													var reportName = "newReport";
+													if(gDashboard.structure.ReportMasterInfo != undefined){
+														reportName = gDashboard.structure.ReportMasterInfo.name == "" ? 'newReport' : gDashboard.structure.ReportMasterInfo.name.replace( /\s/gi,"_");
+														reportName = reportName.replace(/\//g,'_');
+														reportName = reportName.replace(/\\/g,'_');
+													}
+													var formData = new FormData();
+													if(gDashboard.reportUtility.reportInfo.ReportMasterInfo.name == ""){
+														formData.append("reportName","NewReport");
+													}else{
+														formData.append("reportName",reportName);
+													}
+//													formData.append("imagedata",blob);
+													formData.append("imagedata",blob);
+													formData.append("svgXml",Base64.decode(imgData));
+													formData.append("imageType",'D3Png');
+													formData.append("itemName",Base64.encode(_instance.itemNm.replace(/\//g,'_')));
+													$.ajax({
+														type : 'POST',
+														data : formData,
+														async : false,
+														url : WISE.Constants.context + '/download/saveImage.do',
+														contentType: false,
+														processData: false,
+														success : function(_data) {
+															$('#downFileName').val(_instance.itemNm+'.png');
+															$('#downFilePath').val(_data.uploadPath);
+
+															$('#downForm').submit();	
+															gProgressbar.hide();
+														}
+													
+													});
+													//saveAs(blob, reportName + '.png');
+								 
+											}
+											 
+//											var svgString = getSVGString(svg);
+//											svgString2Image( svgString, svg.clientWidth, svg.clientHeight, 'png', save, _instance.itemid ,svg); 
+//
+//											function save( dataBlob, filesize ){
+//												saveAs( dataBlob, 'D3 vis exported to PNG.png' ); // FileSaver.js function
+//											}
+
+											//2020.11.03 mksong resource Import 동적 구현 dogfoot
+											WISE.loadedSourceCheck('saveSvgAsPng');
+											saveSvgAsPng(svgNode, _instance.Name.replace(/\//g,'_') + '.png', { canvg: canvg, backgroundColor: 'white'},false);
+											
+											break;
+										case 'CARD_CHART':
+										if (_instance.dxItem && _instance.dxItem.length > 0) {
+											var __pngBase64s = '';
+											var cardPictureList = [];
+											var cardCount = 0;
+
+											var reportName = gDashboard.reportUtility.reportInfo.ReportMasterInfo.name;
+												reportName = reportName.replace(/\//g,'_');
+												reportName = reportName.replace(/\\/g,'_');
+                                            $.each(_instance.dxItem,function(_index,_card){
+												var formData = new FormData();
+												if(gDashboard.reportUtility.reportInfo.ReportMasterInfo.name == ""){
+													formData.append("reportName","NewReport");
+												}else{
+												/* DOGFOOT ktkang 다운로드 시 파일 이름 에러 수정  20200618 */
+													formData.append("reportName",reportName);
+												}
+												//2020.11.03 MKSONG 필요한 리소스 동적으로 Import DOGFOOT
+												WISE.loadedSourceCheck('html2canvas');
+												html2canvas(_card[0], {letterRendering:true}).then(function(canvas) {
+										    		canvas.toBlob(function(blob){
+										    			formData.append("imagedata", blob);
+														formData.append("itemName",Base64.encode(_instance.itemNm));
+//														formData.append("itemName",_instance.itemNm);
+														var isRunning = false;
+														if(!isRunning){
+															$.ajax({
+																type : 'POST',
+																data : formData,
+																async : false,
+																url : WISE.Constants.context + '/download/saveImage.do',
+																contentType: false,
+																processData: false,
+																success : function(_data) {
+																	cardCount++;
+																	isRunning = true;
+																	if(_data.checkValue){
+																		cardPictureList.push(_data.uploadPath);
+																	}
+																	
+																	/* DOGFOOT mksong 2020-08-10 카드 다운로드 불필요한 부분 제거 */
+																	if(_instance.dxItem.length == cardCount){
+																		isRunning = false;
+																		$.ajaxSettings.traditional = true;
+																		$.ajax({
+																			type : 'POST',
+																			data : {
+																				'pictureList' : cardPictureList
+																			},
+																			async : false,
+																			url : WISE.Constants.context + '/download/mergeImage.do',
+																			success : function(_data) {
+																				isRunning = true;
+																				if(_data.checkValue){
+																					_data.item = _instance.itemNm;
+																					_data.itemtype = _instance.type;
+																					/*dogfoot 캡션숨긴 아이템 리스트업 shlim 20200625*/
+																					var contentList =[];
+																					contentList.push(_data);
+																					$('#downFileName').val(_data.item+'.png');
+																					$('#downFilePath').val(_data.uploadPath);
+
+																					$('#downForm').submit();
+																					
+																				}
+																			}
+																		});
+																	}
+																	// 2019.12.10 수정자 : mksong 프로그레스바 오류 수정 DOGFOOT
+																}
+															});
+														}
+										    		});
+										    	});
+											});
+										}
+										else {
+											WISE.alert(gMessage.get('WISE.message.page.common.nodata'));
+										}
+										break;
+										default:
+											_instance.dxItem.exportTo(_instance.itemNm, "png");
+											break
+									}
+//								}
+								var param = {
+									'pid': WISE.Constants.pid,
+									'userId':userJsonObject.userId,
+									'reportType':gDashboard.reportType,
+									'itemid' : _instance.itemid,
+									'itemNm' : _instance.Name
+								}
+								$.ajax({
+									type : 'post',
+									data : param,
+									cache : false,
+									url : WISE.Constants.context + '/report/exportLog.do',
+									complete: function() {
+										gProgressbar.hide();
+									}
+								});
+								p.hide();
+							}
+						});
+					});
+				  }
+				});
+				p.show();
+			});
+		}
+		var trackingClearBtn = function(){
+			if (_instance.IO && _instance.IO['MasterFilterMode'] && gDashboard.reportType !== 'AdHoc') {
+				_instance.trackingClearId = _instance.itemid + '_topicon_tracking_clear';
+				
+				//20200506 ajkim 마스터필터가 적용된 경우에만 마스터 필터 초기화 활성화 dogfoot
+				var trackingClearHtml;
+				if(_instance.IO['MasterFilterMode'] === 'Off')
+					trackingClearHtml = '<li id="' + _instance.trackingClearId + '" title="마스터 필터 초기화" class="nofilter invisible"></li>';
+				else
+					trackingClearHtml = '<li id="' + _instance.trackingClearId + '" title="마스터 필터 초기화" class="nofilter"></li>';
+				
+				//2020.01.22 MKSONG 아이콘 수정 DOGFOOT
+				if($('#'+_instance.trackingClearId).length == 0){
+					if(WISE.Constants.editmode === 'viewer' && topIconPanel.find('.lm_maximise').length === 0)
+						topIconPanel.append(trackingClearHtml);
+					else
+						topIconPanel.find('.lm_close').before(trackingClearHtml);	
+				}
+				
+				$("#" + _instance.trackingClearId).click(function() {
+					_instance.clearTrackingConditions();
+					/* DOGFOOT hsshim 2020-02-06 마스터 필터 기능 리팩토링 적용 (코드 정리) */
+					gDashboard.filterData(_instance.itemid, _instance.trackingData);
+					if(_instance.ComponentName && gDashboard.itemGenerateManager.viewedItemList.indexOf(_instance.ComponentName) < 0 ){
+						gDashboard.itemGenerateManager.viewedItemList.push(_instance.ComponentName);
+					}
+					/*필터 프로그레스바 오류 수정*/
+					if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+						gProgressbar.setStopngoProgress(true);
+						gProgressbar.hide();		
+						gDashboard.updateReportLog();
+					}
+				});
+			}
+		}
+
+		var choroDrillUpBtn = function(){
+            if((_instance.IO && gDashboard.reportType !== 'AdHoc') || (WISE.Constants.editmode == "viewer")){
+				_instance.DrilldownClearId = _instance.itemid + '_topicon_drilldown_clear';
+				//2020.01.22 MKSONG 아이콘 수정 DOGFOOT
+				var DrillDownClearHtml = '<li id="' + _instance.DrilldownClearId + '" title="드릴업" class="back "></li>';
+		
+				if($('#'+_instance.DrilldownClearId).length == 0){
+					//if(WISE.Constants.editmode === 'viewer' && topIconPanel.find('.lm_maximise').length === 0)
+					if(WISE.Constants.editmode === 'viewer')
+						topIconPanel.append(DrillDownClearHtml);
+					else
+						topIconPanel.find('.lm_close').before(DrillDownClearHtml);
+				}
+				
+				$("#" + _instance.DrilldownClearId).off().click(function(_e) {
+					//_instance.drillUp();
+					var index= [
+						"mapStateContentPanel" + _instance.index,
+						"mapCityContentPanel" + _instance.index,
+						"mapDongContentPanel" + _instance.index
+					];
+                    
+                    var firstIndex = _instance.getFirstIndex();
+                    
+					if(_instance.shpIndex > firstIndex){
+						
+						//현재지역 초기화
+						if(_instance.shpIndex == 2){
+							_instance.currentLocation.City = "";
+						}else if(_instance.shpIndex == 1){
+							_instance.currentLocation.State = "";
+						}
+						
+						_instance.clearTrackingConditions();	
+						
+						//드릴 다운 시 마스터 필터 데이터 초기화
+						//gProgressbar.show();
+						//gDashboard.filterData(_instance.itemid, []);
+						//gProgressbar.hide();
+						
+						_instance.drillCheck = true;
+						_instance.shpIndex -= 1;
+						_instance.targetIndex = undefined;
+						var index = _instance.shpIndex;
+						
+						_instance.meta.shpIndex = self.shpIndex;
+						
+						var dimensions = [];
+                        var cnt = 0;
+                        
+                        for(var i=0; i<3; i++){                        	
+							if(!_instance.disabledCheck(i)){
+                                dimensions.push(_instance.dimensions[cnt]);
+                                cnt++;
+							}else{
+								dimensions.push({});
+							}
+                        }
+                        
+						var arrayDimension = [];
+				    	var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+			            arrayDimension.push(dimensions[_instance.shpIndex]);
+			            //where절 삭제
+			            gDashboard.itemGenerateManager.sqlConfigWhere=[];
+			            
+			            //값 기준 변경(지역별)
+			            var whereObject = {};
+			            if(index == 1 && _instance.currentLocation["State"]!=""){
+			            	whereObject = {
+				            	data : [_instance.currentLocation["State"]],
+				            	key : dimensions[0].caption
+				            }
+			            }
+			            
+			            var datasetConfig = _instance.SQLike.fromJson(arrayDimension, _instance.measures, []);
+			            if(index == 1 && _instance.currentLocation["State"]!=""){
+			            	datasetConfig.Where.push(whereObject);
+			            }
+			            var dataset = SQLikeUtil.doSqlLike(_instance.dataSourceId, datasetConfig, _instance);
+
+			            _instance.filteredData = dataset;
+			            _instance.csvData = _instance.filteredData;
+			            
+			            _instance.generateMapChart(dataset, _instance.measures, false);
+			            _instance.shpIndex = index;
+			            
+						//var beforeData = _instance.fileMeta[_instance.shpIndex+1].data;
+						//var title = _instance.fileMeta[_instance.shpIndex+1].title;
+						//var data = _.cloneDeep(_instance.fileMeta[_instance.shpIndex].data);
+						var beforeData;
+						var title;
+						var data;
+						
+						if(gDashboard.isNewReport){
+							beforeData = _instance.fileMeta[_instance.shpIndex+1].data;
+							title = _instance.fileMeta[_instance.shpIndex+1].title;
+							data = _.cloneDeep(_instance.fileMeta[_instance.shpIndex].data);
+						}else{
+							//beforeData = _instance.featuresData[_instance.shpIndex+1];
+							beforeData = _instance.getGeojsonFile(_instance.shpIndex+1);
+							switch(_instance.shpIndex+1){
+								case 0:
+					    			title = "시도";
+					    			break;
+					    		case 1:
+					    			title = "시군구";
+					    			break;
+					    		case 2: 
+					    			title = "읍면동";
+					    			break;
+							}
+							//data = _.cloneDeep(_instance.featuresData[_instance.shpIndex]);
+							data = _instance.getGeojsonFile(_instance.shpIndex);
+						}
+						
+						var locationCode = 0;
+						var dataSource = {};						
+						var attributeName = "";
+						
+						if(_instance.attributeName.Name == undefined){
+							attributeName = _instance.attributeName[_instance.shpIndex];
+						}else{
+							//attributeName = Object.values(_instance.attributeName.Name[_instance.shpIndex])[0];
+							attributeName = _instance.attributeName.Name[Object.keys(_instance.attributeName.Name[_instance.shpIndex])[0]];
+						}
+						
+						if(_instance.shpIndex == 0){
+							if(userJsonObject.menuconfig.Menu.CHORO_DEFAULT_VALUE){
+							//기본지역값 선택되어있을 때
+								var data = _.cloneDeep(_instance.fileMeta[0].data);
+								var dataFeatures = data.features;
+												
+								var locationCode = _instance.getLocationCode(dataFeatures, userJsonObject.menuconfig.Menu.CHORO_STATE,dataFeatures, attributeName);
+								dataSource = _instance.initDataSource(data, title, locationCode, false);
+								_instance.initBounds(dataSource);
+							}else{
+							//아닐때
+								
+								if(gDashboard.isNewReport){
+									dataSource = data; 
+								}else{
+									dataSource = data;
+								}							
+							}					
+						}else{
+							if(!gDashboard.isNewReport && !_instance.searchCheck)
+							    _instance.locationCode = _instance.getLocationCode(data.features, _instance.LocationName, attributeName).substring(0,2);
+							if(firstIndex == 0){
+								dataSource = _instance.initDataSource(data, "시도", _instance.locationCode, false);
+							}else{
+								dataSource = data;
+							}
+							
+							_instance.initBounds(dataSource);					
+						}	
+						
+						var rm = _instance.removeFileData(dataSource);
+						if(rm == 0){
+							_instance.dxItem.option('layers[0].dataSource', dataSource);
+						}else{
+							_instance.dxItem.option('layers[0].dataSource', _instance.CustomUrl[_instance.shpIndex].Url);
+						}
+						_instance.dxItem.option('bounds', dataSource.bbox);
+						//_instance.dxItem.option('layers[0].label.dataField', _instance.toolTipAttributeName[_instance.shpIndex]);
+						
+						//dogfoot 2021.06.07 코로플레스 드릴다운 적용 시 색상편집 적용 syjin
+						if(Object.keys(_instance.colorOptions).length > 0){
+							_instance.setColorOptions();
+						}	
+						
+						//syjin 20210806 드릴 업 시 마스터 필터 적용되도록 개선 dogfoot
+			    		gProgressbar.show();
+			    		
+						var selected = {};
+						if(_instance.shpIndex == 1){
+							if(_instance.attributeDimension[_instance.shpIndex-1] != undefined){
+								selected[_instance.attributeDimension[_instance.shpIndex-1].name] = _instance.currentLocation['State'];
+								_instance.selectedValues.push(selected);
+							}
+						}else if(_instance.shpIndex == 2){
+							if(_instance.attributeDimension[_instance.shpIndex-1] != undefined){
+								selected[_instance.attributeDimension[_instance.shpIndex-1].name] = _instance.currentLocation['City'];
+								_instance.selectedValues.push(selected);
+							}
+						}	
+						
+						//dogfoot 코로플레스 드릴 다운시 마스터필터(단일 일때만) 적용 syjin 20210823
+						if(_instance.IO != undefined){
+							if(_instance.IO.MasterFilterMode=="Single"){
+								gDashboard.filterData(_instance.itemid, _instance.selectedValues,_instance.isMasterFilterCrossDataSource);
+							}
+						}
+						gProgressbar.hide();
+					}		
+				});
+			}
+        }
+		
+		
+		
+		
+		var drillUpBtn = function(){
+			if(_instance.IO && gDashboard.reportType !== 'AdHoc'){
+				_instance.DrilldownClearId = _instance.itemid + '_topicon_drilldown_clear';
+				//2020.01.22 MKSONG 아이콘 수정 DOGFOOT
+				var DrillDownClearHtml = '<li id="' + _instance.DrilldownClearId + '" title="드릴업" class="back invisible"></li>';
+				if(_instance.IO['IsDrillDownEnabled'])
+					DrillDownClearHtml = '<li id="' + _instance.DrilldownClearId + '" title="드릴업" class="back"></li>';
+
+				if($('#'+_instance.DrilldownClearId).length == 0){
+					if(WISE.Constants.editmode === 'viewer' && topIconPanel.find('.lm_maximise').length === 0)
+						topIconPanel.append(DrillDownClearHtml);
+					else
+						topIconPanel.find('.lm_close').before(DrillDownClearHtml);
+				}
+				
+				$("#" + _instance.DrilldownClearId).click(function(_e) {
+					_instance.drillUp();
+				});
+			}
+		}
+
+		var columnSelector = function(){
+			var columnSelectorId = _instance.itemid + '_columnSelector_pop';
+				// 2019.12.16 수정자 : mksong 뷰어 컬럼선택기 팝업 유형 제거 dogfoot				
+//				var columnSelectorPopupHtml = '<li><a id="' + this.itemid + '_columnSelector_pop" class="gui field-slt" href="#"></a></li>';
+//				topIconPanel.append(columnSelectorPopupHtml);
+				// 2019.12.16 수정자 : mksong 뷰어 컬럼선택기 팝업 유형 제거 끝 dogfoot				
+				
+				$('#'+columnSelectorId).off('click').click(function(){
+					var p = $('#columnSelectorPopup').dxPopup('instance');
+					p.option({
+						title: '데이터 항목',
+						contentTemplate: function(contentElement) {
+							var html = "<div class=\"modal-body subQuerySet\" itemid = \""+ _instance.itemid +"\">\r\n" + 
+							"                        <div class=\"row\" style='height:100%'>\r\n" + 
+							"                            <div class=\"column\" style='width:38%'>\r\n" + 
+							"                                <div class=\"modal-article\" style=\"margin-top:0px;\">\r\n" + 
+							"                                   <div class=\"modal-tit\">\r\n" + 
+							"                                	   <span>데이터 집합 필드 목록</span>\r\n" + 
+							"                                   </div>\r\n" + 
+							"									<div class='line-area '>" +
+							"			    						<div class=\"scroll-wrapper scrollbar\">"+
+							"				    						<div id=\"allList\"class=\"dataSet drop-down tree-menu\">"+
+							"				    						<ul />" +
+							"				    						</div>" +
+							"			    						</div>" +
+							"			    					</div>" +
+							"                                </div>\r\n" +
+							"                            </div>\r\n" + 
+							"							 <div class=\"column\" style='width:43%'>\r\n" + 
+							"                                <div class=\"modal-article\" style=\"margin-top:0px;\">\r\n" + 
+							"                                   <div class=\"modal-tit\">\r\n" + 
+							"                                   	<span>데이터 분석 항목</span>\r\n" + 
+							"                                   </div>\r\n" + 
+							"	                                <div class=\"column-drop-body column-set\">" +//분석항목
+							"                                   </div>\r\n" +
+							"                                </div>\r\n" +
+							"                            </div>\r\n" + 
+							"                        </div>\r\n" + //row 끝
+							"                    </div>\r\n" + //modal-body 끝
+							"                    <div class=\"modal-footer\" style=\"padding-top:15px;\">\r\n" + 
+							"                        <div class=\"row center\">\r\n" + 
+							"                            <a id='"+_instance.itemid+"_columnSelectorOk' class=\"btn positive ok-hide\" href='#'>확인</a>\r\n" + 
+							"                            <a id='"+_instance.itemid+"_columnSelectorCancel' class='btn neutral close' href='#'>취소</a>\r\n" + 
+							"                        </div>\r\n" + 
+							"                    </div>\r\n" + 
+							"                </div>";
+							
+	                        contentElement.append(html);
+	                        
+	                        var fieldManager = new WISE.libs.Dashboard.AdhoceItemFieldManager();
+	                        fieldManager.index = _instance.adhocIndex;
+	                        gDashboard.fieldManager = fieldManager;
+	                        $.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_o){
+	                        	_o.fieldManager = fieldManager;
+	                        	_o.dragNdropController = new WISE.widget.DragNDropController(_o);	
+	                        	_o.dragNdropController.addDroppableOptions(_o);
+	                        	_o.index = _o.adhocIndex;
+	                        });
+	                        gDashboard.fieldChooser.setAdhocAnalysisFieldArea2(_instance);
+	                        gDashboard.itemGenerateManager.focusedItem = _instance;
+	                        _instance.dragNdropController.loadAdhocItemDataForViewer(_instance);
+	                        _instance.dragNdropController.addSortableOptionsForOpenViewer(_instance);
+	                        
+	                        if(gDashboard.dataSourceManager.datasetInformation[_instance.dataSourceId].DATASRC_TYPE == 'CUBE'){
+	                        	var dataSetInfoTree = [{'CAPTION': gDashboard.dataSourceManager.datasetInformation[_instance.dataSourceId]['DATASET_NM'], 'ORDER': 0, 'expanded': true, 'DATASOURCE': 'dataSource' + gDashboard.dataSourceQuantity}];
+								dataSetInfoTree = dataSetInfoTree.concat(gDashboard.dataSourceManager.datasetInformation[_instance.dataSourceId].DATASET_JSON.DATA_SET['SEL_ELEMENT']['SELECT_CLAUSE']);	
+	                        }else{
+	                        	var data = gDashboard.dataSourceManager.datasetInformation[_instance.dataSourceId];
+	                        	var dataSetInfoTree = [{'CAPTION': data['DATASET_NM'], 'ORDER': 0, 'expanded': true, 'DATASOURCE' : 'dataSource' + gDashboard.dataSourceQuantity}];
+
+	                        	var i = 1;
+	            				for(var key in data['data'][0]) {
+	            					var type;
+	            					var iconPath;
+	            					var dataType;
+	            					switch($.type(data['data'][0][key])) {
+	            					case 'number': 
+	            						type = 'MEA';
+	            						iconPath = '../images/icon_measure.png';
+	            						dataType = 'decimal';
+	            						break;
+	            					default:
+	            						type = 'DIM';
+	            						iconPath = '../images/icon_dimension.png';
+	            						dataType = 'varchar';
+	            					}
+
+	            					var infoTree = [{'CAPTION': key, 'ORDER': i, 'PARENT_ID': "0", 'TYPE': type,  'icon': iconPath, 'DATA_TYPE': dataType, 'UNI_NM':key}];
+
+	            					dataSetInfoTree = dataSetInfoTree.concat(infoTree);
+	            					i++;
+	            				}
+	                        }
+	                        gDashboard.dataSetCreate.insertDataSet(dataSetInfoTree, _instance.dataSourceId);
+	                        
+	                        // confirm and cancel
+							contentElement.find("#"+_instance.itemid+"_columnSelectorOk").on('click', function() {
+								$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_o){
+									//2020.02.17 mksong 옵션 사용한 바인드일 때 프로그레스 하이드 되도록 수정 dogfoot
+									_instance.functionBinddata = true;
+									_o.bindData(_instance.filteredData, false);
+								});
+								p.hide();
+							});
+							contentElement.find("#"+_instance.itemid+"_columnSelectorCancel").on('click', function() {
+								p.hide();
+							});
+						}
+					});
+					p.show();
+				});
+		}
+
+		var gridOptionBtn = function(){
+			var gridOptionId = _instance.itemid + '_gridoption_pop';
+			// 2020.01.16 수정자 : mksong 뷰어 비정형 속성 클래스 추가 dogfoot
+			var gridOptionPopupHtml =
+			"			<li class=\"img\">" + 
+			"				<a href=\"#\" id=\"initState\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_defaultStatus.png\" alt=\"\" title=\"초기 상태\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"+
+			"			<li class=\"img\">" + 
+			"				<a href=\"#\" id=\"viewTotal\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_totals.png\" alt=\"\" title=\"합계\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"+
+			"			<li class=\"img\">" + 
+			"				<a href=\"#\" id=\"viewGrandTotal\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_grandTotals.png\" alt=\"\" title=\"총 합계\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"+
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"rowHeaderLayout\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_layout.png\" alt=\"\" title=\"레이아웃\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"+
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"adhocTotalsPosition\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_rowTotalsPosition.png\" alt=\"\" title=\"총계 합계 위치\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			/* DOGFOOT ktkang Null 데이터 제거 구현  20200904 */
+			"			</li>" + 
+			"			<li class=\"img\">" +
+			"				<a href=\"#\" id=\"nullDataRemove\" class=\"functiondo\">" + 
+			"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_autofitToContents.png\" alt=\"\" title=\"빈 데이터 제거\" style=\"width:25px;height:25px;\">" + 
+			"				</a>" + 
+			"			</li>"
+//				"			<li class=\"img\">" +
+//				"				<a href=\"#\" id=\"recoveryLayout\" class=\"functiondo\">" + 
+//				"					<img src=\""+WISE.Constants.context+"/resources/main/images/ico_resetLayoutOption.png\" alt=\"\" title=\"레이아웃 재설정\"  style=\"width:25px;height:25px;\">" + 
+//				"				</a>" + 
+//				"			</li>"
+			;
+			// 2020.01.16 수정자 : mksong 뷰어 비정형 속성 클래스 추가 수정 끝 dogfoot
+			//2020.02.17 mksong 뷰어에서 비정형 옵션 제거 dogfoot
+//				topIconPanel.append(gridOptionPopupHtml);
+		}
+		
+		var colRowSwitcherBtn = function(){
+			/* 2020.12.18 mksong 피벗그리드 행열전환 아이콘 중복 생성 오류 수정 dogfoot */
+			// 2021-07-13 jhseo 고용정보원 대시보드+뷰어일때만 아이콘을 제거해달라고함
+			if(!(reportType == 'ListViewer' && gDashboard.reportType == 'DashAny')){
+				if(topIconPanel.find('#'+_instance.itemid + '_switchColumnRow').length !== 0) return;
+				var colRowSwitcher = new WISE.libs.Dashboard.item.FunctionButton({
+					id: _instance.itemid + '_switchColumnRow',
+					text: gMessage.get('WISE.message.page.widget.pivot.switchColumnRow'),
+					image: {
+						/*dogfoot 아이콘 변경 shlim 20210427*/
+						standard : 'cont_box_icon_switchColumnRow.png',
+						selected : 'cont_box_icon_switchColumnRow.png',
+						// 2020.01.16 mksong 아이콘 변경 dogfoot
+						over : 'cont_box_icon_switchColumnRow.png'
+
+						/*standard : 'new_switchColumnRow.png',
+						selected : 'new_switchColumnRow.png',
+						over : 'new_switchColumnRow.png'*/
+					}
+				}).render(topIconPanel);
+				colRowSwitcher.event.click = function(_$e, _component) {
+					if ($.type(_instance.filteredData) === 'array' && _instance.filteredData.length > 0) {
+						// 20210826 행열 전환 저장
+						_instance.meta.ColRowSwitch = !_instance.meta.ColRowSwitch;
+						var dataSource = _instance.dxItem.getDataSource();
+						var columns = dataSource.getAreaFields('column');
+						var rows = dataSource.getAreaFields('row');
+
+						var i = 0;
+						_.each(rows, function(_row) {
+							dataSource.field(_row.caption, {area: 'column', areaIndex : i});
+							i++;
+						});
+
+						var j = 0;
+						_.each(columns, function(_column) {
+							dataSource.field(_column.caption, {area: 'row', areaIndex : j});
+							j++;
+						});
+
+						dataSource.reload();
+					}
+					else {
+						WISE.alert(gMessage.get('WISE.message.page.common.nodata'));
+					}
+				};
+		    }
+		}
+		
+
+
+        /* 2021-07-14 jhseo 고용정보원 피벗그리드 일 때 사이즈 레이아웃 버튼 추가*/
+        var sizelayoutBtn = function(){
+			if(topIconPanel.find('#'+_instance.itemid + '_sizeLayout').length !== 0) return;
+			var sizeLayout = new WISE.libs.Dashboard.item.FunctionButton({
+				id: _instance.itemid + '_sizeLayout',
+				text: '레이아웃',
+				image: {
+					path : WISE.Constants.context+"/resources/main/images",
+					standard : 'ico_layout.png',
+					selected : 'ico_layout.png',
+					over : 'ico_layout.png'
+				}
+			}).render(topIconPanel);
+			sizeLayout.event.click = function(_$e, _component) {
+				var p = $('#editPopover').dxPopover('instance');
+                var selectOne = _component.id;
+                selectOne = selectOne.split("_item").shift();
+				for(i=0; i< gDashboard.itemGenerateManager.dxItemBasten.length; i++){
+					if(selectOne == gDashboard.itemGenerateManager.dxItemBasten[i].ComponentName){
+						pivotItem = gDashboard.itemGenerateManager.dxItemBasten[i];
+						break;
+					}
+				}
+				// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+				var target;
+				target = '#' + _instance.itemid + '_sizeLayout';
+
+				var isChanged = false;
+				p.option({
+					// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+					target: target,
+					onContentReady: function() {
+						gDashboard.fontManager.setFontConfigForEditText('editPopover');
+					},
+					contentTemplate: function(contentElement) {
+						contentElement.append('<div id="' + pivotItem.itemid + '_rowHeaderLayout">');
+						/* DOGFOOT hsshim 1220
+						 * 틀고정 기능 추가
+						 */
+						contentElement.append('<div id="' + pivotItem.itemid + '_scrollMode">');
+						$('#' + pivotItem.itemid + '_rowHeaderLayout').dxRadioGroup({
+							width: 150,
+							dataSource: ['소형', '테이블 형식'],
+							value: pivotItem.Pivot['LayoutType'] != undefined && pivotItem.Pivot['LayoutType'] ==	'standard' ? '테이블 형식' : '소형',
+							onValueChanged: function(e) {
+								pivotItem.Pivot['LayoutType'] = e.value === '소형' ? 'tree' : 'standard';
+								pivotItem.tracked = !pivotItem.Pivot['LayoutType'] == 'standard';
+
+
+								pivotItem.meta = pivotItem.Pivot;
+								pivotItem.dxItem.option('rowHeaderLayout', pivotItem.Pivot['LayoutType']);
+
+							}
+						});
+						/* DOGFOOT hsshim 1220
+						 * 틀고정 기능 추가
+						 */
+						$('#' + pivotItem.itemid + '_scrollMode').dxCheckBox({
+							width: 150,
+							text: '사이즈 자동 맞추기',
+							value: pivotItem.Pivot.AutoSizeEnabled,
+							onValueChanged: function(e) {
+								var isPaging = userJsonObject.menuconfig.Menu.PIVOT_PAGING_OPTION && pivotItem.Pivot.PagingOptions.PagingEnabled;
+								if (e.value) {
+									pivotItem.dxItem.element().parent().css('width', 'auto');
+									if(isPaging){
+										pivotItem.dxItem.element().closest('.dashboard-item').attr("style","height:100%!important");
+										$("#" + pivotItem.itemid + "_bas").height("calc(100% - 50px)");
+										pivotItem.pager()
+									}else{
+										pivotItem.dxItem.element().closest('.dashboard-item').attr("style","height:100%!important");
+										$("#" + pivotItem.itemid + "_bas").height("calc(100% - 50px)");
+										$('#pivotPager_' + pivotItem.itemid).remove();
+									}
+									pivotItem.dxItem.element().closest('.dashboard-item').removeClass('pivot-scroll');
+									pivotItem.dxItem.option('height', pivotItem.dxItem.element().parent().height());
+									pivotItem.Pivot.AutoSizeEnabled = true;
+								} else {
+									pivotItem.dxItem.element().parent().css('width', '0px');
+									pivotItem.dxItem.element().closest('.dashboard-item').addClass('pivot-scroll');
+									if(isPaging && gDashboard.structure.Layout == 'G'){
+										pivotItem.dxItem.element().closest('.dashboard-item').attr("style","height:calc(100% - 50px)!important");
+										$("#" + pivotItem.itemid + "_bas").height("100%");
+										pivotItem.pager()
+										
+									}else{
+										if(gDashboard.hasTab){
+                                            pivotItem.dxItem.element().closest('.dashboard-item').attr("style","height:calc(100% - 20px)!important");
+											$("#" + pivotItem.itemid + "_bas").height("100%");
+											$('#pivotPager_' + pivotItem.itemid).remove();
+										}else{
+											pivotItem.dxItem.element().closest('.dashboard-item').attr("style","height:100%!important");
+											$("#" + pivotItem.itemid + "_bas").height("100%");
+											$('#pivotPager_' + pivotItem.itemid).remove();
+										}
+										
+									}
+									pivotItem.dxItem.option('width', 'auto');
+									pivotItem.dxItem.option('height', 'auto');
+									pivotItem.Pivot.AutoSizeEnabled = false;
+								}
+								pivotItem.dxItem.repaint();
+							}
+						});
+						// 끝
+					}
+				});
+				p.option('visible', !(p.option('visible')));
+			}
+        }
+
+		/* goyong ktkang 측정값 행열 전환기능 뷰어에 추가  20210603 */
+		var measureSwitcherBtn = function(){
+			// 2021-07-13 jhseo 고용정보원 대시보드+뷰어일때만 측정값 위치변환 아이콘을 제거해달라고함
+			if(!(reportType == 'ListViewer' && gDashboard.reportType == 'DashAny')){
+				/* 2020.12.18 mksong 피벗그리드 행열전환 아이콘 중복 생성 오류 수정 dogfoot */
+				if(topIconPanel.find('#'+_instance.itemid + '_switchMeasurePosition').length !== 0) return;
+				var measureSwitcher = new WISE.libs.Dashboard.item.FunctionButton({
+					id: _instance.itemid + '_switchMeasurePosition',
+					text: gMessage.get('WISE.message.page.widget.pivot.switchMeasurePosition'),
+					image: {
+						path : WISE.Constants.context+"/resources/main/images",
+						standard : 'ico_colTotalsPosition.png',
+						selected : 'ico_colTotalsPosition.png',
+						over : 'ico_colTotalsPosition.png'
+					}
+				}).render(topIconPanel);
+				measureSwitcher.event.click = function(_$e, _component) {
+					var switchOption = _instance.dxItem.option('dataFieldArea');
+
+					if(switchOption == 'column') {
+						_instance.dxItem.option('dataFieldArea', 'row');
+						_instance.meta['DataFieldPosition'] = 'row'
+					} else {
+						_instance.dxItem.option('dataFieldArea', 'column');
+						_instance.meta['DataFieldPosition'] = 'column'
+					}
+				};
+			}
+		}
+		
+		/*dogfoot 뷰어 총합계,열합계 버튼 추가 shlim 20210728*/
+		var showTotalBtn = function(){
+			if(topIconPanel.find('#'+_instance.itemid + '_showTotal').length !== 0) return;
+			var showTotal = new WISE.libs.Dashboard.item.FunctionButton({
+				id: _instance.itemid + '_showTotal',
+				text: '열/행 합계 보기',
+				image: {
+					path : WISE.Constants.context+"/resources/main/images",
+					standard : 'ico_totals.png',
+					selected : 'ico_totals.png',
+					over : 'ico_totals.png'
+				}
+			}).render(topIconPanel);
+			showTotal.event.click = function(_$e, _component) {
+				var p = $('#editPopover').dxPopover('instance');
+                var selectOne = _component.id;
+                selectOne = selectOne.split("_item").shift();
+				for(i=0; i< gDashboard.itemGenerateManager.dxItemBasten.length; i++){
+					if(selectOne == gDashboard.itemGenerateManager.dxItemBasten[i].ComponentName){
+						pivotItem = gDashboard.itemGenerateManager.dxItemBasten[i];
+						break;
+					}
+				}
+				// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+				var target;
+				target = '#' + _instance.itemid + '_showTotal';
+
+				var isChanged = false;
+				p.option({
+					// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+					target: target,
+					onContentReady: function() {
+						gDashboard.fontManager.setFontConfigForEditText('editPopover');
+					},
+					contentTemplate: function(contentElement) {
+						contentElement.append('<div id="' + pivotItem.itemid + '_showColumnTotals">');
+						contentElement.append('<div id="' + pivotItem.itemid + '_showRowTotals">');
+						$('#' + pivotItem.itemid + '_showColumnTotals').dxCheckBox({
+							width: 150,
+							value: pivotItem.Pivot['ShowColumnTotals'] ? true : false,
+							text: '열 합계 표시',
+							onValueChanged: function(e) {
+								pivotItem.Pivot['ShowColumnTotals'] = e.value;
+								pivotItem.meta = pivotItem.Pivot;
+								pivotItem.dxItem.option('showColumnTotals', pivotItem.Pivot['ShowColumnTotals']);
+							}
+						});
+
+						$('#' + pivotItem.itemid + '_showRowTotals').dxCheckBox({
+							width: 150,
+							value: pivotItem.Pivot['ShowRowTotals'] ? true : false,
+							text: '행 합계 표시',
+							onValueChanged: function(e) {
+								pivotItem.Pivot['ShowRowTotals'] = e.value;
+								pivotItem.meta = pivotItem.Pivot;
+								pivotItem.dxItem.option('showRowTotals', pivotItem.Pivot['ShowRowTotals']);
+							}
+						});
+						// 끝
+					}
+				});
+				p.option('visible', !(p.option('visible')));
+			}
+        }
+		
+		var showGrandTotalBtn = function(){
+			if(topIconPanel.find('#'+_instance.itemid + '_showGrandTotal').length !== 0) return;
+			var showGrandTotal = new WISE.libs.Dashboard.item.FunctionButton({
+				id: _instance.itemid + '_showGrandTotal',
+				text: '총 합계 보기',
+				image: {
+					path : WISE.Constants.context+"/resources/main/images",
+					standard : 'ico_grandTotals.png',
+					selected : 'ico_grandTotals.png',
+					over : 'ico_grandTotals.png'
+				}
+			}).render(topIconPanel);
+			showGrandTotal.event.click = function(_$e, _component) {
+				var p = $('#editPopover').dxPopover('instance');
+                var selectOne = _component.id;
+                selectOne = selectOne.split("_item").shift();
+				for(i=0; i< gDashboard.itemGenerateManager.dxItemBasten.length; i++){
+					if(selectOne == gDashboard.itemGenerateManager.dxItemBasten[i].ComponentName){
+						pivotItem = gDashboard.itemGenerateManager.dxItemBasten[i];
+						break;
+					}
+				}
+				// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+				var target;
+				target = '#' + _instance.itemid + '_showGrandTotal';
+
+				var isChanged = false;
+				p.option({
+					// 2019.12.16 수정자 : mksong 뷰어 속성 적용 위한 수정 dogfoot
+					target: target,
+					onContentReady: function() {
+						gDashboard.fontManager.setFontConfigForEditText('editPopover');
+					},
+					contentTemplate: function(contentElement) {
+						contentElement.append('<div id="' + pivotItem.itemid + '_showColumnGrandTotals">');
+						contentElement.append('<div id="' + pivotItem.itemid + '_showRowGrandTotals">');
+						/* DOGFOOT hsshim 1220
+						 * 틀고정 기능 추가
+						 */
+						$('#' + pivotItem.itemid + '_showColumnGrandTotals').dxCheckBox({
+							width: 150,
+							value: pivotItem.Pivot['ShowColumnGrandTotals'] == undefined || pivotItem.Pivot['ShowColumnGrandTotals'] == false ? false : true,
+							text: '열 총합계 표시',
+							onValueChanged: function(e) {
+								pivotItem.Pivot['ShowColumnGrandTotals'] = e.value == false ? false : true;
+								pivotItem.meta = pivotItem.Pivot;
+								pivotItem.dxItem.option('showColumnGrandTotals', pivotItem.Pivot['ShowColumnGrandTotals']);
+							}
+						});
+						
+						$('#' + pivotItem.itemid + '_showRowGrandTotals').dxCheckBox({
+							width: 150,
+							value: pivotItem.Pivot['ShowRowGrandTotals'] == undefined || pivotItem.Pivot['ShowRowGrandTotals'] == false ? false : true,
+							text: '행 총합계 표시',
+							onValueChanged: function(e) {
+								pivotItem.Pivot['ShowRowGrandTotals'] = e.value == false ? false : true;
+								pivotItem.meta = pivotItem.Pivot;
+								pivotItem.dxItem.option('showRowGrandTotals', pivotItem.Pivot['ShowRowGrandTotals']);
+							}
+						});
+						// 끝
+					}
+				});
+				p.option('visible', !(p.option('visible')));
+			}
+        }
+		
+		// 20200608 ajkim 텍스트 입력 기능 추가 dogfoot
+		var setTextLabel = function(text) {
+			if(!text) text = '';
+			if($('#' + _instance.itemid + '_text').length === 0){
+				var textHtml = '<ul class="lm_text" title="' + text + '" id="' + _instance.itemid + '_text">' + text + '</ul>';		
+					$('#' + _instance.ComponentName + ' .lm_controls').prepend($(textHtml));
+			}else{
+				$('#' + _instance.itemid + '_text').text(text);
+				$('#' + _instance.itemid + '_text').attr('title', text);
+			}
+			
+			if(text === '') $('#' + _instance.itemid + '_text').attr('style', 'border: none; display:none;');
+			else $('#' + _instance.itemid + '_text').attr('style', '');
+		}
+
+		var pivotDatagridViewBtn = function() {
+			if(topIconPanel.find('#'+_instance.itemid + '_dataGridView').length !== 0) return;
+			var pivotDatagridView = new WISE.libs.Dashboard.item.FunctionButton({
+				id: _instance.itemid + '_dataGridView',
+				text: gMessage.get('WISE.message.page.widget.pivot.pivotDatagridView'),
+				image: {
+					standard : 'ico_new01.png',
+					selected : 'ico_new01.png',
+					// 2020.01.16 mksong 아이콘 변경 dogfoot
+					over : 'ico_new01.png'
+					
+					/*standard : 'new_ico_new01.png',
+					selected : 'new_ico_new01.png',
+					// 2020.01.16 mksong 아이콘 변경 dogfoot
+					over : 'new_ico_new01.png'*/
+				}
+			}).render(topIconPanel);
+			pivotDatagridView.event.click = function(_$e, _component) {
+				_instance.drillThruPop = new WISE.libs.Dashboard.item.PivotGridGenerator.DrillThroughPopup(_instance,{});
+				
+				if(userJsonObject.menuconfig.Menu.QRY_CASH_USE){
+					//캐시 사용중일 경우 filteredData 조회
+					var SQLikeUtil = WISE.libs.Dashboard.Query.likeSql;
+					_instance.filteredData = SQLikeUtil.doSqlLike(_instance.dataSourceId, _instance.sqlConfig, _instance,true);
+					
+					if(_instance.filteredData == undefined){
+						_instance.filteredData = [];
+					}
+					
+					if(!($.isEmptyObject(gDashboard.customFieldManager.fieldInfo)) && _instance.calculatedFields.length > 0) {
+						var fieldList = gDashboard.customFieldManager.fieldInfo[_instance.dataSourceId];
+						if (fieldList) {
+							fieldList.forEach(function(field) {
+								gDashboard.customFieldManager.addCustomFieldsToDataSource(field, _instance.filteredData, _instance.calculatedFields);
+							});
+						}
+					}
+				}
+				
+				if(typeof _instance.filteredData == 'undefined' || _instance.filteredData.length == 0) {
+					WISE.alert('조회된 데이터가 없습니다.');
+					gProgressbar.hide();
+					return false;
+				}
+				
+				gProgressbar.show();
+				var dataSet = {};
+				var itemName;
+				var colList = [];
+				dataSet.data = _instance.filteredData;
+				$.each(_instance.dataSourceConfig.fields, function(_ii,_ee){
+					colList.push({'name': _ee.caption});
+				});
+				dataSet.meta = colList;
+				itemName = gDashboard.structure.ReportMasterInfo.name;
+
+				if(itemName == "") {
+					itemName = "새 보고서";
+				}else if(itemName == undefined){
+					itemName = gDashboard.structure.ReportMasterInfo.name;
+				}
+				
+				_instance.drillThruPop.dataset = dataSet;
+				_instance.drillThruPop.show({
+					itemNm: itemName,
+					detail: false
+				});
+
+				gProgressbar.hide();
+			};
+		}
+		
+		if (WISE.Constants.browser === 'IE9') return;
+		switch(_instance.type){
+		    case 'SIMPLE_CHART':
+			case 'BUBBLE_CHART':
+		    	renderSimpleSeriesSelectorBtn();
+		    	if(WISE.Constants.editmode === 'viewer'){
+		    		if(topIconPanel.children().length != 0){
+						topIconPanel.empty();
+					}
+					/* goyong ktkang 뷰어에서 차트 기능 사용하도록 수정  20210514 */
+		    		chartOptionPopupHtml();
+		    		if(WISE.Constants.editmode != 'viewer'){
+		    			$('<div id="editPopup">').dxPopup({
+		    				height: 'auto',
+		    				width: 500,
+		    				visible: false,
+		    				showCloseButton: false
+		    			}).appendTo('#tab5primary');
+		    			// settings popover
+		    			$('<div id="editPopover">').dxPopover({
+		    				height: 'auto',
+		    				width: 'auto',
+		    				position: 'bottom',
+		    				visible: false
+		    			}).appendTo('#tab5primary');
+
+		    			$('<div id="editPopup2">').dxPopup({
+		    				height: 'auto',
+		    				width: 500,
+		    				visible: false,
+		    				showCloseButton: false
+		    			}).appendTo('#tab4primary');
+		    			// settings popover
+		    			$('<div id="editPopover2">').dxPopover({
+		    				height: 'auto',
+		    				width: 'auto',
+		    				position: 'bottom',
+		    				visible: false
+		    			}).appendTo('#tab4primary');
+		    		} else{
+		    			/* goyong ktkang 탭컨테이너에서 차트 기능 오류 수정  20210604 */
+		    			$('.functiondo_' + _instance.itemid).on('click',function(e){
+		    				_instance.functionDo(this.id);	
+		    			});
+						
+		    			$('#editPopup').dxPopup({
+		    				height: 'auto',
+		    				width: 500,
+		    				visible: false,
+		    				showCloseButton: false
+		    			});
+		    			// settings popover
+		    			$('#editPopover').dxPopover({
+		    				height: 'auto',
+		    				width: 'auto',
+		    				position: 'bottom',
+		    				visible: false
+		    			});
+
+		    			$('#editPopup2').dxPopup({
+		    				height: 'auto',
+		    				width: 500,
+		    				visible: false,
+		    				showCloseButton: false
+		    			});
+		    			// settings popover
+		    			$('#editPopover2').dxPopover({
+		    				height: 'auto',
+		    				width: 'auto',
+		    				position: 'bottom',
+		    				visible: false
+		    			});
+		    		}
+		    		trackingClearBtn();
+		    	}else
+		    		trackingClearBtn();
+
+		    	//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+		    	if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+		    		exportBtn();
+		    	}
+
+		    	drillUpBtn();
+		    	break;
+			case 'DATA_GRID':
+			case 'PIE_CHART':
+			case 'STAR_CHART':
+			case 'RANGE_BAR_CHART':
+			case 'RANGE_AREA_CHART':
+			case 'TIME_LINE_CHART':
+				if(WISE.Constants.editmode === 'viewer'){
+		    		if(topIconPanel.children().length != 0){
+						topIconPanel.empty();
+					}
+		    		//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					}
+		    		trackingClearBtn();
+					drillUpBtn();
+				}else{
+					//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					}
+					trackingClearBtn();
+					drillUpBtn();
+				}
+				break;
+			case 'CARD_CHART':
+				/* DOGFOOT mksong 2020-08-05 카드 이미지 다운로드 */
+				if(WISE.Constants.editmode === 'viewer'){
+					 //2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					} 	//TODO : 기능 개발
+				}
+				else{
+					 //2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					}
+					 /* DOGFOOT mksong 2020-08-06 카드 마스터필터 초기화 변경 */
+					 trackingClearBtn();
+					/* DOGFOOT mksong 2020-08-05 카드 드릴업 주석 처리*/
+//					if(_instance.IO && _instance.IO['IsDrillDownEnabled'] !== null) {
+//						_instance.DrilldownClearId = _instance.itemid + '_topicon_drilldown_clear';
+//						var DrillDownClearHtml = '<li id="' + _instance.DrilldownClearId + '" title="드릴업" class="back"></li>';
+//						topIconPanel.find('.lm_close').before(DrillDownClearHtml);
+//					}
+				}
+				break;
+			// 20200601 ajkim 패널 선택 기능 필요하지 않은 아이템 주석처리 dogfoot
+			/*dogfoot d3 차트 다운로드 기능 추가 shlim 20200729*/
+			case 'HISTOGRAM_CHART':
+			case 'WATERFALL_CHART':
+			case 'BIPARTITE_CHART':
+			case 'SANKEY_CHART':
+			case 'HEATMAP':
+			case 'HEATMAP2':
+			case 'RECTANGULAR_ARAREA_CHART':
+			case 'WORD_CLOUD':
+			case 'BUBBLE_D3':
+			case 'FORCEDIRECT':
+			case 'FORCEDIRECTEXPAND':
+			case 'HIERARCHICAL_EDGE':
+			case 'BOX_PLOT':
+			case 'DEPENDENCY_WHEEL':
+			case 'SEQUENCES_SUNBURST':
+			case 'LIQUID_FILL_GAUGE':
+			case 'DIVERGING_CHART':
+			case 'BUBBLE_PACK_CHART':
+			case 'DENDROGRAM_BAR_CHART':
+			case 'CALENDAR_VIEW_CHART':
+			case 'CALENDAR_VIEW2_CHART':
+			case 'CALENDAR_VIEW3_CHART':
+			case 'COLLAPSIBLE_TREE_CHART':
+				trackingDataContainerBtn(_instance.type);
+				trackingClearBtn();
+				//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+				if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+					exportBtn();
+				}
+				break;
+			case 'PARALLEL_COORDINATE':
+			case 'WORD_CLOUD_V2':
+			case 'SCATTER_PLOT':
+			case 'COORDINATE_LINE':
+			case 'COORDINATE_DOT':
+			case 'SYNCHRONIZED_CHARTS':
+			case 'SCATTER_PLOT2':
+			case "HISTORY_TIMELINE":
+			case "ARC_DIAGRAM":
+			case "RADIAL_TIDY_TREE":
+			case "SCATTER_PLOT_MATRIX":
+				//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+				if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+					exportBtn();
+				}
+				trackingClearBtn();
+				break;
+			case 'FUNNEL_CHART':
+			case 'PYRAMID_CHART':
+				trackingDataContainerBtn(_instance.type);
+				//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+				if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+					exportBtn();
+				}
+				trackingClearBtn();
+				drillUpBtn();
+				break;
+			case 'TEXTBOX':
+				$('#'+_instance.itemid).css('display','block');
+				//2020.02.05 mksong 텍스트박스 불러오기 수정 dogfoot
+				_instance.dxItem = $('#'+_instance.itemid).dxHtmlEditor({
+					value: _instance.meta ? _instance.meta.Text : '',
+					toolbar: {
+						items: [
+							"undo", "redo", "separator",
+							{
+								formatName: "font",
+								formatValues: ["Arial", "Courier New", "Georgia", "Impact", "Lucida Console", "Tahoma", "Times New Roman", "Verdana"]
+							},
+							{
+								formatName: "size",
+								formatValues: ["8pt", "10pt", "12pt", "14pt", "18pt", "24pt", "36pt"]
+							},
+							
+							"separator", "bold", "italic", "strike", "underline", "separator",
+							"alignLeft", "alignCenter", "alignRight", "alignJustify", "separator",
+							"orderedList", "bulletList", "separator",
+							"color", "background", "separator",
+							"link", "image", "separator",
+							"clear", "codeBlock", "blockquote"
+						]
+					},
+					mediaResizing: {
+						enabled: true
+					},
+					onFocusOut: function(e) {
+						var text = "";
+						$('#'+_instance.ComponentName).find('p').each(function(_i, _e) { // texteditor 안의  내용 추가
+							text += _e.outerHTML.toString();
+						});
+						
+						_instance.Text = text;
+						_instance.setTextBox();
+						_instance.TextBox.Text = text;
+						
+						// chart_xml 형식에 맞춤
+						//2019.12.27 ktkang 텍스트박스 내용 누적저장 오류 수정 dogfoot
+						var html = _instance.defaultHTML_DATA;
+						_instance.TextBox.HTML_DATA = html.substring(0, html.indexOf("</body>")) + text + html.substring(html.indexOf("</body>"));
+					}
+		//	        mentions: [{
+		//	            dataSource: self.DataItems,
+		//	            searchExpr: "text",
+		//	            displayExpr: "text"
+		//	        }]
+				}).dxHtmlEditor('instance');
+				
+				if(_instance.TextBox) {
+					if(_instance.TextBox.Text != undefined) {
+						$('#' + _instance.itemid).find('.dx-htmleditor-content').html(_instance.TextBox.Text);
+					}
+				}
+				break;
+			case 'TREEMAP':
+				if(WISE.Constants.editmode === 'viewer'){
+		    		if(topIconPanel.children().length != 0){
+						topIconPanel.empty();
+					}
+				}
+				//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+				if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+					exportBtn();
+				}
+				trackingClearBtn();
+				drillUpBtn();
+				trackingDataContainerBtn('TREEMAP');
+				break;
+				/* DOGFOOT syjin 카카오 지도 추가  20200820 */
+			case 'KAKAO_MAP':
+				//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+				if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+					exportBtn();
+				}
+				trackingClearBtn();
+				break;
+			case 'KAKAO_MAP2':	
+			case 'CHOROPLETH_MAP':
+				trackingDataContainerBtnChoropleth();
+				trackingClearBtn();
+				choroDrillUpBtn();
+//				if (_instance.IO && _instance.IO['MasterFilterMode']) {
+//					if(_instance.IO['MasterFilterMode'] != "Off"){
+//						_instance.trackingClearId = _instance.itemid + '_topicon_tracking_clear';
+//						
+//						var trackingClearHtml = '';
+//						trackingClearHtml += '<li><a id="' + _instance.trackingClearId + '" href="#">';
+//						trackingClearHtml += '<img src="' + WISE.Constants.context + '/images/cont_box_icon_filter_disable.png" ';
+//						trackingClearHtml += 'onMouseOver="this.src=\'' + WISE.Constants.context + '/images/cont_box_icon_filter_disable.png\'" '; 
+//						trackingClearHtml += 'onMouseOut="this.src=\'' + WISE.Constants.context + '/images/cont_box_icon_filter_disable.png\'" ';
+//						trackingClearHtml += 'alt="Clear Filters" title="Clear Filters"></a></li>';
+//						topIconPanel.append(trackingClearHtml);
+//						
+//						$("#" + _instance.trackingClearId).click(function(_e) {
+//							var clearTrackingImg = $(this).find('img')[0];
+//							if(clearTrackingImg.src.indexOf('cont_box_icon_filter_.png') > -1 ) {
+//								$('#' + _instance.itemid + '_tracking_data_container').html('');
+//								window[_instance.dashboardid].filterData(_instance.itemid, []);
+//								_instance.clearTrackingConditions();
+//							}
+//						});
+//					}
+//					
+//				}
+				break;
+			case 'PIVOT_GRID':
+				if(topIconPanel.children().length != 0){
+					topIconPanel.empty();
+				}
+				if (self.isDirectExportBtn) {
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					}
+				}
+				else {
+					if(WISE.Constants.editmode === 'viewer'){
+						if(gDashboard.reportType == 'AdHoc'){
+							if(topIconPanel.children().length != 0){
+								topIconPanel.empty();
+							}
+							columnSelector();
+							gridOptionBtn();
+						}
+
+						if(WISE.Constants.editmode != 'viewer'){
+							
+							$('<div id="editPopup">').dxPopup({
+								height: 'auto',
+								width: 500,
+								visible: false,
+								showCloseButton: false
+							}).appendTo('#tab5primary');
+							// settings popover
+							$('<div id="editPopover">').dxPopover({
+								height: 'auto',
+								width: 'auto',
+								position: 'bottom',
+								visible: false
+							}).appendTo('#tab5primary');
+							
+							$('<div id="editPopup2">').dxPopup({
+								height: 'auto',
+								width: 500,
+								visible: false,
+								showCloseButton: false
+							}).appendTo('#tab4primary');
+							// settings popover
+							$('<div id="editPopover2">').dxPopover({
+								height: 'auto',
+								width: 'auto',
+								position: 'bottom',
+								visible: false
+							}).appendTo('#tab4primary');
+						}else{
+							$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('.functiondo').on('click',function(e){
+								_instance.functionDo(_instance.id);
+							});
+							
+							$('#'+_instance.itemid+'_topicon').find('.functiondo').on('click',function(e){
+								_instance.functionDo(_instance.id);
+							});
+							
+							$('#editPopup').dxPopup({
+								height: 'auto',
+								width: 500,
+								visible: false,
+								showCloseButton: false
+							});
+							// settings popover
+							$('#editPopover').dxPopover({
+								height: 'auto',
+								width: 'auto',
+								position: 'bottom',
+								visible: false
+							});
+							
+							$('#editPopup2').dxPopup({
+								height: 'auto',
+								width: 500,
+								visible: false,
+								showCloseButton: false
+							});
+							// settings popover
+							$('#editPopover2').dxPopover({
+								height: 'auto',
+								width: 'auto',
+								position: 'bottom',
+								visible: false
+							});
+						}	
+					}
+					setTextLabel(_instance.memoText);
+
+				    // 2021-09-10 jhseo 고용정보원09 쿼리 캐싱 작업 이후 삭제
+					//colRowSwitcherBtn();
+					measureSwitcherBtn();
+					/*dogfoot 뷰어 총합계,열합계 버튼 추가 shlim 20210728*/
+					showTotalBtn();
+					showGrandTotalBtn();
+					if(reportType != 'Editor'){
+						sizelayoutBtn();
+					}
+
+					if(gDashboard.reportType == 'AdHoc' || gDashboard.reportType == 'DashAny'){
+						pivotDatagridViewBtn();
+					}
+					//2020.11.10 MKSONG 다운로드 권한 아이템 개별일 경우 오류 수정 DOGFOOT
+					if(gDashboard.structure.ReportMasterInfo.export_yn != 'N') {
+						exportBtn();
+					}
+					trackingClearBtn();
+				}
+				
+				break;	
+	    }
+		/*dogfoot 보고서 레이아웃 불러오기 리사이즈 수정 shlim 20200821*/
+		/*dogfoot shlim 보고서 레이아웃 설정 영역 수정 20200826*/													
+		setTextLabel(_instance.memoText);
+    	if(WISE.Constants.editmode === 'viewer'){
+    		if(gDashboard.goldenLayoutManager[WISE.Constants.pid] != undefined){
+    			gDashboard.goldenLayoutManager[WISE.Constants.pid].render_config_layout();
+    			//$("#reportContainer > div > div > div > .lm_header > .lm_controls").css('display','none');
+    		}
+		}else{
+			gDashboard.goldenLayoutManager.render_config_layout();
+		}
+	    
+		
+		
+		
+//		$('.functiondo').off('click').on('click',function(e){
+//			_instance.functionDo(this.id);	
+//		});
+	}
+
+	// 2020.05.21 ajkim 아이템별 menuItemGenerate 공통 처리 dogfoot
+	this.menuItemGenerate = function(_instance,_menuItemInstance){
+		var filterMenuHtml = "<h4 class=\"tit-level3\">필터링</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"editFilter\" class=\"functiondo\">" +
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_basicFilter.png\" alt=\"\"><span>필터 편집</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"clearFilter\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_ignoreMasterFilters.png\" alt=\"\"><span>초기화</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+
+		var InteractiveMenuHtml = "<h4 class=\"tit-level3\">상호작용</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-3\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"singleMasterFilter\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_singleMasterFilter.png\" alt=\"\"><span>단일 마스터<br>필터</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"multipleMasterFilter\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_multipleMasterFilter.png\" alt=\"\"><span>다중 마스터<br>필터</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"drillDown\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_drillDown.png\" alt=\"\"><span>드릴<br>다운</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+
+		var gridOptionMenuHtml = "<h4 class=\"tit-level3\">상호작용</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"gridOption\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_CGridAttr.png\" alt=\"\"><span>그리드 속성</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+		
+		/* DOGFOOT mksong 2020-08-05 카드 마스터필터 기능 추가 */
+		var InteractiveMenuHtmlForCard = "<h4 class=\"tit-level3\">상호작용</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-3\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"singleMasterFilter\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_singleMasterFilter.png\" alt=\"\"><span>단일 마스터<br>필터</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"multipleMasterFilter\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_multipleMasterFilter.png\" alt=\"\"><span>다중 마스터<br>필터</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"ignoreMasterFilter\" class=\"single-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_ignoreMasterFilters.png\" alt=\"\"><span>마스터 필터<br>무시</span>" + 
+		"				</a>" + 
+		"			</li>" +
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+		
+		var InteractiveOptionMenuHtml = "<h4 class=\"tit-level3\">상호작용 설정</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"crossFilter\" class=\"single-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_crossDataSourceFiltering.png\" alt=\"\"><span>교차 데이터<br>소스 필터링</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"ignoreMasterFilter\" class=\"single-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_ignoreMasterFilters.png\" alt=\"\"><span>마스터 필터<br>무시</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>" ;
+		
+		var dimensionMenuHtml = "<h4 class=\"tit-level3\">대상 차원</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetArgument\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_basicArguments.png\" alt=\"\"><span>차원</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetSeries\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_basicSeries.png\" alt=\"\"><span>차원 그룹</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+
+		var pieDimensionMenuHtml = "<h4 class=\"tit-level3\">대상 차원</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetArgument\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_arguments.png\" alt=\"\"><span>차원</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetSeries\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_series.png\" alt=\"\"><span>차원 그룹</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+		
+		//2020.11.10 mksong 카카오맵 마스터필터 타겟 옵션 dogfoot
+		var kakaoMapDimensionMenuHtml = "<h4 class=\"tit-level3\">대상 차원</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetAddress\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_corroflesMap.png\" alt=\"\"><span>주소</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"targetArgument\" class=\"multi-toggle-button functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_series.png\" alt=\"\"><span>차원</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+		/* goyong ktkang 명칭 변경  20210604 */
+		var adHocOptionHtml = "<h4 class=\"tit-level3\">맞춤보고서 옵션</h4>" + 
+		"<div class=\"panel-body\">" + 
+		"	<div class=\"design-menu rowColumn\">" + 
+		"		<ul class=\"desing-menu-list col-2\">" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"deltaValue\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_CChangeValue.png\" alt=\"\"><span>변동측정값</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"dataHighLight\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_CHightLight.png\" alt=\"\"><span>데이터<br>하이라이트</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"			<li>" + 
+		"				<a href=\"#\" id=\"gridOption\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_CGridAttr.png\" alt=\"\"><span>그리드 속성</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+//		"			<li>" + 
+//		"				<a href=\"#\" id=\"subqueryOption\" class=\"functiondo\">" + 
+//		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_CDataGroupSettings.png\" alt=\"\"><span>데이터집합 군 설정</span>" + 
+//		"				</a>" + 
+//		"			</li>" +
+		"			<li>" + 
+		"				<a href=\"#\" id=\"TopBottom\" class=\"functiondo\">" + 
+		"					<img src=\"" + WISE.Constants.context + "/resources/main/images/ico_editPeriods.png\" alt=\"\"><span>Top/Bottom값 설정</span>" + 
+		"				</a>" + 
+		"			</li>" + 
+		"		</ul>" + 
+		"	</div>" + 
+		"</div>";
+
+		if(WISE.Constants.editmode != 'viewer'){
+			if($('#data').length > 0){
+				$('#data').remove();
+			}
+			$('#menulist').addClass('col-2');
+			if($('#data').length == 0){
+				$('#menulist').append($('<li id="data" rel="panelDataA-2" class="itemDelete"><a href="#tab4primary" data-toggle="tab">'+ gMessage.get('WISE.message.page.widget.nav.properties') +'</a></li>'));	
+			}
+			
+			if($('#design').length > 0){
+				$('#design').remove();
+			}
+
+			if($('#tab5primary').length == 0){
+					$('.menu-comp.custom-menu').append('<div class="slide-ui responsive itemDelete" style="width:60%;"><a href="#" class="slide-ui-prev">prev</a><a href="#" class="slide-ui-next">next</a><ul id="tab5primary" class="slide-ui-list lnb-lst-tab"></ul></div>');
+			}
+
+			$('#tab5primary').empty();
+		}
+		
+		menuItemSlideUi();
+		lnbResponsive();
+
+		if(WISE.Constants.editmode != 'viewer'){
+			$('#tab4primary').empty();
+			if($('#tab4primary').length == 0){
+				$('#panelDataA').append($('<div id="tab4primary" class="panelDataA-2 tab-content itemDelete"></div>'));	
+			}
+		}else{
+			$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary').empty();
+			if($('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary').length == 0){
+				$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).children('.panel.data').append($('<div id="tab4primary" class="panelDataA-2 tab-content itemDelete"></div>'));	
+			}
+		}
+
+		switch(_instance.type){
+		    case 'SIMPLE_CHART':
+				/*dogfoot shlim 비정형보고서 상단 옵션 숨김처리 20200619*/
+				if(gDashboard.reportType == 'AdHoc'){
+			    	$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="계열 유형"><a href="#" id="editStyle" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_bar2.png" alt=""><span>계열 유형</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));
+                }else{
+                    $('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="계열 유형"><a href="#" id="editStyle" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_bar2.png" alt=""><span>계열 유형</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+			    	$('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));	
+					//yhkim 시계열분석 추가 20200907 dogfoot
+					$('<li class="slide-ui-item" title="시계열 분석"><a href="#" id="editTimeseries" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>시계열 분석</span></a></li>').appendTo($('#tab5primary'));	
+					$('<li class="slide-ui-item" title="차원 하이라이트"><a href="#" id="pointHighlight" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_point_highlight.png" alt=""><span>차원 하이라이트</span></a></li>').appendTo($('#tab5primary'));	
+                }
+				if(gDashboard.reportType != 'AdHoc' && !_instance.isAdhocItem){
+					$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml + dimensionMenuHtml).appendTo($('#tab4primary'));
+				}else{
+					var adhoc_html = gDashboard.reportType == 'AdHoc' ? adHocOptionHtml : filterMenuHtml + adHocOptionHtml;
+					if(WISE.Constants.editmode == 'viewer'){
+						$( adhoc_html).appendTo($('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary'));				
+					}else{
+						$( adhoc_html).appendTo($('#tab4primary'));	
+					}
+				}
+				break;
+		    case 'BUBBLE_CHART':
+                $('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+//		    	$('<li class="slide-ui-item" title="계열 유형"><a href="#" id="editStyle" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_bar2.png" alt=""><span>계열 유형</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));	
+		    	$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml + dimensionMenuHtml).appendTo($('#tab4primary'));
+		    	break;
+				
+			case 'DATA_GRID':
+			/* 20210201 AJKIM 데이터집합 뷰어 추가 dogfoot */
+				if(gDashboard.reportType === 'DSViewer'){
+					//20201209 AJKIM R 분석 기능 추가 dogfoot
+					if($('#data').length > 0){
+						$('#data').remove();
+					}
+					if($('#rdata').length > 0){
+						$('#rdata').remove();
+					}
+
+					// 필드 숨기기
+					$('#menulist:first-child').find('li').hide();
+					$('#r-menulist:first-child').find('li').hide();
+
+					// col-2 부분 삭제함으로써 셀 합치기
+					$('#menulist').removeClass('col-2');
+					if($('#data').length == 0){
+						$('#menulist').append($('<li id="data" rel="panelDataA-2" class="itemDelete"><a href="#" data-toggle="tab">필드</a></li>'));   
+					}
+					if($('#rdata').length == 0){
+						$('#r-menulist').append($('<li id="rdata" rel="panelDataB-2" class="itemDelete"><a href="#" data-toggle="tab">R 스크립트</a></li>'));   
+					}
+
+					if($('#design').length > 0){
+						$('#design').remove();
+					}
+
+				} else {
+					if(gDashboard.reportType != "StaticAnalysis"){
+						$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="그리드 라인"><a href="#" id="setGridLines" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_defaultStatus.png" alt=""><span>그리드 라인</span></a></li>').appendTo($('#tab5primary'));
+					}
+					
+					if(gDashboard.reportType != "StaticAnalysis"){
+						$('<li class="slide-ui-item" title="바 팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>바 팔레트</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="바 색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>바 색상 편집</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="셀 병합"><a href="#" id="allowGridCellMerge" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_totals.png" alt=""><span>셀 병합</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="열 머리글"><a href="#" id="showColumnHeaders" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_grandTotals.png" alt=""><span>열 머리글</span></a></li>').appendTo($('#tab5primary'));
+					}
+					/* DOGFOOT ktkang 그리드 페이징 설정 기능 구현  20200903 */
+					if(gDashboard.reportType != "StaticAnalysis" || _instance.Name === '데이터'){
+						$('<li class="slide-ui-item" title="페이징 설정"><a href="#" id="pagingSetting" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_layout.png" alt=""><span>페이징 설정</span></a></li>').appendTo($('#tab5primary'));
+					}
+					if(gDashboard.reportType != "StaticAnalysis"){
+						$('<li class="slide-ui-item" title="자동 줄 바꿈"><a href="#" id="wordWrap" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_layout.png" alt=""><span>자동 줄 바꿈</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="그리드 너비 조정"><a href="#" id="columnWidthMode" class="lnb-link more functiondo"><img id="columnWidthMode" src="'+WISE.Constants.context+'/resources/main/images/ico_rowTotalsPosition.png" alt=""><span>그리드 너비 조정</span></a></li>').appendTo($('#tab5primary'));
+						$('<li class="slide-ui-item" title="헤더 추가"><a href="#" id="addColumnHeader" class="lnb-link more functiondo"><img id="addColumnHeader" src="'+WISE.Constants.context+'/resources/main/images/ico_rowTotalsPosition.png" alt=""><span>헤더 추가</span></a></li>').appendTo($('#tab5primary'));
+					}
+					menuItemSlideUi();
+					$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				}
+				break;
+			case 'CARD_CHART':
+				$('#tab5primary').empty();
+				
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				/* DOGFOOT MKSONG 2020-07-29 카드 콘텐츠 배열 기능 추가 */
+				$('<li class="slide-ui-item" title="콘텐츠 배열"><a href="#" id="editArrange" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_Vlines.png" alt=""><span>콘텐츠 배열</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="델타 옵션"><a href="#" id="editDelta" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_triangle.png" alt=""><span>델타 옵션</span></a></li>').appendTo($('#tab5primary'));
+				/* DOGFOOT mksong 2020-07-21 카드 스파크라인 옵션 수정  */
+				$('<li class="slide-ui-item" title="스파크 라인 옵션"><a href="#" id="editSparkline" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_graph.png" alt=""><span>스파크 라인 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="서식 옵션"><a href="#" id="editFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_exchangeRate.png" alt=""><span>서식 옵션</span></a></li>').appendTo($('#tab5primary'));
+		
+				menuItemSlideUi();
+				lnbResponsive();
+				/* DOGFOOT mksong 2020-08-05 카드 마스터필터 기능 추가 */
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'PIE_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="데이터 레이블"><a href="#" id="editLabel" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_dataLabels.png" alt=""><span>데이터 레이블</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이블 위치"><a href="#" id="labelLocation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_dataLabelsPosition.png" alt=""><span>레이블 위치</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="툴팁"><a href="#" id="editTooltip" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_tooltips.png" alt=""><span>툴팁</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="스타일"><a href="#" id="editStyle" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_donut.png" alt=""><span>스타일</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));
+
+				$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml + pieDimensionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'COMBOBOX':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item"><a href="#" id="comboBoxType" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_checkmixradio.png" alt=""><span>리스트 타입</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="전체 보기"><a href="#" id="showAllValue" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_show_all_value.png" alt=""><span>전체 보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="데이터 검색"><a href="#" id="enableSearch" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>데이터 검색</span></a></li>').appendTo($('#tab5primary'));
+				
+				$(filterMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'LISTBOX':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="리스트 타입"><a href="#" id="listBoxType" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_checkmixradio.png" alt=""><span>리스트 타입</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="전체 보기"><a href="#" id="showAllValue" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_show_all_value.png" alt=""><span>전체 보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="데이터 검색"><a href="#" id="enableSearch" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>데이터 검색</span></a></li>').appendTo($('#tab5primary'));
+
+				$(filterMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'FUNNEL_CHART':
+			case 'PYRAMID_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이블 위치"><a href="#" id="labelLocation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_dataLabelsPosition.png" alt=""><span>레이블 위치</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="데이터 레이블"><a href="#" id="editLabel" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_dataLabels.png" alt=""><span>데이터 레이블</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="툴팁"><a href="#" id="editTooltip" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_tooltips.png" alt=""><span>툴팁</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'TREEVIEW':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="자동 확장"><a href="#" id="autoExpand" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_auto_expand.png" alt=""><span>자동 확장</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="데이터 검색"><a href="#" id="enableSearch" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>데이터 검색</span></a></li>').appendTo($('#tab5primary'));
+
+				$(filterMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'WORD_CLOUD':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));		
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'TEXTBOX':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));	
+
+				if(gDashboard.reportType !== 'RAnalysis'){
+					$(filterMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				}else{
+					//20201209 AJKIM R 분석 기능 추가 dogfoot
+					if($('#data').length > 0){
+						$('#data').remove();
+					}
+					if($('#rdata').length > 0){
+						$('#rdata').remove();
+					}
+
+					// 필드 숨기기
+					$('#menulist:first-child').find('li').hide();
+					$('#r-menulist:first-child').find('li').hide();
+
+					// col-2 부분 삭제함으로써 셀 합치기
+					$('#menulist').removeClass('col-2');
+					if($('#data').length == 0){
+						$('#menulist').append($('<li id="data" rel="panelDataA-2" class="itemDelete"><a href="#" data-toggle="tab">필드</a></li>'));   
+					}
+					if($('#rdata').length == 0){
+						$('#r-menulist').append($('<li id="rdata" rel="panelDataB-2" class="itemDelete"><a href="#" data-toggle="tab">R 스크립트</a></li>'));   
+					}
+
+					if($('#design').length > 0){
+						$('#design').remove();
+					}
+//					var text = "";
+//                    if(gDashboard.itemGenerateManager.dxItemBasten.length > 0){
+//                        text = gDashboard.itemGenerateManager.dxItemBasten[0].rScript;
+//                    }
+//
+//					var rScriptHtml = "<h4 class=\"tit-level3\">R 스크립트 입력</h4>" + 
+//					"<div class=\"panel-body\">" + 
+//					"	<div class=\"design-menu rowColumn\">" + 
+//						"<textarea id=\"rscript\" class=\"wise-text-input\" style=\"width: 100%; height: "+$('.panel-inner').height() * .7+'px'+"\"/>"
+//					"	</div>" + 
+//					"</div>";
+//					
+//					$(rScriptHtml).appendTo($('#tab4primary'));
+//					$('#rscript').text(text);
+//					
+//					$('#data a').text("R 스크립트");
+
+				}
+				
+				break;
+			case 'IMAGE':
+				if($('#data').length > 0){
+					$('#data').remove();
+				}
+				
+				// 필드 숨기기
+				$('#menulist:first-child').find('li').hide();
+				
+				// col-2 부분 삭제함으로써 셀 합치기
+				$('#menulist').removeClass('col-2');
+				if($('#data').length == 0){
+					$('#menulist').append($('<li id="data" rel="panelDataA-2" class="itemDelete"><a href="#tab4primary" data-toggle="tab">'+ gMessage.get('WISE.message.page.widget.nav.properties') +'</a></li>'));   
+				}
+				
+				if($('#design').length > 0){
+					$('#design').remove();
+				}
+				
+				// #tab5primary : slide_menu -> CS에서는 '디자인'
+				if($('#tab5primary').length == 0){
+				// 2020.01.16 mksong 영역 크기 조정 dogfoot
+					$('.menu-comp.custom-menu').append('<div class="slide-ui responsive itemDelete" style="width:60%;"><a href="#" class="slide-ui-prev">prev</a><a href="#" class="slide-ui-next">next</a><ul id="tab5primary" class="slide-ui-list lnb-lst-tab"></ul></div>');
+				}
+				
+				$('#tab5primary').empty();
+				
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));	
+				menuItemSlideUi();
+				
+				$('#tab4primary').empty();
+				if($('#tab4primary').length == 0){
+				   // append : 뒤 내용을 앞에 붙인다.
+				   $('#panelDataA').append($('<div id="tab4primary" class="panelDataA-2 tab-content itemDelete"></div>'));
+				}
+				var open = "" +
+				"<h4 class=\"tit-level3\">Open</h4>" +
+				"<div class=\"panel-body\">" +
+				"   <div class=\"design-menu rowColumn\">" +
+				"      <ul class=\"desing-menu-list col-1\">" +
+		  //      "      <ul class=\"desing-menu-list col-2\">" +
+				"         <li>" +
+				"            <a href=\"#\" id=\"loadImg\" class=\"functiondo\">" +
+				"               <img src=\"" + WISE.Constants.context + "/resources/main/images/ico_loadImages.png\" alt=\"\"><span>이미지 불러오기</span>" +
+				"            </a>" +
+				"         </li>" +
+		  //      "         <li>" +
+		  //      "            <a href=\"#\" id=\"imgportImg\" class=\"functiondo\">" +
+		  //      "               <img src=\"" + WISE.Constants.context + "/resources/main/images/ico_importImages.png\" alt=\"\"><span>이미지 가져오기</span>" +
+		  //      "            </a>" +
+		  //      "         </li>" +
+				"      </ul>" +
+				"   </div>" +
+				"   <div hidden=\"hidden\">" +
+				"      <form id=\"IMG_FORM\" name=\"imgForm\" method=\"post\" enctype=\"multipart/form-data\" accept-charset=\"UTF-8`\">" +
+				"         <div id=\"IMG_BUTTON\" class=\"image-ui\">" +
+				"            <input id=\"imgInput\" name=\"imgInput\" class=\"real-image\" type=\"file\" ></div>" +
+				"            <span id=\"imageText\">파일 선택하세요.</span>"  +
+				"         </div>" +
+				"      </form>" +
+				"      <a id=\"imageOkButton\" hidden=\"hidden\">확인</a>" +
+				"   </div>" +
+				"</div>";
+				
+				var sizeMode = "" +
+				"<h4 class=\"tit-level3\">Size Mode</h4>" +
+				  "<div class=\"panel-body\">" +
+				  "   <div class=\"design-menu rowColumn\">" +
+				  "      <ul class=\"desing-menu-list\">" +
+				  "         <li>" +
+				  "            <a href=\"#\" id=\"clip\" class=\"multi-toggle-button functiondo\">" +
+				  "                <img src=\""+ WISE.Constants.context + "/resources/main/images/ico_clip.png\" alt=\"\"><span>클립</span>" +
+				  "            </a>" +
+				  "         </li>" +
+				  "         <li>" +
+				  "            <a href=\"#\" id=\"stretch\" class=\"multi-toggle-button functiondo\">" +
+				  "               <img src=\"" + WISE.Constants.context + "/resources/main/images/ico_stretch.png\" alt=\"\"><span>늘리기</span>" +
+				  "            </a>" +
+				  "         </li>" +
+				  "         <li>" +
+				  "            <a href=\"#\" id=\"squeeze\" class=\"multi-toggle-button functiondo\">" +
+				  "               <img src=\"" + WISE.Constants.context + "/resources/main/images/ico_squeeze.png\" alt=\"\"><span>밀어넣기</span>" +
+				  "            </a>" +
+				  "         </li>" +
+				  "         <li>" +
+				  "            <a href=\"#\" id=\"zoom\" class=\"multi-toggle-button functiondo\">" +
+				  "               <img src=\"" + WISE.Constants.context + "/resources/main/images/ico_zoom.png\" alt=\"\"><span>확대/축소</span>" +
+				  "            </a>" +
+				  "         </li>" +
+				  "      </ul>" +
+				  "   </div>" +
+				  "</div>";
+		  
+				// ico_alignmentCenterRIght.png RIght 부분 -> I 오타
+				var alignment = "" +
+				"<h4 class=\"tit-level3\">Alignment</h4>" +
+				"<div class=\"panel-body\">" +
+				"   <div class=\"design-menu rowColumn\">" +
+				"      <ul class=\"desing-menu-list\">" +
+				"         <li class=\"menu-item-more full\">" +
+				"            <div class=\"menu-item-box\">" +
+				"               <div class=\"scrollbar\">" +
+				"                  <ul class=\"menu-item-box-list\">" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentTopLeft\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopLeft.png\" alt=\"\"><span>Alignment Top Left</span></a>" +
+				"                     </li>" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentTopCenter\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopCenter.png\" alt=\"\"><span>Alignment Top Center</span></a>" +
+				"                     </li>" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentTopRight\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopRight.png\" alt=\"\"><span>Alignment Top Right</span></a>" +
+				"                     </li>" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentCenterLeft\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterLeft.png\" alt=\"\"><span>Alignment Center Left</span></a>" +
+				"                     </li>" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentCenterCenter\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterCenter.png\" alt=\"\"><span>Alignment Center Center</span></a>" +
+				"                     </li>" +
+				"                     <li>" +
+				"                        <a href=\"#\" id=\"alignmentCenterRight\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterRIght.png\" alt=\"\"><span>Alignment Center Right</span></a>" +
+				"                     </li>" +
+				"					</ul>" +
+				"				  </div>" +
+				"               <a href=\"#\" class=\"item-more\">more</a>" +
+				"               <div class=\"mini-box\">" +
+				"                  <div class=\"add-item noitem\">" +
+				"                     <span class=\"add-item-head on\">Alignment</span>" +
+				"                     <ul class=\"add-item-body\">" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentTopLeft\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopLeft.png\" alt=\"\"><span>Alignment Top Left</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentTopCenter\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopCenter.png\" alt=\"\"><span>Alignment Top Center</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentTopRight\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentTopRight.png\" alt=\"\"><span>Alignment Top Right</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentCenterLeft\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterLeft.png\" alt=\"\"><span>Alignment Center Left</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentCenterCenter\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterCenter.png\" alt=\"\"><span>Alignment Center Center</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentCenterRight\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterRIght.png\" alt=\"\"><span>Alignment Center Right</span></a>" +
+				"                        </li>" +   
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentBottomLeft\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentLeftBottom.png\" alt=\"\"><span>Alignment Left Bottom</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentBottomCenter\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentCenterBottom.png\" alt=\"\"><span>Alignment Center Bottom</span></a>" +
+				"                        </li>" +
+				"                        <li>" +
+				"                           <a href=\"#\" id=\"alignmentBottomRight\" class=\"alignment-multi-toggle-button functiondo\"><img src=\"" + WISE.Constants.context + "/resources/main/images/ico_alignmentRightBottom.png\" alt=\"\"><span>Alignment Right Bottom</span></a>" +
+				"                        </li>" +
+				"                     </ul>" +
+				"                  </div>" +
+				"               </div>" +
+				"            </div>" +
+				"         </li>" +
+				"      </ul>" +
+				"   </div>" +
+				"</div>";
+				
+				// appendTo : 앞 내용을 뒤에 붙인다.
+				$(open).appendTo($('#tab4primary'));
+				$(sizeMode).appendTo($('#tab4primary'));
+				$(alignment).appendTo($('#tab4primary'));
+				
+				// 필드의 on 없애기 (필드 창을 숨겨서 굳이 넣을 필요는 없다)
+				$('#menulist').find('li').removeClass('on');
+				
+				// scripts.js에 tabUi -> Image 버전으로 추가
+				tabPropertyUi(); // 아이템 생성 and 포커스 맞춤
+				designMenuUi(); // 클릭 시 on
+				compMoreMenuUi();
+				
+				// editName popup
+				$('<div id="editPopup">').dxPopup({
+					height: 'auto',
+					width: 500,
+					visible: false,
+					showCloseButton: false
+				}).appendTo('#tab5primary');
+				
+				// 클릭 시 on
+		  //      $('.single-toggle-button').on('click', function(e) {
+		  //    	  e.preventDefault();
+		  //    	  $(this).toggleClass('on');
+		  //      });
+				// 클릭 시 하나만 on 적용
+				$('.multi-toggle-button').on('click', function(e) {
+					e.preventDefault();
+					var currentlyOn = $(this).parent().parent().find('.multi-toggle-button.on');
+					if ($(this)[0] !== currentlyOn[0]) {
+						currentlyOn.removeClass('on');
+					} else {
+						return; // 같은 것 클릭 시 사라지지 않게 함
+					}
+					$(this).toggleClass('on');
+				});
+				// Alignment의 경우 하나 클릭 시 두개 클릭
+				$('.alignment-multi-toggle-button').on('click', function(e) {
+					e.preventDefault();
+					var currentlyOn = $(this).parent().parent().parent().parent().parent().find('.multi-toggle-button.on'); // 클릭이 두군데 되야 한다.
+					$.each(currentlyOn, function(i, e) {
+						if ($(this)[i] !== e) {
+							currentlyOn.removeClass('on');
+						}
+						$(this).toggleClass('on');
+					});
+				});
+				if(_instance.SizeMode) {
+					if(_instance.SizeMode === 'Clip') {
+						$('#clip').addClass('on');
+					} else if(_instance.SizeMode === 'Squeeze') {
+						$('#squeeze').addClass('on');
+					} else if(_instance.SizeMode === 'Zoom') {
+						$('#zoom').addClass('on');
+					} else{
+						$('#stretch').addClass('on');
+					}
+				} else { // default: Clip
+					$('#clip').addClass('on');
+				}
+				
+				var vertical;
+				if(_instance.VerticalAlignment) {
+						vertical = _instance.VerticalAlignment;
+				} else {
+						vertical = "Center";
+				}
+				var horizontal;
+				if(_instance.HorizontalAlignment) {
+						horizontal = _instance.HorizontalAlignment;
+				} else {
+						horizontal = "Center";
+				}
+				var alignment = "alignment" + vertical + horizontal;
+				_instance.Alignment = alignment;
+				$('#' + alignment).addClass('on');
+				
+				$('#imgInput').change(function(){
+				   $('#imageOkButton').on('click', function(){
+					  //gProgressbar.show();
+					  var _imgFile = document.getElementById('imgInput').files[0];
+					  $('#imageText').html(_imgFile.name);
+					  if (_imgFile) {
+						 _instance.imgFilemeta = _imgFile;
+						 _instance.onLoadImage(_imgFile);
+					  }
+				   });
+				   $('#imageOkButton').click();
+				});
+				break;
+			case 'RANGE_BAR_CHART':
+			case 'RANGE_AREA_CHART':
+                $('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));
+		    	$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml + dimensionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			/*dogfoot timeline 차트 추가 shlim 20200828*/
+			case 'TIME_LINE_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	//$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+		    	$('<li class="slide-ui-item" title="애니메이션"><a href="#" id="editAnimation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>애니메이션</span></a></li>').appendTo($('#tab5primary'));
+		    	$(filterMenuHtml + InteractiveMenuHtmlForCard + dimensionMenuHtml).appendTo($('#tab4primary'));
+		    	break;
+			case 'RECTANGULAR_ARAREA_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'FORCEDIRECTEXPAND':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'FORCEDIRECT':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				break;
+			case 'SEQUENCES_SUNBURST':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'DIVERGING_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'HEATMAP2':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				if(gDashboard.reportType != "StaticAnalysis"){
+					$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				}
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'BUBBLE_D3':
+			case 'HEATMAP':
+			//case 'BUBBLE_PACK_CHART':
+			case 'WORD_CLOUD_V2':
+			case 'WORD_CLOUD':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'SANKEY_CHART':
+			case 'BIPARTITE_CHART':
+			case 'DEPENDENCY_WHEEL':
+			case 'DENDROGRAM_BAR_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'COLLAPSIBLE_TREE_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				break;
+			case 'RADIAL_TIDY_TREE':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'CALENDAR_VIEW_CHART':
+			case 'CALENDAR_VIEW2_CHART':
+			case 'CALENDAR_VIEW3_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				//				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'BUBBLE_PACK_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+//			case 'CALENDAR_VIEW2_CHART':
+//				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+//				//				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+//				break;
+			case 'LIQUID_FILL_GAUGE':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				/* DOGFOOT AJKIM 20201214 액체게이지 콘텐츠 배열 기능 추가 */
+				$('<li class="slide-ui-item" title="콘텐츠 배열"><a href="#" id="editArrange" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_Vlines.png" alt=""><span>콘텐츠 배열</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'HISTOGRAM_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+//				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'SCATTER_PLOT':
+			case 'SCATTER_PLOT2':
+			case 'SCATTER_PLOT_MATRIX':
+				if(gDashboard.reportType != "StaticAnalysis"){
+					$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+					$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				}
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				if(gDashboard.reportType != "StaticAnalysis"){
+					$('<li class="slide-ui-item" title="원 크기 설정"><a href="#" id="editAxisZ" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>원 크기 설정</span></a></li>').appendTo($('#tab5primary'));
+				}
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'PARALLEL_COORDINATE':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'WATERFALL_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="표기 형식"><a href="#" id="editTextFormat" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>표기 형식</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'BOX_PLOT':
+				if(gDashboard.reportType != "StaticAnalysis"){
+					$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+					$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				}
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="설정"><a href="#" id="editExpandOption" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'COORDINATE_LINE':
+			case 'COORDINATE_DOT':
+				if(gDashboard.reportType != "StaticAnalysis"){
+					$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+					$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				}
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="설정"><a href="#" id="editExpandOption" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'SYNCHRONIZED_CHARTS':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="X축 설정"><a href="#" id="editAxisX" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_xAxisSettings.png" alt=""><span>X축 설정</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="Y축 설정"><a href="#" id="editAxisY" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_yAxisSettings.png" alt=""><span>Y축 설정</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'HIERARCHICAL_EDGE':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'STAR_CHART':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				break;
+			case 'TREEMAP':
+				$('<li class="slide-ui-item" title="캡션보기"><a id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="팔레트"><a id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+				/* DOGFOOT syjin 카카오 지도 추가  20200820 */
+				/* DOGFOOT syjin 카카오 지도 옵션 ui 설정  20200907 */
+			case 'KAKAO_MAP':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+																																																																										 
+				//2020.09.22 mksong dogfoot 카카오지도 포인트타입 옵션 추가
+				//DOGFOOT syjin 2020-11-30 주소일 때는 폴리곤만, 좌표일 때는 마커만 나오도록 구현
+				//$('<li class="slide-ui-item" title="포인트 타입"><a href="#" id="showPointType" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>포인트 타입</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="마커 편집"><a href="#" id="editMarker" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_importMap.png" alt=""><span>마커 편집</span></a></li>').appendTo($('#tab5primary'));
+				//2020.09.22 mksong dogfoot 카카오지도 폴리곤 편집 추가
+				$('<li class="slide-ui-item" title="폴리곤 편집"><a href="#" id="editPolygon" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_importMap.png" alt=""><span>폴리곤 편집</span></a></li>').appendTo($('#tab5primary'));
+				//2020.10.19 mksong dogfoot 카카오지도 차트편집
+				$('<li class="slide-ui-item" title="차트 편집"><a href="#" id="editChart" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_bar2.png" alt=""><span>차트 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="저장 옵션"><a href="#" id="saveOption" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_save.png" alt=""><span>저장 옵션</span></a></li>').appendTo($('#tab5primary'));
+				
+				//2020.11.27 mksong 카카오맵 불필요한 옵션 제거 dogfoot
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				
+				//2020.12.15 mksong 카카오맵 포인트타입에 따른 메뉴 동기화 dogfoot
+				if(_instance.meta != undefined){
+					if(_instance.meta.ShowPointType == 'marker'){
+						$('#editPolygon').parent().css('display','none');
+						$('#editMarker').parent().css('display','');					
+					}else{
+						$('#editMarker').parent().css('display','none');
+						$('#editPolygon').parent().css('display','');
+					}	
+				}else{
+					$('#editMarker').parent().css('display','none');
+					$('#editPolygon').parent().css('display','');
+				}
+				break;
+			case 'KAKAO_MAP2':	
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				
+				//2020.11.17 mksong 카카오맵 불필요한 옵션 제거 dogfoot
+				$(InteractiveMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'ARC_DIAGRAM':
+		    	$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="회전"><a href="#" id="rotation" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rotate.png" alt=""><span>회전</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+//				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'HISTORY_TIMELINE':
+		    	$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="범례"><a href="#" id="editLegend" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+			    $('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃 옵션"><a href="#" id="editLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_alphabet.png" alt=""><span>레이아웃 옵션</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item"><a href="#" id="editZoom" title="줌 기능" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_use_search.png" alt=""><span>줌 기능</span></a></li>').appendTo($('#tab5primary'));
+
+				$(InteractiveMenuHtmlForCard).appendTo($('#tab4primary'));
+				break;
+			case 'CHOROPLETH_MAP':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="지도 불러오기"><a href="#" id="loadMap" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_importMap.png" alt=""><span>지도 불러오기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="탐색 잠금"><a href="#" id="lockNavigation" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_lockNavigation.png" alt=""><span>탐색 잠금</span></a></li>').appendTo($('#tab5primary'));
+				//2020.11.27 mksong 코로플레스지도 레이블 표기 dogfoot
+				$('<li class="slide-ui-item" title="레이블"><a href="#" id="showLabel" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_pointLabels.png" alt=""><span>레이블</span></a></li>').appendTo($('#tab5primary'));
+				//2020.10.07 MKSONG 코로플레스 툴팁 설정 기능 추가  dogfoot
+				$('<li class="slide-ui-item" title="툴팁"><a href="#" id="editTooltip" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_tooltips.png" alt=""><span>툴팁</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="범례"><a href="#" id="Showlegend" class="lnb-link slide-ui-item more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_showColorLegend.png" alt=""><span>범례</span></a></li>').appendTo($('#tab5primary'));
+				//$('<li class="slide-ui-item" title="팔레트"><a href="#" id="editPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_globalColor.png" alt=""><span>팔레트</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="색상 편집"><a href="#" id="customPalette" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_editColor.png" alt=""><span>색상 편집</span></a></li>').appendTo($('#tab5primary'));
+				
+				$(filterMenuHtml + InteractiveMenuHtml + InteractiveOptionMenuHtml).appendTo($('#tab4primary'));
+				break;
+			case 'PIVOT_GRID':
+				$('<li class="slide-ui-item" title="캡션보기"><a href="#" id="captionVisible" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_captionView.png" alt=""><span>캡션보기</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="이름 편집"><a href="#" id="editName" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_namEdit.png" alt=""><span>이름 편집</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="초기 상태"><a href="#" id="initState" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_defaultStatus.png" alt=""><span>초기 상태</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="합계"><a href="#" id="viewTotal" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_totals.png" alt=""><span>합계</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="총 합계"><a href="#" id="viewGrandTotal" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_grandTotals.png" alt=""><span>총 합계</span></a></li>').appendTo($('#tab5primary'));
+				$('<li class="slide-ui-item" title="레이아웃"><a href="#" id="rowHeaderLayout" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_layout.png" alt=""><span>레이아웃</span></a></li>').appendTo($('#tab5primary'));
+				if(gDashboard.reportType == 'AdHoc') {
+					$('<li class="slide-ui-item" title="총계 합계 위치"><a href="#" id="adhocTotalsPosition" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rowTotalsPosition.png" alt=""><span>총계 합계 위치</span></a></li>').appendTo($('#tab5primary'));
+				} else {
+					$('<li class="slide-ui-item" title="행 합계 위치"><a href="#" id="rowTotalsPosition" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_rowTotalsPosition.png" alt=""><span>행 합계 위치</span></a></li>').appendTo($('#tab5primary'));
+					$('<li class="slide-ui-item" title="열 합계 위치"><a href="#" id="columnTotalsPosition" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_colTotalsPosition.png" alt=""><span>열 합계 위치</span></a></li>').appendTo($('#tab5primary'));
+				}
+				/*dogfoot 피벗그리드 행열 위치 변경 기능 추가 shlim 202103*/
+//				if(gDashboard.devVersionFlag){
+					$('<li class="slide-ui-item" title="측정 값 위치"><a href="#" id="datafieldPosition" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_colTotalsPosition.png" alt=""><span>측정값 위치</span></a></li>').appendTo($('#tab5primary'));
+//				}
+				/* DOGFOOT ktkang Null 데이터 제거 구현  20200904 */
+//				$('<li class="slide-ui-item" title="빈 데이터 제거"><a href="#" id="nullDataRemove" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_autofitToContents.png" alt=""><span>빈 데이터 제거</span></a></li>').appendTo($('#tab5primary'));
+				if(WISE.Constants.editmode == 'viewer'){
+					$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary').empty();
+					if($('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary').length == 1){
+						$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#panelDataA').append('<div id="tab4primary" class="panelDataA-2 tab-content"></div>');
+					}
+				}else{
+					$('#tab4primary').empty();
+					if($('#tab4primary').length == 0){
+						$('#panelDataA').append($('<div id="tab4primary" class="panelDataA-2 tab-content"></div>'));	
+					}
+				}
+				/*dogfoot 피벗그리드 필터 표시 설정 추기 shlim 20201130*/
+				$('<li class="slide-ui-item" title="필터표시"><a href="#" id="filterMode" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_basicFilter.png" alt=""><span>필터 표시</span></a></li>').appendTo($('#tab5primary'));
+				
+				if(userJsonObject.menuconfig.Menu.PIVOT_PAGING_OPTION){
+					$('<li class="slide-ui-item" title="페이징 설정"><a href="#" id="pagingSetting" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_layout.png" alt=""><span>페이징 설정</span></a></li>').appendTo($('#tab5primary'));
+				}
+
+				/* DOGFOOT ktkang BMT 그룹핑 기능 구현  20201203 */
+				if(gDashboard.reportType == 'AdHoc') {
+					$('<li class="slide-ui-item" title="그룹핑 데이터"><a href="#" id="groupingData" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_basicFilter.png" alt=""><span>그룹핑 데이터</span></a></li>').appendTo($('#tab5primary'));
+				}
+				
+				var adhoc_html = gDashboard.reportType == 'AdHoc' ? adHocOptionHtml : filterMenuHtml + adHocOptionHtml;
+				var dashboard_html = filterMenuHtml + InteractiveOptionMenuHtml + gridOptionMenuHtml;
+
+				if(gDashboard.reportType == 'AdHoc' || _instance.isAdhocItem) {
+					// 2019.12.16 수정자 : mksong 뷰어 컬럼선택기 속성 부분 적용 위한 수정 dogfoot
+					if(WISE.Constants.editmode == 'viewer'){
+						$( adhoc_html).appendTo($('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary'));				
+					}else{
+						$( adhoc_html).appendTo($('#tab4primary'));	
+					}
+					// 2019.12.16 수정자 : mksong 뷰어 컬럼선택기 속성 부분 적용 위한 수정 끝 dogfoot
+				}else{
+					$( dashboard_html).appendTo($('#tab4primary'));
+				}
+				break;
+
+			}
+			if(gDashboard.reportType != "StaticAnalysis"){
+				$('<li class="slide-ui-item" title="텍스트 입력"><a href="#" id="editText" class="lnb-link more functiondo"><img src="'+WISE.Constants.context+'/resources/main/images/ico_ept_txt.png" alt=""><span>텍스트 입력</span></a></li>').appendTo($('#tab5primary'));
+			}
+			else{
+				$('#menulist').removeClass('col-2');
+
+				if($('#data').length > 0){
+					$('#data').remove();
+				}
+			}
+
+			//20201209 AJKIM R 분석 기능 추가 dogfoot
+			/* 20210201 AJKIM 데이터집합 뷰어 추가 dogfoot */
+			if(_instance.type !== 'IMAGE' && !(_instance.type === 'TEXTBOX' && gDashboard.reportType === 'RAnalysis') && gDashboard.reportType !== 'DSViewer'){
+				tabUi();
+				designMenuUi();
+				compMoreMenuUi();
+				$('.single-toggle-button').on('click', function(e) {
+					e.preventDefault();
+					$(this).toggleClass('on');
+				});
+				$('.multi-toggle-button').on('click', function(e) {
+					e.preventDefault();
+					var currentlyOn = $(this).parent().parent().find('.multi-toggle-button.on');
+					if ($(this)[0] !== currentlyOn[0]) {
+						currentlyOn.removeClass('on');
+					}
+					$(this).toggleClass('on');
+				});
+				if(_instance.meta && _instance.meta.FilterString && _instance.meta.FilterString.length > 0){
+					$('#editFilter').addClass('on');
+				}
+				// toggle 'on' status according to chart options
+				if (_instance.IO) {
+					if (_instance.IO['MasterFilterMode'] === 'Single') {
+						$('#singleMasterFilter').addClass('on');
+					} else if (_instance.IO['MasterFilterMode'] === 'Multiple') {
+						$('#multipleMasterFilter').addClass('on');
+					}
+					if (_instance.IO['IsDrillDownEnabled']) {
+						$('#drillDown').addClass('on');
+					}
+					if (_instance['IsMasterFilterCrossDataSource']) {
+						$('#crossFilter').addClass('on');
+					}
+					if (_instance.IO['IgnoreMasterFilters']) {
+						$('#ignoreMasterFilter').addClass('on');
+					}
+					if (_instance.IO['TargetDimensions'] === 'Argument') {
+						$('#targetArgument').addClass('on');
+					} else if (_instance.IO['TargetDimensions'] === 'Series') {
+						$('#targetSeries').addClass('on');
+					//2020.11.12 MKSONG 카카오맵 마스터필터 타겟 옵션 DOGFOOT
+					} else if (_instance.IO['TargetDimensions'] === 'Address') {
+						$('#targetAddress').addClass('on');
+					}
+				}
+				$('<div id="editPopup">').dxPopup({
+					height: 'auto',
+					width: 500,
+					visible: false,
+					showCloseButton: false
+				}).appendTo('#tab5primary');
+				// settings popover
+				$('<div id="editPopover">').dxPopover({
+					height: 'auto',
+					width: 'auto',
+					position: 'bottom',
+					visible: false
+				}).appendTo('#tab5primary');
+				
+				$('<div id="editPopup2">').dxPopup({
+					height: 'auto',
+					width: 500,
+					visible: false,
+					showCloseButton: false
+				}).appendTo('body');
+				// settings popover
+				$('<div id="editPopover2">').dxPopover({
+					height: 'auto',
+					width: 'auto',
+					position: 'bottom',
+					visible: false
+				}).appendTo('#tab4primary');
+			}
+			
+			if(WISE.Constants.editmode != 'viewer'){
+				$('#tab4primary .functiondo').on('click',function(e){
+					_menuItemInstance.functionDo(this.id);
+				});
+				$('#tab5primary .functiondo').on('click',function(e){
+					_instance.functionDo(this.id);
+					self.functionDo(_instance, this.id);
+				});
+			}else{
+				$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab4primary .functiondo').on('click',function(e){
+					_menuItemInstance.functionDo(this.id);
+				});
+				$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('#tab5primary .functiondo').on('click',function(e){
+					_instance.functionDo(this.id);
+					self.functionDo(_instance, this.id);
+				});
+			}
+	}
+	
+	this.functionDo = function(_instance, _f){
+		switch(_f){
+			case 'editText':
+				var p = $('#editPopup').dxPopup('instance');
+				p.option({
+					title: '텍스트 입력',
+					onContentReady: function() {
+						gDashboard.fontManager.setFontConfigForEditText('editPopup');
+					},
+					contentTemplate: function(contentElement) {
+						// initialize title input box
+						contentElement.append('<p>텍스트 라벨 입력</p><div id="' + _instance.itemid + '_textInput"></div>');
+		                var html = 	'<div style="padding-bottom:20px;"></div>' +
+									'<div class="modal-footer" style="padding-bottom:0px;">' +
+										'<div class="row center">' +
+											'<a id="ok-hide" href="#" class="btn positive ok-hide">확인</a>' +
+											'<a id="close" href="#" class="btn neutral close">취소</a>' +
+										'</div>' +
+									'</div>';
+						contentElement.append(html);
+		                
+		                $('#' + _instance.itemid + '_textInput').dxTextBox({
+							text: $('#' + _instance.itemid + '_text').text()
+		                });
+		                                        
+		                // confirm and cancel
+						$('#ok-hide').on('click', function() {
+		                    var newText = $('#' + _instance.itemid + '_textInput').dxTextBox('instance').option('text');
+		                    	/* DOGFOOT ktkang 컨테이너 추가시 내부 아이템 이름 변경이 안되는 오류 수정  20191223 */
+		                    	
+	//	                    	var goldenLayout = gDashboard.goldenLayoutManager;
+	//	                    	goldenLayout.changeTitle(self.itemid, newName, goldenLayout.canvasLayout.root.contentItems);
+		                    	
+		                    
+		                    if($('#' + _instance.itemid + '_text').length === 0){
+		        				var textHtml = '<ul class="lm_text" title="' + newText + '" id="' + _instance.itemid + '_text">' + newText + '</ul>';		
+		        				$('#' + _instance.itemid.split('_')[0] + ' .lm_controls').prepend($(textHtml));
+		        			}else{
+		        				$('#' + _instance.itemid + '_text').text(newText);
+		        				$('#' + _instance.itemid + '_text').attr('title', newText);
+		        			}
+		                    
+		                    if(newText === '') $('#' + _instance.itemid + '_text').attr('style', 'border: none; display:none;');
+	        				else $('#' + _instance.itemid + '_text').attr('style', '');
+		                    
+//	                    	var ele = $('#' + _instance.itemid + '_text');
+//	                    	ele.attr( 'title', newText)
+//	                        ele.find( '.lm_title' ).html(newText);
+		                    if (_instance.meta) {
+		                    	_instance.meta.MemoText = newText;
+                            }
+		                    _instance.memoText = newText;
+		                    	
+							/* DOGFOOT syjin 서브타이틀 설정  20200716 */
+							/* DOGFOOT shlim 서브타이틀 재설정시 변경 안되는 오류 수정 20200820 */
+							if(gDashboard.layoutConfig !== ""&& gDashboard.layoutConfig != undefined){
+								var titleServeFont = gDashboard.layoutConfig.TITLE_SERVE_FONT_SETTING;
+								var titleServeFontSize = gDashboard.layoutConfig.TITLE_SERVE_FONTSIZE_SETTING;
+								var titleServeColor = gDashboard.layoutConfig.TITLE_SERVE_COLOR_SETTING;
+							}else{
+								var titleServeFont = userJsonObject.layoutConfig.TITLE_SERVE_FONT_SETTING;
+								var titleServeFontSize = userJsonObject.layoutConfig.TITLE_SERVE_FONTSIZE_SETTING;
+								var titleServeColor = userJsonObject.layoutConfig.TITLE_SERVE_COLOR_SETTING;
+							}
+							
+							$(".lm_text").css({
+										"font-family" : titleServeFont,
+										"font-size" : titleServeFontSize + "px",
+										"color" : titleServeColor
+									});
+									
+	                    	p.hide();
+						});
+						$('#close').on('click', function() {
+							p.hide();
+						});
+					}
+				});
+				// show popup
+				p.show();
+				break;
+		}
+	}
+	
+	//2020.11.20 MKSONG 불필요한 부분 제거 DOGFOOT
+	
+	/* DOGFOOT hsshim 2020-02-06
+	 * - 마스터 필터 기능 리팩토링 적용 (코드 정리)
+	 * - 마스터 필터 속도 개선
+	 * - 마스터 필터 렌더링 표시 추가
+	 * - 매계변수 필터가 적용 되있을때 마스터 필터가 제대로 적용이 안되는 오류 수정
+	 */
+	this.setFilteredData = function(_itemid, _filteredData) {
+		if (!_itemid) {
+			gProgressbar.hide();
+			WISE.alert('아이템 아이디가 지정되지 않았습니다.');
+		}
+		else if ($.type(_filteredData) !== 'array') {
+			gProgressbar.hide();
+			WISE.alert('필터데이터가 배열이 아닙니다.');
+		}
+		else {
+			self.trackingConditionManager = {};
+			for (var i = 0; i < _filteredData.length; i++) {
+				var dimName = Object.keys(_filteredData[i])[0];
+				if (self.trackingConditionManager[dimName] == undefined) {
+					self.trackingConditionManager[dimName] = [];
+				}
+				/* DOGFOOT syjin 카카오 지도 마스터 필터 오류 수정 20200928 */
+				//2020.11.27 mksong 마스터필터 데이터 number일 경우 오류 수정 dogfoot
+				if(typeof _filteredData[i][dimName] == "string" || typeof _filteredData[i][dimName] == "number"){
+				    self.trackingConditionManager[dimName].push(_filteredData[i][dimName]);
+				}else{
+					$.each(_filteredData[i][dimName], function(_i, _v){
+                        self.trackingConditionManager[dimName].push(_v);						
+					})
+				}
+			}
+			
+			var key = Object.keys(gDashboard.itemGenerateManager.trackingConditionManager);
+			if(key.length > 1){
+				self.sqlConfigWhere = [];
+				$.each(key, function(_i, _key){
+					var whereObject = {key: _key, data:gDashboard.itemGenerateManager.trackingConditionManager[_key]};
+					self.sqlConfigWhere.push(whereObject);
+				});	
+			}else if(key.length == 1){
+				self.sqlConfigWhere = [{key :key[0], data:gDashboard.itemGenerateManager.trackingConditionManager[key[0]]}];	
+			}else{
+				gDashboard.itemGenerateManager.sqlConfigWhere = [];
+			}
+			
+			/*dogfoot 컨테이너별 마스터필터 적용 shlim 20201013*/
+			var currentItem,
+			layoutType = gDashboard.getLayoutType();
+			$.each(this.dxItemBasten, function(_i, _item) {
+				if(_item.itemid == _itemid){
+					currentItem = _item;
+					/*dogfoot 다른 데이터 집합일 경우 마스터필터 영향 안받도록 수정 shlim 20200619*/
+					self.sqlConfigCurruntId = currentItem.dataSourceId;
+				}
+			});
+			$.each(this.dxItemBasten, function(_i, _item) {
+				if (_item.itemid.match("combo") || _item.itemid.match("listBox") || _item.itemid.match("treeView")) {
+					gProgressbar.finishListening();
+					return;
+				}
+				else {
+					if (_item.itemid != _itemid) {
+						_item.preventTrackingEvent = false;
+					}
+					if (currentItem.dataSourceId != _item.dataSourceId && currentItem.IsMasterFilterCrossDataSource == false) {
+						gProgressbar.finishListening();
+					}
+					else {
+						/*dogfoot 컨테이너별 마스터필터 적용 shlim 20201013*/
+						if(layoutType == "Container"){
+
+							ContainerList = gDashboard.setContainerList(currentItem);            	
+							
+			            	$.each(ContainerList,function(_l,_con){
+			            		if (_con.DashboardItem == _item.ComponentName) {
+									_item.doTrackingCondition(_itemid, _item);
+								}else{
+									if(_item.ComponentName && gDashboard.itemGenerateManager.viewedItemList.indexOf(_item.ComponentName) < 0 ){
+										gDashboard.itemGenerateManager.viewedItemList.push(_item.ComponentName);
+									}
+									if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+										gProgressbar.setStopngoProgress(true);
+										gProgressbar.hide();		
+										gDashboard.updateReportLog();
+									}
+								}
+			            	})
+			            	
+			            }else{
+			            	_item.doTrackingCondition(_itemid, _item);
+			            }
+						
+//						_item.doTrackingCondition(_itemid, currentItem);
+					}
+				}
+			});
+		}
+	};
+	/* DOGFOOT hsshim 2020-02-06 끝 */
+	
+	this.focusItem = function(_item,_menuItem){
+		// generate item menus
+//		_item.menuItemGenerate();
+
+		gDashboard.itemGenerateManager.menuItemGenerate(_item,_menuItem);
+		
+		lnbResponsive();
+		
+		// select item dataset
+		var name = '';
+		var dataSources = gDashboard.structure.DataSources.DataSource;
+		// 2019.12.16 수정자 : mksong 뷰어 비정형 컬럼선택기 추가를 위한 수정 DOGFOOT
+		if (dataSources.length > 0 && WISE.Constants.editmode != 'viewer') {
+			for (var i = 0; i < dataSources.length; i++) {
+				if (gDashboard.datasetMaster.components.lookup && _item.dataSourceId === dataSources[i].ComponentName) {
+					$('#dataSetLookUp').dxLookup('instance').option('value', dataSources[i].Name);
+					break;
+				}
+			}
+		}
+		// highlight item tab
+		$('.lm_stack.active').removeClass('active');
+		$('.lm_stack.tabactive').removeClass('tabactive');
+		/**
+		 * 1121 KERIS 수정
+		 */
+		
+		if(gDashboard.reportType != 'AdHoc' && gDashboard.reportType != 'StaticAnalysis'){
+			if(_item.isAdhocItem){
+				var index = _item.adhocIndex;
+				$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_itemInfo){
+					if(_itemInfo.isAdhocItem && _itemInfo.adhocIndex == index){
+						$('#' + _itemInfo.ComponentName).addClass('active');
+					}
+				});
+				$('#' + _item.ComponentName).addClass('tabactive');
+			}else{
+				$('#' + _item.ComponentName).addClass('active');
+				$('#' + _item.ComponentName).addClass('tabactive');
+			}
+		/* DOGFOOT ktkang 통계 분석 부분 추가  20201102 */
+		}else if(gDashboard.reportType == 'StaticAnalysis') {
+			$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_i,_itemInfo){
+				$('#' + _itemInfo.ComponentName + '_item').removeClass('active');
+				$('#' + _itemInfo.ComponentName + '_item').removeClass('tabactive');
+				$('#' + _itemInfo.ComponentName).removeClass('active');
+				$('#' + _itemInfo.ComponentName).removeClass('tabactive');
+			});
+			/* DOGFOOT 통계 분석 부분 추가 shlim 20201112 */
+			$('#' + _item.ComponentName + '_item').addClass('active');
+			$('#' + _item.ComponentName + '_item').addClass('tabactive');
+		}else{
+			$('#' + _item.ComponentName).addClass('active');
+			$('#' + _item.ComponentName).addClass('tabactive');
+		}
+		
+        self.focusedItem = _item;
+	}
+	
+	this.bindData = function(_dataSet, _condition, _overwrite) {
+		if(WISE.Constants.editmode == 'viewer' && gDashboard.tabQuery){
+			if(gDashboard.itemGenerateManager.selectedItemList.length > gDashboard.itemGenerateManager.viewedItemList.length){
+				gProgressbar.show();
+			}
+		} else {
+			gProgressbar.show();
+		}
+		
+		if(gDashboard.reportType == 'AdHoc'){
+			var _item;
+			var _item2;
+			var adhocLayout = 'CTGB';
+			if(gDashboard.structure.Layout === 'CG') gDashboard.structure.Layout = 'CTGB';
+			if(typeof gDashboard.structure.Layout != 'undefined') {
+				adhocLayout = gDashboard.structure.Layout;
+			} else if(typeof gDashboard.structure.ReportMasterInfo.layout != 'undefined'){
+				adhocLayout = gDashboard.structure.ReportMasterInfo.layout
+			}
+			
+			/* DOGFOOT ktkang 비정형 기본 레이아웃 오류 수정  20200130 */
+			if(this.dxItemBasten[0].type == 'PIVOT'){
+				_item = this.dxItemBasten[0];
+				_item2 = this.dxItemBasten[1];
+			}else{
+				_item = this.dxItemBasten[1];
+				_item2 = this.dxItemBasten[0];
+			}
+			
+			if(WISE.Context.isCubeReport) {
+				if(WISE.Constants.editmode === 'viewer') {
+					_item.orderKey = _dataSet.order_Key;
+					_item2.orderKey = _dataSet.order_Key;
+				} else {
+					if(_item.fieldManager) {
+						_item.fieldManager.orderKey = _dataSet.order_Key;
+						_item2.fieldManager.orderKey = _dataSet.order_Key;
+						_item.orderKey = _dataSet.order_Key;
+						_item2.orderKey = _dataSet.order_Key;
+					} else {
+						_item.orderKey = _dataSet.order_Key;
+						_item2.orderKey = _dataSet.order_Key;
+					}
+				}
+			} 
+			
+			_item2.selectedChartType = undefined;
+			_item.selectedChartType = undefined;
+			
+			_item2.tracked = _item.tracked = false;
+			
+			if(_item.dataSourceId != undefined && _dataSet != undefined){
+				if(_item.dataSourceId === _dataSet.mapid) {
+					self.customFieldCalculater
+//							.calculate(_dataSet)  // when using native promise
+						.$calculate(_dataSet)  // when useing jquery promise
+						.then(
+							function(_response) {
+								var calculatedData = new Array();
+								var resultData = new Array();
+								// query data if condition is specified
+								//2020.01.30 mksong 불필요한 부분 주석 dogfoot
+//								if (_condition && !_.isEmpty(_condition)) {
+//									var key, value;
+//									$.each(_condition, function(_i, _e) {
+//										key = _e.name;
+//										value = _e.value[0];
+//									});
+//									if(value == '_ALL_VALUE_' || value == '_EMPTY_VALUE_'){
+//										calculatedData = gDashboard.dataSourceManager.datasetInformation[_item.dataSourceId].data;
+//									}
+//									else{
+//										$.each(_condition,function(_i,_e){
+//											$.each(_e.value,function(_idx,_val){
+//												calculatedData.push(SQLike.q(
+//													{
+//														Select: ['*'],
+//														From: gDashboard.dataSourceManager.datasetInformation[_item.dataSourceId].data,
+//														Where: function() {return this[key] == _val}
+//													}
+//												));
+//											});
+//											
+//										});
+//										
+//									}
+//									
+//								} else {
+									calculatedData = _.clone(_response.data);
+
+//								}
+//								$.each(calculatedData,function(_i,_arr){
+//									resultData = resultData.concat(_arr);
+//								});
+//								calculatedData = resultData;
+								//2020.01.30 mksong 불필요한 부분 주석 끝 dogfoot
+								if(_item.type == 'PIVOT_GRID'){
+									_item.bindData(calculatedData, null, _overwrite);
+									if(_item2 != undefined){
+										/*dogfoot 비정형 보고서 레이아웃 그리드만 보기 로직 변경 shlim 20210324*/
+//										if(adhocLayout != "G"){
+										    _item2.bindData(calculatedData, null, _overwrite);		
+//										}
+									}
+//									if(_item2 != undefined){
+//										_item2.bindData(calculatedData, null, _overwrite);	
+//									}
+								}else{
+									if(_item2 != undefined){
+										_item2.bindData(calculatedData, null, _overwrite);	
+									}
+									_item.bindData(calculatedData, null, _overwrite);
+								}
+								/*dogfoot shlim  랜더버튼 클릭시 헤더 재 설정 20200821*/
+								
+								/*if(_item.itemid.indexOf('data') > -1)
+									_item.onSelectionChanged();*/
+							}
+						);
+				}
+			}
+		}else{
+			/* goyong ktkang 본사 탭컨테이너 개별 조회 기능 추가  20210616 */
+			if(WISE.Constants.editmode == 'viewer' && gDashboard.tabQuery){
+				$.each(gDashboard.itemGenerateManager.selectedItemList, function(_i, _selectedItem){
+					$.each(self.dxItemBasten, function(_i, _item) {
+						if(_selectedItem.id == _item.ComponentName){
+							if(_item.dataSourceId != undefined && _dataSet != undefined){
+								if(_item.dataSourceId === _dataSet.mapid) {
+									self.customFieldCalculater
+									//								.calculate(_dataSet)  // when using native promise
+									.$calculate(_dataSet)  // when useing jquery promise
+									.then(function(_response) {
+										var calculatedData = new Array();
+										var resultData = new Array();
+										//2020.01.30 mksong 불필요한 부분 주석 끝 dogfoot
+										_item.selectedChartType = undefined; // for ChartGenerator instance
+										_item.tracked = false;
+										//2020.01.30 mksong query sqlike에서 한번만 돌게 하기 위해 수정 dogfoot
+										//										_item.bindData(calculatedData, null, _overwrite);
+										_item.bindData([], null, _overwrite);
+										/*if(_item.itemid.indexOf('data') > -1)
+													_item.onSelectionChanged();*/
+									}
+									);
+								}
+								/* DOGFOOT ktkang 오타 수정  20200423 */
+							}else if(_item.dataSourceId == undefined){
+								_item.bindData([], null, _overwrite);
+							}
+						}
+					});
+				});
+			}else{
+				$.each(this.dxItemBasten, function(_i, _item) {
+					if(_item.dataSourceId != undefined && _dataSet != undefined){
+						if(_item.dataSourceId === _dataSet.mapid) {
+
+							if(WISE.Context.isCubeReport) {
+								if(WISE.Constants.editmode === 'viewer') {
+									_item.orderKey = _dataSet.order_Key;
+									_item2.orderKey = _dataSet.order_Key;
+								} else {
+									if(_item.fieldManager) {
+										_item.fieldManager.orderKey = _dataSet.order_Key;
+										_item2.fieldManager.orderKey = _dataSet.order_Key;
+										_item.orderKey = _dataSet.order_Key;
+										_item2.orderKey = _dataSet.order_Key;
+									} else {
+										_item.orderKey = _dataSet.order_Key;
+										_item2.orderKey = _dataSet.order_Key;
+									}
+								}
+							} 
+
+							self.customFieldCalculater
+//							.calculate(_dataSet)  // when using native promise
+							.$calculate(_dataSet)  // when useing jquery promise
+							.then(
+									function(_response) {
+										var calculatedData = new Array();
+										var resultData = new Array();
+										// query data if condition is specified
+										//2020.01.30 mksong 불필요한 부분 주석 dogfoot
+//										if (_condition && !_.isEmpty(_condition)) {
+//										var key, value;
+//										$.each(_condition, function(_i, _e) {
+//										key = _e.name;
+//										value = _e.value[0];
+//										});
+//										if(value == '_ALL_VALUE_' || value == '_EMPTY_VALUE_'){
+//										calculatedData = gDashboard.dataSourceManager.datasetInformation[_item.dataSourceId].data;
+//										}
+//										else{
+//										$.each(_condition,function(_i,_e){
+//										$.each(_e.value,function(_idx,_val){
+//										calculatedData.push(SQLike.q(
+//										{
+//										Select: ['*'],
+//										From: gDashboard.dataSourceManager.datasetInformation[_item.dataSourceId].data,
+//										Where: function() {return this[key] == _val}
+//										}
+//										));
+//										});
+
+//										});
+
+//										}
+
+//										} else {
+//										calculatedData = _.clone(_response.data);
+//										}
+//										$.each(calculatedData,function(_i,_arr){
+//										resultData = resultData.concat(_arr);
+//										});
+//										calculatedData = resultData;
+										//2020.01.30 mksong 불필요한 부분 주석 끝 dogfoot
+										_item.selectedChartType = undefined; // for ChartGenerator instance
+										_item.tracked = false;
+										//2020.01.30 mksong query sqlike에서 한번만 돌게 하기 위해 수정 dogfoot
+//										_item.bindData(calculatedData, null, _overwrite);
+										_item.bindData([], null, _overwrite);
+										/*dogfoot shlim  랜더버튼 클릭시 헤더 레이아웃 재 설정 20200821*/
+										/*if(_item.itemid.indexOf('data') > -1)
+										_item.onSelectionChanged();*/
+									}
+							);
+						}
+					}else if(_item.dataSorceId == undefined){
+						_item.bindData([], null, _overwrite);
+					}
+				});
+
+				if(gDashboard.itemGenerateManager.dxItemBasten.length == gDashboard.itemGenerateManager.viewedItemList.length){
+					gProgressbar.hide();
+					gDashboard.updateReportLog();
+					/*dogfoot 보고서 레이아웃 불러오기 리사이즈 수정 shlim 20200821*/
+				}
+			}
+		}
+		
+	/*	$.each(this.dxItemBasten, function(_i, _item) {
+			
+			if(_item.dataSourceId === _dataSet.mapid) {
+				
+				if (_item.IO && _item.IO['MasterFilterMode']) {
+					var selectionMode = _item.IO ? (_item.IO['MasterFilterMode'] ? WISE.util.String.toLowerCase(_item.IO['MasterFilterMode']) : 'none') : 'none';
+					
+					if(selectionMode =='single'){
+						var aaa = $("#" + _item.itemid).dxDataGrid("instance");
+						aaa.selectRowsByIndexes(0);
+						_item.customSelectChanged();
+		        	}
+					
+				}
+				
+			}
+			
+		});*/
+		// 2019.12.16 수정자 : mksong 뷰어 비정형 컬럼선택기 추가를 위한 수정 DOGFOOT
+		if(gDashboard.reportType == 'AdHoc' && WISE.Constants.editmode == 'viewer'){
+			/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 */
+			var dataSrcId = WISE.libs.Dashboard.item.DataCubeUtility.getDataSourceIdByName(gDashboard.structure.ReportMasterInfo.cube_nm);
+			if(gDashboard.dataSourceManager.datasetInformation[dataSrcId].DATASRC_TYPE == 'CUBE'){
+				//gDashboard.dataSetCreate.cubeListInfo(gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASRC_ID, 'CUBE');
+            }else{
+            	/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 */
+            	
+            	// 2021-07-16 조회시 있으면 다시한번 불러오지 않게 수정
+            	var infoList = null;
+            	if (!isNull(gDashboard.dataSetCreate.infoTreeList)) {
+            		infoList = gDashboard.dataSetCreate.infoTreeList[gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASET_NM];
+            	}
+            	if (isNull(infoList)) {
+            		gDashboard.dataSetCreate.columnListInfo(gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASRC_ID);
+            		
+	            	var data = gDashboard.dataSourceManager.datasetInformation[dataSrcId];
+	            	var dataSetInfoTree = [{'CAPTION': data['DATASET_NM'], 'ORDER': 0, 'expanded': true, 'DATASOURCE' : 'dataSource' + gDashboard.dataSourceQuantity}];
+	
+	            	var i = 1;
+	            	if(typeof data['data'] != 'undefined'){
+						for(var key in data['data'][0]) {
+							var type;
+							var iconPath;
+							var dataType;
+							switch($.type(data['data'][0][key])) {
+							case 'number': 
+								type = 'MEA';
+								iconPath = '../images/icon_measure.png';
+								dataType = 'decimal';
+								break;
+							default:
+								type = 'DIM';
+								iconPath = '../images/icon_dimension.png';
+								dataType = 'varchar';
+							}
+		
+							var infoTree = [{'CAPTION': key, 'ORDER': i, 'PARENT_ID': "0", 'TYPE': type,  'icon': iconPath, 'DATA_TYPE': dataType, 'UNI_NM':key}];
+		
+							dataSetInfoTree = dataSetInfoTree.concat(infoTree);
+							i++;
+						}
+	            	} else if(typeof data['DATA_META'] != 'undefined') {
+	            		dataSetInfoTree = data['DATA_META'];
+	            	} else if(typeof data['DATASET_FIELDS'] != 'undefined') {
+						dataSetInfoTree = data['DATASET_FIELDS'];
+	            	}
+	            	
+	            	//20210503 AJKIM 단일테이블 데이터 집합 렌더링 오류 수정 dogfoot
+	            	if(data.DATASET_TYPE == 'DataSetDs'){
+	            		dataSetInfoTree = gDashboard.dataSetCreate.infoTreeList[data.DATASET_NM];
+	            		//$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('.drop-down.tree-menu > ul').empty();
+	            	}
+					
+					
+					/* DOGFOOT hsshim 1216
+					 * 조회시 집합 중복되는 오류 수정
+					 */
+					$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('.drop-down.tree-menu > ul').empty();
+					/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 */
+		            gDashboard.dataSetCreate.insertDataSet(dataSetInfoTree, dataSrcId);
+            	}
+            	
+			}
+			
+		}
+		if((gDashboard.reportType == 'DashAny' && WISE.Constants.editmode == 'viewer' && userJsonObject.menuconfig.Menu.DASH_DATA_FIELD) ||
+				(WISE.Constants.editmode == 'viewer' && gDashboard.reportType == 'DSViewer')){
+			/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 */
+			var dataSrcId = WISE.libs.Dashboard.item.DataCubeUtility.getDataSourceIdByName(gDashboard.structure.ReportMasterInfo.cube_nm);
+			if(gDashboard.dataSourceManager.datasetInformation[dataSrcId].DATASRC_TYPE == 'CUBE'){
+
+				//gDashboard.dataSetCreate.cubeListInfo(gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASRC_ID, 'CUBE');
+            }else{
+            	/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 
+            	   2021-07-16 조회시 있으면 다시한번 불러오지 않게 수정
+            	 * */
+            	var infoList = null;
+            	if (!isNull(gDashboard.dataSetCreate.infoTreeList)) {
+            		infoList = gDashboard.dataSetCreate.infoTreeList[gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASET_NM];
+            	}
+            	
+            	if (isNull(infoList)) {
+            		gDashboard.dataSetCreate.columnListInfo(gDashboard.dataSourceManager.datasetInformation['dataSource1'].DATASRC_ID);
+                	
+                	var data = gDashboard.dataSourceManager.datasetInformation[dataSrcId];
+                	var dataSetInfoTree = [{'CAPTION': data['DATASET_NM'], 'ORDER': 0, 'expanded': true, 'DATASOURCE' : 'dataSource' + gDashboard.dataSourceQuantity}];
+
+                	var i = 1;
+                	if(data['data']){
+    					for(var key in data['data'][0]) {
+    						var type;
+    						var iconPath;
+    						var dataType;
+    						switch($.type(data['data'][0][key])) {
+    						case 'number': 
+    							type = 'MEA';
+    							iconPath = '../images/icon_measure.png';
+    							dataType = 'decimal';
+    							break;
+    						default:
+    							type = 'DIM';
+    							iconPath = '../images/icon_dimension.png';
+    							dataType = 'varchar';
+    						}
+    	
+    						var infoTree = [{'CAPTION': key, 'ORDER': i, 'PARENT_ID': "0", 'TYPE': type,  'icon': iconPath, 'DATA_TYPE': dataType, 'UNI_NM':key}];
+    	
+    						dataSetInfoTree = dataSetInfoTree.concat(infoTree);
+    						i++;
+    					}
+                	}
+                	
+                	if(data.DATASET_TYPE == 'DataSetDs'){
+                		dataSetInfoTree = gDashboard.dataSetCreate.infoTreeList[data.DATASET_NM];
+//                		$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('.drop-down.tree-menu > ul').empty();
+                	}
+    				
+    				
+    				/* DOGFOOT hsshim 1216
+    				 * 조회시 집합 중복되는 오류 수정
+    				 */
+    				$('#dataArea_'+gDashboard.structure.ReportMasterInfo.id).find('.drop-down.tree-menu > ul').empty();
+    				/* DOGFOOT hsshim 2020-01-15 주제영역 집합 여러개 적용되개 수정 */
+    	            gDashboard.dataSetCreate.insertDataSet(dataSetInfoTree, dataSrcId);
+            	}
+            }
+			
+		}
+		// 2019.12.16 수정자 : mksong 뷰어 비정형 컬럼선택기 추가를 위한 수정  끝 DOGFOOT
+	};
+	
+	this.clearTrackingConditionAll = function() {
+		$.each(this.dxItemBasten, function(_i, _item) {
+			if(_item.type == "IMAGE" || _item.type == "RANGE_FILTER"|| _item.type == "TEXTBOX" || _item.type == "PIVOT_GRID"){
+				return true;
+			}
+			_item.tracked = false;
+			_item.preventTrackingEvent = false; // just for dataGrid
+			/* DOGFOOT syjin clearTrackingConditions 카카오맵일 때 주석처리  20200928 */
+			if(_item.type != 'KAKAO_MAP'){
+			    _item.clearTrackingConditions();
+			}
+			_item.setTackingFlag(false);
+		});
+	};
+	
+	/* DOGFOOT ktkang 조회 전 기존 데이터 삭제  20200228 */
+	this.clearItemData = function() {
+		$.each(this.dxItemBasten, function(_i, _item) {
+			_item.csvData = [];
+			_item.filteredData = [];
+			_item.globalData = [];
+			
+			//yhkim 시계열분석 초기값 20200907 dogfoot
+			if(_item.type == 'SIMPLE_CHART') {
+				_item.timeSeries.forecast = false;
+				_item.timeSeries.periodType = '';
+				_item.timeSeries.period = '';
+				_item.timeSeries.seriesColors = [];
+				_item.timeSeries.lastSeries = '';
+				_item.timeSeries.filteredData = [];
+				_item.timeSeries.globalData = [];
+				_item.lastSeries = '';
+				
+				self.dxItem = $('#' + this.itemid).dxChart({
+					dataSource: [], 
+					series: [], 
+					valueAxis: [],
+					argumentAxis: {
+						constantLines: []
+					},
+					commonAxisSettings: {
+						grid: {
+							visible: false
+						}
+					}
+				}).dxChart('instance');
+			}
+		});
+	};
+	
+	/* goyong ktkang 본사 탭컨테이너 개별 조회 기능 추가  20210616 */
+	this.setSelectedItemList = function(){
+		self.selectedItemList = [];
+//		현재 선택된 tab의 아이템들 구하기
+		var selectedTabId = gDashboard.goldenLayoutManager[gDashboard.structure.ReportMasterInfo.id].canvasLayout.container.find('.lm_tab.tab_cont_box_top_tit.lm_active').attr('id').replace('_item_title','');
+		var duplicateCheck = false;
+		$.each(self.selectedTabList, function(_i,_tabId){
+			if(selectedTabId == _tabId){
+				duplicateCheck = true;
+			}
+		});
+		if(!duplicateCheck){
+			self.selectedTabList.push(selectedTabId);
+		}
+		
+		var selectedItemList = $('#'+selectedTabId).find('.cont_box')
+		var idList = [];
+		$.each(selectedItemList, function(_i,_item){
+			var id = $(_item).attr('id');
+			$.each(gDashboard.itemGenerateManager.dxItemBasten,function(_k,_dxItem){
+				if(id == _dxItem.ComponentName){
+					self.selectedItemList.push({'id':id, 'dataSourceId':_dxItem.dataSourceId});
+				}
+			});
+		});
+		
+		return duplicateCheck;
+	}
+	
+	this.reTrackingCondtionFilterItem = function(){
+		var reTrackingItem;
+		$.each(this.dxItemBasten, function(_i, _item) {
+			if(_item.type == "COMBOBOX" || _item.type == "LISTBOX"|| _item.type == "TREEVIEW"){
+				reTrackingItem = _item;
+			}
+		});
+		return reTrackingItem;
+	}
+};

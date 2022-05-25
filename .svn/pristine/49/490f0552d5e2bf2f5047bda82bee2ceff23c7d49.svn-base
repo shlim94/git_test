@@ -1,0 +1,3178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Report">
+<!-- 	<select id="selectReportBasicInformation" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportMasterVO"> -->
+<!-- 		SELECT	REPORT_ID as id -->
+<!-- 		       ,REPORT_NM as name -->
+<!-- 		       ,REPORT_TYPE as type -->
+<!-- 		       ,REPORT_TAG as tag -->
+<!-- 			   ,REPORT_SUB_TITLE as subTitle -->
+<!-- 		       ,REPORT_DESC as reportdesc -->
+<!-- 		       ,FLD_TYPE as folderType -->
+<!-- 		       ,LAYOUT_XML as layoutXmlBase64 -->
+<!-- 		       ,DATASET_XML as datasetXmlBase64 -->
+<!-- 		       ,CHART_XML as chartXmlBase64 -->
+<!-- 		       ,PARAM_XML as paramXmlBase64 -->
+<!-- 		       ,REG_USER_NO as regUserNo -->
+<!-- 		       ,PROMPT_YN as promptYN -->
+<!-- 		FROM	REPORT_MSTR -->
+<!-- 		WHERE	REPORT_TYPE = #{type} -->
+<!-- 		and		REPORT_ID = #{id} -->
+<!--    <if test="regUserNo > -1">and		REG_USER_NO = #{regUserNo}</if>  -->
+<!-- 	</select> -->
+	<resultMap id="ReportMasterVO" type="com.wise.ds.repository.ReportMasterVO">
+		<result property="REPORT_ID" column="REPORT_ID" />
+		<result property="REPORT_NM" column="REPORT_NM" />
+		<result property="REPORT_TYPE" column="REPORT_TYPE" />
+		<result property="REPORT_TAG" column="REPORT_TAG" />
+		<result property="REPORT_SUB_TITLE" column="REPORT_SUB_TITLE" />
+		<result property="REPORT_DESC" column="REPORT_DESC" />
+		<result property="FLD_ID" column="FLD_ID" />
+		<result property="FLD_TYPE" column="FLD_TYPE" />
+		<result property="REPORT_ORDINAL" column="REPORT_ORDINAL" />
+		<result property="REPORT_XML" column="REPORT_XML" />
+		<result property="LAYOUT_XML" column="LAYOUT_XML" />
+		<result property="DATASET_XML" column="DATASET_XML" />
+		<result property="PARAM_XML" column="PARAM_XML" />
+		<result property="REPORT_LAYOUT" column="REPORT_LAYOUT" />
+		<result property="DATASRC_ID" column="DATASRC_ID" />
+		<result property="DATASRC_TYPE" column="DATASRC_TYPE" />
+		<result property="REPORT_DESC" column="REPORT_DESC" />
+		<result property="DATASRC_TYPE" column="DATASRC_TYPE" />
+		<result property="DATASET_TYPE" column="DATASET_TYPE" />
+		<result property="DATASET_QUERY" column="DATASET_QUERY" />
+		<result property="REG_USER_ID" column="REG_USER_ID" />
+		<result property="REG_USER_NO" column="REG_USER_NO" />
+		<result property="DEL_YN" column="DEL_YN" />
+		<result property="MOD_USER_ID" column="MOD_USER_ID" />
+		<result property="MOD_USER_NO" column="MOD_USER_NO" />
+		<result property="CHART_XML" column="CHART_XML" />
+	</resultMap>
+	<resultMap id="p_error" type="com.wise.ds.repository.p_error">
+		<result property="ERRYN" column="ERRYN" />
+		<result property="SQLQUERY" column="SQLQUERY" />
+	</resultMap>
+
+	<select id="selectReportBasicInformation" statementType="CALLABLE" parameterType="com.wise.ds.repository.ReportParamVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		<if test="_databaseId == 'sqlserver'">
+			{call UP_REPORT_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{USER_NO, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call UP_REPORT_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{USER_NO, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call UP_REPORT_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{USER_NO, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call UP_REPORT_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{USER_NO, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL UP_REPORT_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{USER_NO, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=STRING, mode=OUT}
+			)}
+		</if>
+	</select>
+	
+	<!-- DOGFOOT ktkang 보고서 형상관리 기능 구현  20200903 -->
+	<select id="selectReportBasicInformationHis" parameterType="com.wise.ds.repository.ReportMasterHisVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT	REPORT_ID
+		       ,REPORT_NM
+		       ,REPORT_TYPE
+		       ,REPORT_SUB_TITLE
+		       ,REPORT_DESC
+		       ,FLD_ID
+		       ,FLD_TYPE
+		       ,REPORT_ORDINAL
+		       ,REPORT_XML
+		       ,LAYOUT_XML
+		       ,DATASET_XML
+		       ,CHART_XML
+		       ,PARAM_XML
+		       ,REPORT_LAYOUT
+		       ,DATASRC_ID
+		       ,DATASRC_TYPE
+		       ,DATASET_TYPE
+		       ,DATASET_QUERY
+		       ,PROMPT_YN
+		       ,LAYOUT_CONFIG
+		FROM	REPORT_MSTR_HIS
+		WHERE	REPORT_TYPE = #{REPORT_TYPE}
+		AND		REPORT_ID = #{REPORT_ID}
+		AND		REPORT_SEQ = #{REPORT_SEQ}
+		<!-- <if test="regUserNo > -1">and		REG_USER_NO = #{regUserNo}</if> -->
+	</select>
+	
+	<select id="selectReportBasicInformationExceptLayout" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT	REPORT_ID
+		       ,REPORT_NM
+		       ,REPORT_TYPE
+		       ,REPORT_DESC
+		       ,FLD_TYPE
+		       ,REPORT_XML
+		       ,DATASET_XML
+		       ,CHART_XML
+		       ,PARAM_XML
+		       ,REG_USER_NO
+		       ,PROMPT_YN
+		       ,LAYOUT_CONFIG
+		FROM	REPORT_MSTR
+		WHERE	REPORT_TYPE = #{REPORT_TYPE}
+		and		REPORT_ID = #{REPORT_ID}
+		<!-- <if test="regUserNo > -1">and		REG_USER_NO = #{regUserNo}</if> -->
+	</select>
+	
+	<select id="selectReportBasicInformationExceptLayoutHis" parameterType="com.wise.ds.repository.ReportMasterHisVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT	REPORT_ID
+		       ,REPORT_NM
+		       ,REPORT_TYPE
+		       ,REPORT_DESC
+		       ,FLD_TYPE
+		       ,REPORT_XML
+		       ,DATASET_XML
+		       ,CHART_XML
+		       ,PARAM_XML
+		       ,PROMPT_YN
+		       ,LAYOUT_CONFIG
+		FROM	REPORT_MSTR_HIS
+		WHERE	REPORT_TYPE = #{REPORT_TYPE}
+		AND		REPORT_ID = #{REPORT_ID}
+		AND		REPORT_SEQ = #{REPORT_SEQ}
+		<!-- <if test="regUserNo > -1">and		REG_USER_NO = #{regUserNo}</if> -->
+	</select>
+	
+	<select id="selectReportCacheList" parameterType="string" resultType="com.wise.authn.ReportCache">
+		SELECT	REPORT_ID as id
+		       ,FLD_ID as folderId
+		       ,FLD_TYPE as folderType
+		       ,REG_USER_NO as regUserNo
+		FROM	REPORT_MSTR
+		WHERE	REPORT_TYPE = #{type}
+	</select>
+	<select id="selectTemp" resultType="String">
+		SELECT 1 FROM REPORT_MSTR
+	</select>
+	<select id="selectReportForLog"  parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT REPORT_ID AS REPORT_ID
+       		   ,REPORT_NM AS REPORT_NM
+		FROM   REPORT_MSTR 
+		WHERE  REPORT_ID = #{REPORT_ID} 
+		AND	   REPORT_TYPE = #{REPORT_TYPE}
+	</select>
+	
+	<select id="selectLinkReport" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportSubLinkVO">
+		SELECT REPORT_ID AS arg_id
+				, LINK_REPORT_ID AS target_id
+				,(SELECT REPORT_NM FROM REPORT_MSTR WHERE REPORT_ID = LINK_REPORT_ID) AS target_nm
+				, DATA_LINK_TYPE AS link_type
+				, LINK_XML AS link_xml_base64
+				, '' AS link_xml_data
+				,(SELECT REPORT_TYPE FROM REPORT_MSTR WHERE REPORT_ID = LINK_REPORT_ID) AS target_type
+		FROM REPORT_LINK_MSTR
+		WHERE REPORT_ID = #{id}
+	</select>
+	
+	<select id="selectSubLinkReport" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportSubLinkVO">
+		SELECT REPORT_ID AS arg_id
+				,(SELECT REPORT_NM FROM REPORT_MSTR WHERE REPORT_ID = LINK_REPORT_ID) AS target_nm
+				, LINK_REPORT_ID AS target_id
+				, LINK_SUB_ITEM AS target_item
+				, LINK_DATA_TYPE AS link_type
+				, LINK_XML_PARAM AS link_xml_base64
+				, LINK_XML_DATA AS link_xml_data
+<!-- 				, LINK_REPORT_TYPE as target_type -->
+				,(SELECT REPORT_TYPE FROM REPORT_MSTR WHERE REPORT_ID = LINK_REPORT_ID) AS target_type
+		FROM REPORT_LINK_SUB_MSTR
+		WHERE REPORT_ID = #{id}
+	</select>
+	
+	
+<!-- 	<insert id="InsertReportUse" parameterType="com.wise.ds.repository.ReportLogMasterVO"> -->
+<!-- 		INSERT INTO LOG_REPORT_USE -->
+<!-- 		( -->
+<!-- 			EVENT_DT, -->
+<!-- 			REPORT_ID, -->
+<!-- 			REPORT_NM, -->
+<!-- 			REPORT_TYPE, -->
+<!-- 			USER_ID, -->
+<!-- 			USER_NM, -->
+<!-- 			USER_NO, -->
+<!-- 			GRP_ID, -->
+<!-- 			GRP_NM, -->
+<!-- 			ACCESS_IP, -->
+<!-- 			ACCESS_GUID, -->
+<!-- 			PROG_TYPE -->
+<!-- 		) -->
+<!-- 		VALUES -->
+<!-- 		( -->
+<!-- 			#{EVENT_DT}, -->
+<!-- 			#{REPORT_ID}, -->
+<!-- 			#{REPORT_NM}, -->
+<!-- 			#{REPORT_TYPE}, -->
+<!-- 			#{USER_ID}, -->
+<!-- 			#{USER_NM}, -->
+<!-- 			#{USER_NO}, -->
+<!-- 			#{GRP_ID}, -->
+<!-- 			#{GRP_NM}, -->
+<!-- 			#{ACCESS_IP}, -->
+<!-- 			#{ACCESS_GUID}, -->
+<!-- 			#{PROG_TYPE} -->
+<!-- 		) -->
+<!-- 	</insert> -->
+	<insert id="InsertReportUse" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		INSERT INTO LOG_REPORT_USE2
+		(
+			LOG_SEQ,
+			ST_DT,
+			ED_DT,
+			REPORT_ID,
+			REPORT_NM,
+			REPORT_TYPE,
+			USER_ID,
+			USER_NM,
+			USER_NO,
+			GRP_ID,
+			GRP_NM,
+			ACCESS_IP,
+			STATUS_CD,
+			PROG_TYPE
+		)
+		VALUES
+		(
+			#{LOG_SEQ},
+			#{ST_DT},
+			#{ED_DT},
+			#{REPORT_ID},
+			#{REPORT_NM},
+			#{REPORT_TYPE},
+			#{USER_ID},
+			#{USER_NM},
+			#{USER_NO},
+			#{GRP_ID},
+			#{GRP_NM},
+			#{ACCESS_IP},
+			#{STATUS_CD},
+			#{PROG_TYPE}
+		)
+	</insert>
+	
+	<insert id="InsertReportQuery" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		INSERT INTO LOG_EXEC_QUERY
+		(
+			EVENT_DT,
+			REPORT_ID,
+			REPORT_NM,
+			REPORT_TYPE,
+			USER_ID,
+			USER_NM,
+			USER_NO,
+			GRP_ID,
+			GRP_NM,
+			ACCESS_IP,
+			ACCESS_GUID,
+			RUN_QUERY,
+			DS_ID,
+			RUN_TIME,
+			PROG_TYPE
+		)
+		VALUES
+		(
+			#{EVENT_DT},
+			#{REPORT_ID},
+			#{REPORT_NM},
+			#{REPORT_TYPE},
+			#{USER_ID},
+			#{USER_NM},
+			#{USER_NO},
+			#{GRP_ID},
+			#{GRP_NM},
+			#{ACCESS_IP},
+			#{ACCESS_GUID},
+			#{RUN_QUERY},
+			#{DS_ID},
+			#{RUN_TIME},
+			#{PROG_TYPE}
+		)
+	</insert>
+	<insert id="InsertReportExport" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		INSERT INTO LOG_EXPORT_USE
+		(
+			EVENT_DT,
+			REPORT_ID,
+			REPORT_NM,
+			REPORT_TYPE,
+			USER_ID,
+			USER_NM,
+			USER_NO,
+			GRP_ID,
+			GRP_NM,
+			ACCESS_IP,
+			ACCESS_GUID,
+			PROG_TYPE,
+			CTRL_ID,
+			CTRL_CAPTION
+		)
+		VALUES
+		(
+			#{EVENT_DT},
+			#{REPORT_ID},
+			#{REPORT_NM},
+			#{REPORT_TYPE},
+			#{USER_ID},
+			#{USER_NM},
+			#{USER_NO},
+			#{GRP_ID},
+			#{GRP_NM},
+			#{ACCESS_IP},
+			#{ACCESS_GUID},
+			#{PROG_TYPE},
+			#{ITEMID},
+			#{ITEMNM}
+		)
+	</insert>
+	<insert id="InsertReportPrint" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		INSERT INTO LOG_REPORT_PRINT
+		(
+			EVENT_DT,
+			REPORT_ID,
+			REPORT_NM,
+			REPORT_TYPE,
+			USER_ID,
+			USER_NM,
+			USER_NO,
+			GRP_ID,
+			GRP_NM,
+			ACCESS_IP,
+			ACCESS_GUID,
+			PROG_TYPE
+		)
+		VALUES
+		(
+			#{EVENT_DT},
+			#{REPORT_ID},
+			#{REPORT_NM},
+			#{REPORT_TYPE},
+			#{USER_ID},
+			#{USER_NM},
+			#{USER_NO},
+			#{GRP_ID},
+			#{GRP_NM},
+			#{ACCESS_IP},
+			#{ACCESS_GUID},
+			#{PROG_TYPE}
+		)
+	</insert>
+	<update id="UpdateReportUseLog" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		UPDATE LOG_REPORT_USE2
+		SET ED_DT = #{ED_DT},
+			STATUS_CD = #{STATUS_CD}
+		WHERE LOG_SEQ = #{LOG_SEQ}
+	</update>
+	<select id="UP_REPORT_MSTR_ACT" statementType="CALLABLE"  parameterType="com.wise.ds.repository.ReportParamVO" resultType="com.wise.ds.repository.ReportMasterVO" useCache="false">
+		<if test="_databaseId == 'sqlserver'">
+			{call 
+			UP_REPORT_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{DIRECT_VIEW, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call 
+			UP_REPORT_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{DIRECT_VIEW, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call
+			UP_REPORT_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{DIRECT_VIEW, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call 
+			UP_REPORT_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{DIRECT_VIEW, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL
+			UP_REPORT_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{DIRECT_VIEW, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+	</select>
+	
+	<!-- DOGFOOT ktkang 보고서 형상관리 기능 구현  20200903 -->
+	<select id="UP_REPORT_MSTR_HIS_ACT" statementType="CALLABLE"  parameterType="com.wise.ds.repository.ReportParamVO" resultType="com.wise.ds.repository.ReportMasterVO" useCache="false">
+		<if test="_databaseId == 'sqlserver'">
+			{call 
+			UP_REPORT_MSTR_HIS_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_SEQ, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call 
+			UP_REPORT_MSTR_HIS_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_SEQ, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call
+			UP_REPORT_MSTR_HIS_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_SEQ, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call 
+			UP_REPORT_MSTR_HIS_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_SEQ, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL
+			UP_REPORT_MSTR_HIS_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{REPORT_ID, mode=IN},
+				#{REPORT_SEQ, mode=IN},
+				#{REPORT_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{FLD_TYPE, mode=IN},
+				#{REPORT_ORDINAL, mode=IN},
+				#{REPORT_TYPE, mode=IN},
+				#{REPORT_TAG,mode=IN},
+				#{REPORT_DESC, mode=IN},
+				#{REPORT_LAYOUT, mode=IN},
+				#{GRID_INFO, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REPORT_XML, mode=IN},
+				#{CHART_XML, mode=IN},
+				#{LAYOUT_XML, mode=IN},
+				#{DATASET_XML, mode=IN},
+				#{PARAM_XML, mode=IN},
+				#{DATASET_QUERY, mode=IN},
+				#{DEL_YN, mode=IN},
+				#{PROMPT_YN, mode=IN},
+				#{REPORT_SUB_TITLE, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{LAYOUT_CONFIG, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+	</select>
+	
+	<select id="selectReportMstrHisList" parameterType="int" resultType="com.wise.ds.repository.ReportMasterHisVO">
+		SELECT REPORT_SEQ
+		FROM  REPORT_MSTR_HIS
+		WHERE REPORT_ID = #{reportId}
+	</select>
+	
+	<select id="getReportOrdinal" parameterType="String" resultType="java.lang.Integer">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT REPORT_ORDINAL = ISNULL(MAX(REPORT_ORDINAL),0) + 1 
+			FROM REPORT_MSTR 
+			WHERE FLD_ID = #{FLD_ID} 
+			AND REPORT_ORDINAL <![CDATA[<>]]> 999
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT REPORT_ORDINAL = NVL(MAX(REPORT_ORDINAL),0) + 1 
+			FROM REPORT_MSTR 
+			WHERE FLD_ID = #{FLD_ID} 
+			AND REPORT_ORDINAL <![CDATA[<>]]> 999
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT REPORT_ORDINAL = COALESCE(MAX(REPORT_ORDINAL),0) + 1 
+			FROM REPORT_MSTR 
+			WHERE FLD_ID = #{FLD_ID} 
+			AND REPORT_ORDINAL <![CDATA[<>]]> 999
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT REPORT_ORDINAL = NVL(MAX(REPORT_ORDINAL),0) + 1 
+			FROM REPORT_MSTR 
+			WHERE FLD_ID = #{FLD_ID} 
+			AND REPORT_ORDINAL <![CDATA[<>]]> 999
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT REPORT_ORDINAL = IFNULL(MAX(REPORT_ORDINAL),0) + 1 
+			FROM REPORT_MSTR 
+			WHERE FLD_ID = #{FLD_ID} 
+			AND REPORT_ORDINAL <![CDATA[<>]]> 999
+		</if>
+	</select>
+	<select id="InsertAfterReport" parameterType="java.lang.Integer" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT
+		REPORT_ID,
+		REPORT_ORDINAL,
+		LAYOUT_XML
+		FROM REPORT_MSTR
+		WHERE REPORT_ID = #{REPORT_ID}
+	</select>
+	<select id="selectPubFldReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT * 
+		FROM  ((SELECT PUB_FLD_MSTR.FLD_ID        AS ID, 
+		               PUB_FLD_MSTR.FLD_NM        AS TEXT, 
+		               PUB_FLD_MSTR.FLD_PARENT_ID AS UPPERID, 
+		               PUB_FLD_MSTR.FLD_ORDINAL   AS ORDINAL, 
+		               'FOLDER'                   AS TYPE 
+		        FROM   GRP_AUTH_REPORT_MSTR 
+		               INNER JOIN USER_MSTR 
+		                       ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID 
+		               INNER JOIN PUB_FLD_MSTR 
+		                       ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID 
+		        WHERE  USER_MSTR.USER_ID = 'Admin'
+            	AND AUTH_VIEW != 'N') 
+		       UNION ALL 
+		       (SELECT REPORT_MSTR.REPORT_ID          AS ID, 
+		               REPORT_MSTR.REPORT_NM          AS TEXT, 
+		               REPORT_MSTR.FLD_ID AS UPPERID, 
+		               REPORT_MSTR.REPORT_ORDINAL     AS ORDINAL, 
+		               'REPORT'           AS TYPE 
+		        FROM   REPORT_MSTR 
+		               INNER JOIN PUB_FLD_MSTR 
+		                       ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y' 
+		               AND REPORT_MSTR.REPORT_TYPE = 'DashAny')) A 
+		ORDER  BY UPPERID, 
+		          TYPE, 
+		          ORDINAL 
+	</select>
+	
+	<update id="deleteReport" parameterType="int">
+		<if test="_databaseId == 'sqlserver'">
+			UPDATE REPORT_MSTR
+			SET DEL_YN = 'Y',
+				MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+				MOD_DT = CURRENT_TIMESTAMP
+			WHERE report_id = #{report_id}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			UPDATE REPORT_MSTR
+			SET DEL_YN = 'Y',
+				MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+				MOD_DT = SYSDATE
+			WHERE report_id = #{report_id}
+		</if>
+		<if test="_databaseId == 'db2'">
+			UPDATE REPORT_MSTR
+			SET DEL_YN = 'Y',
+				MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+				MOD_DT = CURRENT TIMESTAMP
+			WHERE report_id = #{report_id}
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			UPDATE REPORT_MSTR
+			SET DEL_YN = 'Y',
+				MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+				MOD_DT = SYSDATE
+			WHERE report_id = #{report_id}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			UPDATE REPORT_MSTR
+			SET DEL_YN = 'Y',
+				MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+				MOD_DT = CURRENT_TIMESTAMP
+			WHERE report_id = #{report_id}
+		</if>
+	</update>
+	
+	<delete id="deleteReportRelevance" parameterType="int">
+		DELETE	FROM REPORT_LINK_MSTR
+		WHERE	REPORT_ID = #{report_id};
+				
+		DELETE	FROM REPORT_LINK_MSTR
+		WHERE	LINK_REPORT_ID = #{report_id};
+		
+		DELETE  FROM HOME_REPORT_ITEM_MSTR 
+		WHERE	REPORT_ID =  #{report_id};
+
+		DELETE	FROM HOME_MSTR
+		WHERE	CONT_TYPE = 'R'
+		AND		CONT_ID =  #{report_id};
+	</delete>
+	
+	<select id="selectReportScheduleList" parameterType="com.wise.ds.repository.ReportScheduleVO" resultType="com.wise.ds.repository.ReportScheduleVO">
+		SELECT *
+		FROM   REPORT_SCH_MSTR 
+		WHERE  DEL_YN = 'N' 
+		AND REG_USER_NO = #{REG_USER_NO}
+		AND REPORT_ID = #{REPORT_ID}
+		ORDER BY SCH_ID
+	</select>
+
+	<select id="selectReportScheduleAllList" resultType="com.wise.ds.repository.ReportScheduleVO">
+		SELECT *
+		FROM   REPORT_SCH_MSTR 
+		WHERE  DEL_YN = 'N' 
+		AND STATUS_CD = 40
+		ORDER BY SCH_ID
+	</select>
+	
+	<select id="selectReportScheduleAllList2" resultType="com.wise.ds.repository.ReportScheduleVO">
+		SELECT B.REPORT_NM, 
+			B.FLD_TYPE, 
+			B.REPORT_TYPE, 
+			A.SCH_ID,
+			A.USER_NO,
+			A.SCH_DT,
+			A.REPORT_ID,
+			A.STATUS_CD,
+			A.DEL_YN,
+			A.REG_USER_NO,
+			A.REG_DT,
+			A.MOD_USER_NO,
+			A.MOD_DT,
+			A.ERROR_MSG,
+			A.EXEC_ST_DT,
+			A.EXEC_ED_DT,
+			A.EXEC_DATA
+		FROM   REPORT_SCH_MSTR A
+		INNER JOIN REPORT_MSTR B ON A.REPORT_ID = B.REPORT_ID
+		WHERE  A.DEL_YN = 'N'
+		AND B.DEL_YN = 'N'
+		ORDER BY SCH_ID
+	</select>
+	
+	<insert id="insertReportSchedule" parameterType="com.wise.ds.repository.ReportScheduleVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO REPORT_SCH_MSTR
+				(
+					SCH_ID,
+					USER_NO,
+					SCH_DT,
+					REPORT_ID,
+					STATUS_CD,
+					DEL_YN,
+					REG_USER_NO,
+					REG_DT,
+					MOD_USER_NO,
+					MOD_DT,
+					ERROR_MSG,
+					EXEC_ST_DT,
+					EXEC_ED_DT,
+					EXEC_DATA
+				)
+				VALUES
+				(
+					REPORT_SCH_MSTR_SCH_ID_SEQ.NEXTVAL,
+					#{USER_NO},
+					#{SCH_DT},
+					#{REPORT_ID},
+					#{STATUS_CD},
+					#{DEL_YN},
+					#{REG_USER_NO},
+					#{REG_DT},
+					#{MOD_USER_NO},
+					#{MOD_DT},
+					#{ERROR_MSG},
+					#{EXEC_ST_DT},
+					#{EXEC_ED_DT},
+					#{EXEC_DATA}
+				)
+			</when>
+			<otherwise>
+				INSERT INTO REPORT_SCH_MSTR
+				(
+					USER_NO,
+					SCH_DT,
+					REPORT_ID,
+					STATUS_CD,
+					DEL_YN,
+					REG_USER_NO,
+					REG_DT,
+					MOD_USER_NO,
+					MOD_DT,
+					ERROR_MSG,
+					EXEC_ST_DT,
+					EXEC_ED_DT,
+					EXEC_DATA
+				)
+				VALUES
+				(
+					#{USER_NO},
+					#{SCH_DT},
+					#{REPORT_ID},
+					#{STATUS_CD},
+					#{DEL_YN},
+					#{REG_USER_NO},
+					#{REG_DT},
+					#{MOD_USER_NO},
+					#{MOD_DT},
+					#{ERROR_MSG},
+					#{EXEC_ST_DT},
+					#{EXEC_ED_DT},
+					#{EXEC_DATA}
+				)
+			</otherwise>
+		</choose>		
+	</insert>
+
+	<update id="deleteReportScheduleAll" parameterType="com.wise.ds.repository.ReportScheduleVO">
+		UPDATE REPORT_SCH_MSTR
+		SET DEL_YN = 'Y'
+		WHERE REPORT_ID = #{REPORT_ID}
+	</update>
+	
+	<update id="deleteReportSchedule" parameterType="com.wise.ds.repository.ReportScheduleVO">
+		UPDATE REPORT_SCH_MSTR
+		SET DEL_YN = 'Y'
+		WHERE SCH_ID = #{SCH_ID}
+	</update>
+	
+	<update id="insertReportSchData" parameterType="com.wise.ds.repository.ParamScheduleVO">
+		UPDATE REPORT_SCH_MSTR
+		SET
+			<if test="EXEC_ST_DT != null">
+			EXEC_ST_DT = #{EXEC_ST_DT},
+			</if>
+			<if test="EXEC_ED_DT != null">
+			EXEC_ED_DT = #{EXEC_ED_DT},
+			</if>
+			<if test="EXEC_DATA != null">
+			EXEC_DATA = #{EXEC_DATA},
+			</if>
+			<if test="ERROR_MSG != null">
+			ERROR_MSG = #{ERROR_MSG},
+			</if>
+			STATUS_CD = #{STATUS_CD}
+		WHERE SCH_ID = #{SCH_ID}
+	</update>
+	
+	<update id="deleteReportScheduleAndData" parameterType="com.wise.ds.repository.ReportScheduleVO">
+		UPDATE REPORT_SCH_MSTR
+		SET EXEC_ST_DT = NULL,
+			EXEC_ED_DT = NULL,
+			EXEC_DATA = '',
+			STATUS_CD = 50,
+			DEL_YN = 'Y'
+		WHERE SCH_ID = #{SCH_ID}
+		AND REPORT_ID = #{REPORT_ID}
+		AND STATUS_CD = 60
+	</update>
+	<select id="getReportName" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT REPORT_NM
+		FROM REPORT_MSTR
+		WHERE REPORT_NM = #{REPORT_NM}
+		AND FLD_ID = #{FLD_ID}
+		AND DEL_YN = 'N'
+	</select>
+<!-- 	<select id="UP_CONFIG_MSTR" statementType="CALLABLE" resultType="com.wise.authn.ConfigMasterVO"> -->
+<!-- 		{call -->
+<!-- 			UP_CONFIG_MSTR( -->
+<!-- 			#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT} -->
+<!-- 		)} -->
+<!-- 	</select> -->
+	<select id="selectCubeMasterInformation" parameterType="int" resultType="com.wise.ds.repository.CubeMember">
+		SELECT  CUBE_ID as cubeId
+			   ,DS_VIEW_ID as dsViewId
+			   ,CUBE_NM as name
+			   ,CUBE_DESC as description
+			   ,CUBE_ORDINAL as "order"
+		FROM	CUBE_MSTR 
+		WHERE	CUBE_ID = #{cubeId}
+	</select>
+	
+	<!-- MS-SQL -->
+ 	<select id="selectCubeColumnInfomationList" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.sql.CubeTableColumn">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR CAST( T2.COL_EXPRESS AS CHAR) = '' 
+			         THEN CAST(T1.HIE_DSP_FLD AS CHAR)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+		       ,T1.dateKey
+		       ,T1.noLoading
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,CAST(X.MEA_AGG AS CHAR)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , '' AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                                  ,0 as dateKey
+		                                  ,0 as noLoading
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE CAST(Y.HIE_DSP_FLD AS CHAR) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+				                          ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<if test='uniqueName != null'>
+			AND T1.MEA_UNI_NM = #{uniqueName}
+			</if>
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,T1.HIE_DSP_FLD AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+		       ,T1.dateKey
+		       ,T1.noLoading
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,TO_CHAR(X.MEA_AGG)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , TO_CHAR(X.MEA_COL_NM) AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'Null' as orderBy
+		                                  ,0 as dateKey
+		                                  ,0 as noLoading
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,TO_CHAR(Y.ORDER_BY) as orderBy
+				                          ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<if test='uniqueName != null'>
+			AND T1.MEA_UNI_NM = #{uniqueName}
+			</if>
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR T2.COL_EXPRESS = '' 
+			         THEN TO_CHAR(T1.HIE_DSP_FLD)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+		       ,T1.dateKey
+		       ,T1.noLoading
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                  ,X.MEA_AGG
+		                                  ,null as HIE_DSP_FLD 
+		                                  ,X.MEA_TBL_NM AS TBL_NM
+		                                  ,X.MEA_COL_NM AS COL_NM
+		                                  ,'' AS COL_NM2
+		                                  ,X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                                  ,0 as dateKey
+		                                  ,0 as noLoading
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,Y.NAME_COL AS COL_NM2
+		                                  ,X.HIE_IS_VISIBLE as "visible"
+		                                  ,Y.ORDER_BY as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,Y.NAME_COL AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,Y.ORDER_BY as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<if test='uniqueName != null'>
+			AND T1.MEA_UNI_NM = #{uniqueName}
+			</if>
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR TO_CHAR( T2.COL_EXPRESS) = '' 
+			         THEN TO_CHAR(T1.HIE_DSP_FLD)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+		       ,T1.dateKey
+		       ,T1.noLoading
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,TO_CHAR(X.MEA_AGG)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , TO_CHAR(X.MEA_COL_NM) AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'Null' as orderBy
+		                                  ,0 as dateKey
+		                                  ,0 as noLoading
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,TO_CHAR(Y.ORDER_BY) as orderBy
+				                          ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<if test='uniqueName != null'>
+			AND T1.MEA_UNI_NM = #{uniqueName}
+			</if>
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR CAST( T2.COL_EXPRESS AS CHAR) = '' 
+			         THEN CAST(T1.HIE_DSP_FLD AS CHAR)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1.visible
+		       ,T1.orderBy
+		       ,T1.dateKey
+		       ,T1.noLoading
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,CAST(X.MEA_AGG AS CHAR)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , '' AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                                  ,0 as dateKey
+		                                  ,0 as noLoading
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE CAST(Y.HIE_DSP_FLD AS CHAR) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+				                          ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                                  ,Y.IS_DATEKEY as dateKey
+		                                  ,Y.IS_NOLOADING as noLoading
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<if test='uniqueName != null'>
+			AND T1.MEA_UNI_NM = #{uniqueName}
+			</if>
+		</if>
+	</select> 
+	
+	<!-- DOGFOOT ktkang KERIS 주제영역 속도 개선 루틴 추가  20200308 -->
+	<select id="selectCubeColumnInfomationList2" parameterType="java.util.HashMap" resultType="com.wise.ds.sql.CubeTableColumn">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR CAST( T2.COL_EXPRESS AS CHAR) = '' 
+			         THEN CAST(T1.HIE_DSP_FLD AS CHAR)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,CAST(X.MEA_AGG AS CHAR)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , '' AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE CAST(Y.HIE_DSP_FLD AS CHAR) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,Y.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<choose>
+   		  	<when test="columns.size != 0">
+   		  		AND T1.MEA_GRP_UNI_NM IN 
+   		  		<foreach collection="columns" item="column" index="index" separator="," open="(" close=")">
+   		  			#{column}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,T1.HIE_DSP_FLD AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,TO_CHAR(X.MEA_AGG)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , TO_CHAR(X.MEA_COL_NM) AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'Null' as orderBy
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<choose>
+   		  	<when test="columns.size != 0">
+   		  		AND T1.MEA_GRP_UNI_NM IN 
+   		  		<foreach collection="columns" item="column" index="index" separator="," open="(" close=")">
+   		  			#{column}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR T2.COL_EXPRESS = '' 
+			         THEN TO_CHAR(T1.HIE_DSP_FLD)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                  ,X.MEA_AGG
+		                                  ,null as HIE_DSP_FLD 
+		                                  ,X.MEA_TBL_NM AS TBL_NM
+		                                  ,X.MEA_COL_NM AS COL_NM
+		                                  ,'' AS COL_NM2
+		                                  ,X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,Y.NAME_COL AS COL_NM2
+		                                  ,X.HIE_IS_VISIBLE as "visible"
+		                                  ,Y.ORDER_BY as orderBy
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,Y.NAME_COL AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,Y.ORDER_BY as orderBy
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<choose>
+   		  	<when test="columns.size != 0">
+   		  		AND T1.MEA_GRP_UNI_NM IN 
+   		  		<foreach collection="columns" item="column" index="index" separator="," open="(" close=")">
+   		  			#{column}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR TO_CHAR( T2.COL_EXPRESS) = '' 
+			         THEN TO_CHAR(T1.HIE_DSP_FLD)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1."visible"
+		       ,T1.orderBy
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,TO_CHAR(X.MEA_AGG)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , TO_CHAR(X.MEA_COL_NM) AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'Null' as orderBy
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE TO_CHAR(Y.HIE_DSP_FLD) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,TO_CHAR(Y.NAME_COL) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,TO_CHAR(Y.ORDER_BY) as orderBy
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<choose>
+   		  	<when test="columns.size != 0">
+   		  		AND T1.MEA_GRP_UNI_NM IN 
+   		  		<foreach collection="columns" item="column" index="index" separator="," open="(" close=")">
+   		  			#{column}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT  T2.DS_VIEW_ID AS dsViewId
+		       ,${cubeId} AS cubeId
+		       ,T1.COL_TYPE AS columnType
+		       ,T1.MEA_GRP_UNI_NM AS logicalTableName
+		       ,T1.MEA_UNI_NM AS logicalColumnName
+		       ,T1.MEA_CAPTION AS columnCaption
+		       ,T1.MEA_AGG AS aggregationType
+		       ,CASE WHEN T2.COL_EXPRESS IS NULL OR CAST( T2.COL_EXPRESS AS CHAR) = '' 
+			         THEN CAST(T1.HIE_DSP_FLD AS CHAR)
+			         ELSE 'CUSTOM' 
+			    END AS displayType
+		       ,T2.COL_EXPRESS AS expression
+		       ,T2.TBL_NM AS physicalTableName
+		       ,T2.COL_NM AS physicalColumnKey
+		       ,T1.COL_NM2 AS physicalColumnName
+		       ,T2.DATA_TYPE AS dataType
+		       ,T2.LENGTH AS dataLength
+		       ,T2.PK_YN AS primaryKeyYN
+		       ,T1.visible
+		       ,T1.orderBy
+			FROM    DS_VIEW_COL_MSTR T2 
+		          LEFT OUTER JOIN (
+		          				   SELECT  'measure' AS COL_TYPE
+		          						  ,X.CUBE_ID
+		                                  ,X.MEA_GRP_UNI_NM
+		                                  ,X.MEA_UNI_NM
+		                                  ,X.MEA_CAPTION
+		                                   ,CAST(X.MEA_AGG AS CHAR)as MEA_AGG 
+				                          ,null as HIE_DSP_FLD
+				                         , X.MEA_TBL_NM AS TBL_NM
+				                          ,X.MEA_COL_NM AS COL_NM
+				                         , '' AS COL_NM2
+				                         , X.MEA_IS_VISIBLE as "visible"
+		                                  ,'' as orderBy
+		                           FROM   CUBE_MEA_MSTR X
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,X.CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.HIE_UNI_NM
+		                                  ,X.HIE_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,CASE WHEN Y.HIE_DSP_FLD IS NULL or Y.HIE_DSP_FLD = '' 
+		                                  		THEN 
+		                                    		CASE WHEN Y.TBL_NM IS NULL OR Y.TBL_NM = '' 
+		                                    			 THEN NULL 
+		                                    			 ELSE CASE WHEN CONCAT('[',CONCAT(Y.TBL_NM,']')) <![CDATA[<>]]> X.DIM_DIM_UNI_NM THEN 'SF' END
+		                                   			END
+		                                  		ELSE CAST(Y.HIE_DSP_FLD AS CHAR) 
+		                                   END AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+	                                   	  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+				                          ,X.HIE_IS_VISIBLE as "visible"
+				                          ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                           FROM   CUBE_HIE_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DIM_DIM_UNI_NM = Y.DIM_UNI_NM
+		                                      AND X.HIE_HIE_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.CUBE_ID = #{cubeId}
+		                           AND    Y.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           AND    X.HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		                           UNION ALL
+		                           SELECT  'dimension' AS COL_TYPE
+		                                  ,${cubeId} AS CUBE_ID
+		                                  ,X.DIM_UNI_NM
+		                                  ,X.LVL_UNI_NM
+		                                  ,X.LVL_CAPTION
+		                                  ,'Count' AS MEA_AGG
+		                                  ,'LEVEL_LEAF' AS HIE_DSP_FLD
+		                                  ,Y.TBL_NM
+		                                  ,Y.KEY_COL AS COL_NM
+		                                  ,CAST(Y.NAME_COL AS CHAR) AS COL_NM2
+		                                  ,1 as "visible"
+		                                  ,CAST(Y.ORDER_BY AS CHAR) as orderBy
+		                           FROM   DS_VIEW_LVL_MSTR X
+		                                    INNER JOIN DS_VIEW_HIE_MSTR Y
+		                                      ON X.DS_VIEW_ID = Y.DS_VIEW_ID 
+		                                      AND X.DIM_UNI_NM = Y.DIM_UNI_NM 
+		                                      AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+		                           WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		                           ) T1
+		            ON T2.TBL_NM = T1.TBL_NM
+		            AND T2.COL_NM = T1.COL_NM  
+			WHERE T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<choose>
+   		  	<when test="columns.size != 0">
+   		  		AND T1.MEA_GRP_UNI_NM IN 
+   		  		<foreach collection="columns" item="column" index="index" separator="," open="(" close=")">
+   		  			#{column}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+		</if>
+	</select> 
+	
+	<!-- dogfoot shlim  20210430 -->
+	<select id="selectCubeReportTableConstraints2" parameterType="com.wise.ds.repository.CubeTableVO" resultType="wise.querygen.dto.Relation">
+		SELECT	A.DS_ID AS DS_ID
+               ,B.DS_VIEW_ID AS DS_VIEW_ID
+               ,C.CUBE_ID AS CUBE_ID
+               ,D.CONST_NM as CONST_NM
+               ,D.FK_TBL_NM as FK_TBL_NM
+               ,D.FK_COL_NM as FK_COL_NM
+               ,D.PK_TBL_NM  as PK_TBL_NM
+               ,D.PK_COL_NM as PK_COL_NM
+               ,D.JOIN_TYPE as JOIN_TYPE
+               ,D.JOIN_SET_OWNER as JOIN_SET_OWNER
+               ,D.REL_CONST_NM as REL_CONST_NM
+               ,D.DIM_UNI_NM as DIM_UNI_NM
+               ,D.MEA_GRP_UNI_NM as MEA_GRP_UNI_NM
+               ,'' AS MODIFY_TAG 
+			   ,E.COL_EXPRESS AS FK_EXPRESS
+			   ,F.COL_EXPRESS AS PK_EXPRESS
+          FROM	  DS_MSTR A
+                INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID 
+                INNER JOIN CUBE_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+                INNER JOIN CUBE_REL_MSTR D ON C.CUBE_ID = D.CUBE_ID
+                INNER JOIN DS_VIEW_COL_MSTR E 
+					ON B.DS_VIEW_ID = E.DS_VIEW_ID 
+					AND D.FK_COL_NM = E.COL_NM 
+					AND D.FK_TBL_NM = E.TBL_NM
+				INNER JOIN DS_VIEW_COL_MSTR F 
+					ON B.DS_VIEW_ID = F.DS_VIEW_ID 
+					AND D.PK_COL_NM = F.COL_NM
+					AND D.PK_TBL_NM = F.TBL_NM
+   		  WHERE	  1 = 1
+   		  AND C.CUBE_ID = #{cubeId}
+	</select>
+	<select id="selectViewReportTableConstraints2" parameterType="com.wise.ds.repository.CubeTableVO" resultType="map">
+		SELECT	A.DS_ID
+               ,B.DS_VIEW_ID 
+               ,C.CONST_NM 
+               ,C.FK_TBL_NM 
+               ,C.FK_COL_NM 
+               ,C.PK_TBL_NM 
+               ,C.PK_COL_NM 
+               ,C.JOIN_TYPE 
+               ,C.JOIN_SET_OWNER 
+               ,'''' AS MODIFY_TAG 
+           FROM	 DS_MSTR A
+	             INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+	             INNER JOIN DS_VIEW_REL_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+   		  WHERE	 1 = 1  
+   		  AND B.DS_VIEW_ID  = (select DS_VIEW_ID from CUBE_MSTR T2 WHERE T2.CUBE_ID = #{cubeId})
+	</select>
+	
+	<!-- DOGFOOT ktkang KERIS 주제영역 속도 개선 루틴 추가  20200308 -->
+	<select id="selectViewReportTableConstraints3" parameterType="java.util.HashMap" resultType="map">
+		SELECT	A.DS_ID
+
+               ,B.DS_VIEW_ID 
+
+               ,C.CONST_NM 
+
+               ,C.FK_TBL_NM 
+
+               ,C.FK_COL_NM 
+
+               ,C.PK_TBL_NM 
+
+               ,C.PK_COL_NM 
+
+               ,C.JOIN_TYPE 
+
+               ,C.JOIN_SET_OWNER 
+
+               ,'''' AS MODIFY_TAG 
+
+           FROM	 DS_MSTR A
+
+	             INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+
+	             INNER JOIN DS_VIEW_REL_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+
+   		  WHERE	 1 = 1  
+   		  AND B.DS_VIEW_ID  = (select DS_VIEW_ID from CUBE_MSTR T2 WHERE T2.CUBE_ID = #{cubeId})
+   		  <choose>
+   		  	<when test="measures.size != 0">
+   		  		AND C.FK_TBL_NM IN 
+   		  		<foreach collection="measures" item="measure" index="index" separator="," open="(" close=")">
+   		  			#{measure}
+   		  		</foreach>
+   		  	</when>
+   		  </choose>
+	</select>
+<!-- 	<select id="selectViewReportTableConstraints3" parameterType="java.util.HashMap" resultType="map">
+		SELECT	A.DS_ID
+               ,B.DS_VIEW_ID 
+               ,C.CONST_NM 
+               ,C.FK_TBL_NM 
+               ,C.FK_COL_NM 
+               ,C.PK_TBL_NM 
+               ,C.PK_COL_NM 
+               ,C.JOIN_TYPE 
+               ,C.JOIN_SET_OWNER 
+               ,'''' AS MODIFY_TAG 
+           FROM	 DS_MSTR A
+	             INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+	             INNER JOIN DS_VIEW_REL_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+   		  WHERE	 1 = 1  
+   		  AND B.DS_VIEW_ID  = (select DS_VIEW_ID from CUBE_MSTR T2 WHERE T2.CUBE_ID = #{cubeId})
+   		  <choose>
+   		  	<when test="measures.size != 0">
+   		  		AND 
+   		  		<foreach collection="measures" item="measure" index="index" separator="OR" open="(" close=")">
+   		  			C.FK_TBL_NM LIKE '%' || #{measure} || '%'
+   		  		</foreach>
+   		  		
+   		  	</when>
+   		  </choose>
+	</select> -->
+	
+	<insert id="InsertReportLogDetail"  parameterType="com.wise.ds.repository.ReportLogDetailMasterVO">
+		INSERT INTO LOG_REPORT_USE_DETAIL
+         (LOG_SEQ,
+		 LOG_DETAIL_SEQ,
+		 RUN_TYPE,
+         REPORT_ID,
+         REPORT_NM,
+         REPORT_TYPE,
+         USER_ID,
+         USER_NM,
+         USER_NO,
+         GRP_ID,
+         GRP_NM,
+		 ACCESS_IP,
+		 RUN_QUERY,
+		 ST_DT,
+		 ED_DT,
+		 STATUS_CD,
+		 DS_ID,
+		 PROG_TYPE)
+         VALUES ( #{LOG_SEQ},
+		  #{LOG_DETAIL_SEQ},
+		  #{RUN_TYPE},
+          #{REPORT_ID},
+          #{REPORT_NM},
+          #{REPORT_TYPE},
+          #{USER_ID},
+          #{USER_NM},
+          #{USER_NO},
+          #{GRP_ID},
+          #{GRP_NM},
+		  #{ACCESS_IP},
+		  #{RUN_QUERY},
+		  #{ST_DT},
+		  #{ED_DT},
+		  #{STATUS_CD},
+		  #{DS_ID},
+		  #{PROG_TYPE}) 
+	</insert>
+	<update id="UpdateReportLogDetail" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		UPDATE LOG_REPORT_USE_DETAIL
+		SET ED_DT = #{ED_DT},
+			STATUS_CD = #{STATUS_CD}
+		WHERE LOG_SEQ = #{LOG_SEQ}
+		
+	</update>
+	
+	<update id="UpdateReportLogDetailError" parameterType="java.util.HashMap">
+		<if test="_databaseId == 'sqlserver'">
+			UPDATE LOG_REPORT_USE_DETAIL 
+			SET ED_DT = GETDATE(),
+				STATUS_CD = 99
+			WHERE STATUS_CD = 50
+			AND ST_DT <![CDATA[<]]> DATEADD(hh, -${interval}, GETDATE())
+		</if>
+		<if test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+			UPDATE LOG_REPORT_USE_DETAIL 
+			SET ED_DT = SYSDATE,
+				STATUS_CD = 99
+			WHERE STATUS_CD = 50
+			AND ST_DT <![CDATA[<]]> SYSDATE-${interval}/24
+		</if>
+		<if test="_databaseId == 'db2'">
+			UPDATE LOG_REPORT_USE_DETAIL 
+			SET ED_DT = CURRENT TIMESTAMP,
+				STATUS_CD = 99
+			WHERE STATUS_CD = 50
+			AND ST_DT <![CDATA[<]]> CURRENT TIMESTAMP -${interval} HOUR
+		</if>
+		<if test="_databaseId == 'Maria'">
+			UPDATE LOG_REPORT_USE_DETAIL 
+			SET ED_DT = NOW(),
+				STATUS_CD = 99
+			WHERE STATUS_CD = 50
+			AND ST_DT <![CDATA[<]]> DATE_ADD(NOW(), INTERVAL -${interval} HOUR)
+		</if>
+	</update>
+	
+	<select id="getReportLogCleanHour" resultType="int">
+		SELECT REPORT_LOG_CLEAN_HOUR FROM WB_CONFIG_MSTR
+	</select>
+	
+	<update id="UpdateReportLog" parameterType="com.wise.ds.repository.ReportLogMasterVO">
+		UPDATE LOG_REPORT_USE2
+		SET ED_DT = #{ED_DT},
+			STATUS_CD = #{STATUS_CD}
+		WHERE LOG_SEQ = #{LOG_SEQ}
+		
+	</update>
+	
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="getReportType" resultType="com.wise.ds.repository.ReportMasterVO">
+		<!-- SELECT REPORT_TYPE, FLD_TYPE FROM REPORT_MSTR WHERE REPORT_ID = #{pid}  -->
+		SELECT REPORT_NM, REPORT_TYPE, FLD_TYPE FROM REPORT_MSTR WHERE REPORT_ID = #{pid} 
+	</select>
+	
+	<insert id="insertUserUpload" parameterType="com.wise.ds.repository.UserUploadMstrVO">
+		<if test="_databaseId == 'sqlserver'">
+			INSERT INTO USER_UPLOAD_MSTR(    
+				 DATA_NM                    
+				,TBL_NM         
+				,REG_USER_NO
+				,DATA_DESC                
+				,UPLOAD_XML
+				,REG_DT 
+				,UPD_DT
+				,DS_ID
+			 ) VALUES (      
+				 #{DATA_NM}                 
+				,#{TBL_NM}    
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{REG_USER_ID})    
+				,#{DATA_DESC}              
+				,#{UPLOAD_XML} 
+				,GETDATE()
+				,GETDATE()
+				,#{DS_ID}
+			)
+		</if>
+		<if test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+			INSERT INTO USER_UPLOAD_MSTR(    
+				 DATA_SEQ
+				,DATA_NM                    
+				,TBL_NM         
+				,REG_USER_NO
+				,DATA_DESC                
+				,UPLOAD_XML
+				,REG_DT 
+				,UPD_DT
+				,DS_ID               
+			 ) VALUES (
+				 USER_DATA_FILE_MSTR_DATA_SEQ.NEXTVAL
+				,#{DATA_NM}                 
+				,#{TBL_NM}    
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{REG_USER_ID})    
+				,#{DATA_DESC}              
+				,#{UPLOAD_XML} 
+				,SYSDATE
+				,SYSDATE
+				,#{DS_ID}
+			)
+		</if>
+		<if test="_databaseId == 'db2'">
+			INSERT INTO USER_UPLOAD_MSTR(    
+				 DATA_NM                    
+				,TBL_NM         
+				,REG_USER_NO
+				,DATA_DESC                
+				,UPLOAD_XML
+				,REG_DT 
+				,UPD_DT
+				,DS_ID               
+			 ) VALUES (      
+				 #{DATA_NM}                 
+				,#{TBL_NM}    
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{REG_USER_ID})    
+				,#{DATA_DESC}              
+				,#{UPLOAD_XML} 
+				,CURRENT TIMESTAMP
+				,CURRENT TIMESTAMP             
+				,#{DS_ID}
+			)
+		</if>
+		<if test="_databaseId == 'Maria'">
+			INSERT INTO USER_UPLOAD_MSTR(  
+				 DATA_NM                    
+				,TBL_NM         
+				,REG_USER_NO
+				,DATA_DESC                
+				,UPLOAD_XML
+				,REG_DT 
+				,UPD_DT
+				,DS_ID               
+			) VALUES (   
+				 #{DATA_NM}                 
+				,#{TBL_NM}    
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{REG_USER_ID})    
+				,#{DATA_DESC}              
+				,#{UPLOAD_XML} 
+				,NOW()
+				,NOW()
+				,#{DS_ID}
+           )    
+		</if>
+	</insert>
+	
+	<select id="selectHisUpload" parameterType="com.wise.ds.repository.UploadHisVO" resultType="com.wise.ds.repository.UploadHisVO">
+		 SELECT DATA_SEQ 
+		 FROM USER_UPLOAD_MSTR 
+		 WHERE TBL_NM = #{TBL_NM}
+	</select>
+	
+	<insert id="insertUserUploadHis" parameterType="com.wise.ds.repository.UploadHisVO">
+		<if test="_databaseId == 'sqlserver'">
+			INSERT INTO 
+				USER_UPLOAD_HIS_MSTR
+				(
+				DATA_SEQ
+				,DATA_NM                    
+				,TBL_NM         
+				,MOD_DT
+				,REC_CNT
+				,MOD_USER_NO)
+			VALUES ( 
+					#{DATA_SEQ}                 
+					,#{DATA_NM}
+					,#{TBL_NM}
+					,GETDATE()
+					,#{REC_CNT}
+					,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{MOD_USER_ID})
+	        )
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			INSERT INTO 
+			USER_UPLOAD_HIS_MSTR
+			(
+			DATA_SEQ
+			,DATA_NM                    
+			,TBL_NM         
+			,MOD_DT
+			,REC_CNT                
+			,MOD_USER_NO)
+		VALUES ( 
+				#{DATA_SEQ}                 
+				,#{DATA_NM}
+				,#{TBL_NM}
+				,SYSDATE
+				,#{REC_CNT}
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{MOD_USER_ID})
+        )
+		</if>
+		<if test="_databaseId == 'db2'">
+			INSERT INTO 
+			USER_UPLOAD_HIS_MSTR
+			(
+			DATA_SEQ
+			,DATA_NM                    
+			,TBL_NM         
+			,MOD_DT
+			,REC_CNT                
+			,MOD_USER_NO)
+		VALUES ( 
+				#{DATA_SEQ}                 
+				,#{DATA_NM}
+				,#{TBL_NM}
+<!-- 				,GETDATE() -->
+				,CURRENT TIMESTAMP
+				,#{REC_CNT}
+				,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{MOD_USER_ID})
+        )
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			INSERT INTO 
+				USER_UPLOAD_HIS_MSTR
+				(
+				DATA_SEQ
+				,DATA_NM                    
+				,TBL_NM         
+				,MOD_DT
+				,REC_CNT                
+				,MOD_USER_NO)
+			VALUES ( 
+					#{DATA_SEQ}                 
+					,#{DATA_NM}
+					,#{TBL_NM}
+					,SYSDATE
+					,#{REC_CNT}
+					,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{MOD_USER_ID})
+	        )
+		</if>
+		<if test="_databaseId == 'Maria'">
+			INSERT INTO 
+				USER_UPLOAD_HIS_MSTR
+				(
+				DATA_SEQ
+				,DATA_NM                    
+				,TBL_NM         
+				,MOD_DT
+				,REC_CNT                
+				,MOD_USER_NO)
+			VALUES ( 
+					#{DATA_SEQ}                 
+					,#{DATA_NM}
+					,#{TBL_NM}
+					,NOW()
+					,#{REC_CNT}
+					,(SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{MOD_USER_ID})
+	        )
+		</if>
+	</insert>
+	<select id="selectUserUpload" parameterType="int" resultType="com.wise.ds.repository.UserUploadMstrVO">
+		SELECT DATA_NM, 
+			TBL_NM, 
+			DS_ID 
+		FROM USER_UPLOAD_MSTR 
+		WHERE DS_ID = #{DS_ID}
+	</select>
+	
+	<delete id="deleteReportLink" parameterType="String">
+		DELETE	FROM REPORT_LINK_MSTR
+		WHERE	REPORT_ID = #{report_id}
+	</delete>
+	
+	<delete id="deleteReportSubLink" parameterType="String">
+		DELETE	FROM REPORT_LINK_SUB_MSTR
+		WHERE	REPORT_ID = #{report_id}
+	</delete>
+	
+	<insert id="insertLinkReport" parameterType="com.wise.ds.repository.ReportSubLinkVO">
+		INSERT INTO REPORT_LINK_MSTR
+		(
+			REPORT_ID,
+			LINK_REPORT_ID,
+			LINK_XML,
+			LINK_REPORT_ORDINAL,
+			LINK_REPORT_TYPE,
+			DATA_LINK_TYPE
+		)
+		VALUES
+		(
+			#{arg_id},
+			#{target_id},
+			#{link_xml},
+			#{link_report_ordinal},
+			#{target_type},
+			#{link_type}
+		)
+	</insert>
+	
+	<update id="updateSubLinkReport" parameterType="com.wise.ds.repository.ReportSubLinkVO">
+		UPDATE REPORT_LINK_SUB_MSTR
+		SET 
+			LINK_DATA_TYPE = #{link_type},
+			LINK_XML_PARAM = #{link_xml},
+			LINK_XML_DATA = #{link_xml2},
+			LINK_REPORT_ORDINAL = #{link_report_ordinal}
+		WHERE SEQ = #{SEQ}
+	</update>
+	
+	<!-- 2020.02.13 mksong 서브연결보고서 저장 DB별 동기화 DOGFOOT -->
+	<insert id="insertSubLinkReport" parameterType="com.wise.ds.repository.ReportSubLinkVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO REPORT_LINK_SUB_MSTR
+				(	
+					SEQ,
+					REPORT_ID,
+					LINK_REPORT_ID,
+					LINK_SUB_ITEM,
+					LINK_XML_PARAM,
+					LINK_XML_DATA,
+					LINK_REPORT_ORDINAL,
+					LINK_REPORT_TYPE,
+					LINK_DATA_TYPE
+				)
+				VALUES
+				(
+					REPORT_LINK_SUB_MSTR_ID_SEQ.NEXTVAL,
+					#{arg_id},
+					#{target_id},
+					#{target_item},
+					#{link_xml},
+					#{link_xml2},
+					#{link_report_ordinal},
+					#{target_type},
+					#{link_type}
+				)
+			</when>
+			<otherwise>
+				INSERT INTO REPORT_LINK_SUB_MSTR
+				(	
+					REPORT_ID,
+					LINK_REPORT_ID,
+					LINK_SUB_ITEM,
+					LINK_XML_PARAM,
+					LINK_XML_DATA,
+					LINK_REPORT_ORDINAL,
+					LINK_REPORT_TYPE,
+					LINK_DATA_TYPE
+				)
+				VALUES
+				(
+					#{arg_id},
+					#{target_id},
+					#{target_item},
+					#{link_xml},
+					#{link_xml2},
+					#{link_report_ordinal},
+					#{target_type},
+					#{link_type}
+				)
+			</otherwise>
+		</choose>
+	</insert>
+	<select id="UP_REPORT_LINK_SUB_MSTR_ACT" statementType="CALLABLE"  parameterType="com.wise.ds.repository.ReportSubLinkVO" resultType="com.wise.ds.repository.ReportSubLinkVO" useCache="false">
+		<if test="_databaseId == 'sqlserver'">
+			{call 
+			UP_REPORT_LINK_SUB_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{arg_id, mode=IN},
+				#{target_id, mode=IN},
+				#{link_xml, mode=IN},
+				#{link_report_ordinal, mode=IN},
+				#{target_type, mode=IN},
+				#{link_type, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call 
+			UP_REPORT_LINK_SUB_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{arg_id, mode=IN},
+				#{target_id, mode=IN},
+				#{link_xml, mode=IN},
+				#{link_report_ordinal, mode=IN},
+				#{target_type, mode=IN},
+				#{link_type, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call
+			UP_REPORT_LINK_SUB_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{arg_id, mode=IN},
+				#{target_id, mode=IN},
+				#{link_xml, mode=IN},
+				#{link_report_ordinal, mode=IN},
+				#{target_type, mode=IN},
+				#{link_type, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call 
+			UP_REPORT_LINK_SUB_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{arg_id, mode=IN},
+				#{target_id, mode=IN},
+				#{link_xml, mode=IN},
+				#{link_report_ordinal, mode=IN},
+				#{target_type, mode=IN},
+				#{link_type, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL
+			UP_REPORT_LINK_SUB_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{arg_id, mode=IN},
+				#{target_id, mode=IN},
+				#{link_xml, mode=IN},
+				#{link_report_ordinal, mode=IN},
+				#{target_type, mode=IN},
+				#{link_type, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+	</select>
+	
+	<select id="selectLinkSubReportYn" parameterType="com.wise.ds.repository.ReportSubLinkVO" resultType="com.wise.ds.repository.ReportSubLinkVO">
+		SELECT SEQ
+		FROM REPORT_LINK_SUB_MSTR 
+		WHERE REPORT_ID = #{arg_id}
+		AND LINK_REPORT_ID = #{target_id}
+		AND LINK_SUB_ITEM = #{target_item}
+	</select>
+	
+	<select id="selectLinkSubReportSeq" resultType="int">
+		SELECT CASE WHEN MAX(SEQ) IS NULL THEN 0 ELSE MAX(SEQ) END 
+		FROM REPORT_LINK_SUB_MSTR;
+	</select>
+	
+	<select id="selectReportParam" parameterType="com.wise.ds.repository.ReportMasterVO" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT	PARAM_XML
+		FROM	REPORT_MSTR
+		WHERE	REPORT_ID = #{REPORT_ID}
+	</select>
+	
+	<select id="selectDrillThruCategoryList" parameterType="int" resultType="com.wise.ds.repository.DrillThruColumnVO">
+		SELECT	CUBE_ID AS cubeId
+		       ,ACT_ID AS actId
+		       ,ACT_NM AS actNm
+		       ,MEA_GRP_UNI_NM AS targetTable
+		FROM	CUBE_ACT_MSTR
+		WHERE	CUBE_ID = #{cubeId}
+		ORDER BY ACT_ID
+	</select>
+	<!-- DOGFOOT ktkang 상세데이터 보기 오류 수정   20200219 -->
+	<select id="selectDrillThruColumns" parameterType="map" resultType="com.wise.ds.repository.DrillThruColumnVO">
+		SELECT	T.CUBE_ID AS cubeId
+		       ,T.ACT_ID AS actId
+		       ,T.ACT_NM AS actNm
+		       ,T.UNI_NM AS uniNm
+		       ,T.RTN_ITEM_UNI_NM AS rtnItemUniNm
+		       ,T.ORDINAL AS ordinal
+		       ,(SELECT  'Y' 
+		         FROM    CUBE_HIE_MSTR A 
+		         WHERE   A.CUBE_ID = T.CUBE_ID 
+		         AND     T.RTN_ITEM_UNI_NM = A.HIE_UNI_NM
+		         UNION
+		         SELECT  'Y' 
+		         FROM    CUBE_MEA_MSTR A 
+		         WHERE   A.CUBE_ID = T.CUBE_ID 
+		         AND     T.RTN_ITEM_UNI_NM = A.MEA_UNI_NM
+		         AND 	 A.MEA_AGG IS NULL) AS dimYn
+		       ,(SELECT  'Y' 
+		         FROM    CUBE_MEA_MSTR A 
+		         WHERE   A.CUBE_ID = T.CUBE_ID 
+		         AND     T.RTN_ITEM_UNI_NM = A.MEA_UNI_NM
+		         AND 	 A.MEA_AGG IS NOT NULL) AS meaYn
+		FROM 	(
+		      	SELECT  X.CUBE_ID
+		               ,X.ACT_ID
+		               ,X.ACT_NM
+		               ,Y.UNI_NM
+		               ,Y.RTN_ITEM_UNI_NM
+		               ,Y.ORDINAL
+		      	FROM   CUBE_ACT_MSTR X 
+		               	INNER JOIN CUBE_ACT_RTN_ITEM Y
+		                	ON X.CUBE_ID = Y.CUBE_ID
+		                    AND X.ACT_ID = Y.ACT_ID
+		        WHERE  X.CUBE_ID = #{cubeId}
+		        AND	   X.ACT_ID = #{actId}
+      			) T
+      			ORDER BY T.ORDINAL
+	</select>
+	
+	<!-- DOGFOOT ktkang KERIS 보고서 별 필드 정보 추가기능  20200123 -->
+	<select id="selectReportFieldList" parameterType="int" resultType="com.wise.ds.repository.ReportFieldMasterVO">
+		SELECT	*
+		FROM	REPORT_FIELD_MSTR
+		WHERE	REPORT_ID = #{reportId}
+	</select>
+	
+	<delete id="deleteReportFieldList" parameterType="int">
+		DELETE	FROM REPORT_FIELD_MSTR
+		WHERE	REPORT_ID = #{reportId};
+	</delete>
+	
+	<insert id="insertReportField" parameterType="com.wise.ds.repository.ReportFieldMasterVO">
+		INSERT INTO REPORT_FIELD_MSTR
+		(
+			REPORT_ID,
+			FIELD_NM,
+			FIELD_TYPE
+		)
+		VALUES
+		(
+			#{REPORT_ID},
+			#{FIELD_NM},
+			#{FIELD_TYPE}
+		)
+	</insert>
+	
+	<!-- DOGFOOT ktkang KERIS EDS포탈에서 보여주는 보고서 체크 기능  20200205 -->
+	<select id="selectPotalReportList" resultType="com.wise.ds.repository.ReportParamVO">
+		SELECT REPORT_MSTR.REPORT_ID
+		FROM REPORT_MSTR
+		INNER JOIN PUB_FLD_MSTR ON (REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID)
+		WHERE PUB_FLD_MSTR.FLD_PARENT_ID=5098
+		AND REPORT_MSTR.DEL_YN = 'N'
+	</select>
+	
+	<select id="selectCubeRelationList" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.repository.TableRelationVO">
+		SELECT	CONST_NM,
+				FK_TBL_NM,
+				FK_COL_NM,
+				PK_TBL_NM,
+				PK_COL_NM,
+				JOIN_TYPE
+		FROM	CUBE_REL_MSTR
+		WHERE	CUBE_ID = #{cubeId}
+		UNION 
+		SELECT	CONST_NM,
+				FK_TBL_NM,
+				FK_COL_NM,
+				PK_TBL_NM,
+				PK_COL_NM,
+				JOIN_TYPE
+		FROM	DS_VIEW_REL_MSTR
+		WHERE	DS_VIEW_ID = #{dsViewId}
+	</select>
+	
+	<!-- DOGFOOT shlim 보고서 형상관리 최신 순으로 정렬  20201130 -->
+	<select id="selectReportHisList" parameterType="int" resultType="com.wise.ds.repository.ReportMasterHisVO">
+		SELECT	REPORT_SEQ,
+				MOD_DT
+		FROM	REPORT_MSTR_HIS
+		WHERE	REPORT_ID = #{reportId}
+		ORDER BY MOD_DT DESC
+	</select>
+	
+	<select id="selectReportHis" parameterType="map" resultType="com.wise.ds.repository.ReportMasterHisVO">
+		SELECT	*
+		FROM	REPORT_MSTR_HIS
+		WHERE	REPORT_ID = #{reportId}
+		AND 	REPORT_SEQ = #{reportSeq}
+	</select>
+	
+	<update id="updateReportMstrHis" parameterType="com.wise.ds.repository.ReportMasterHisVO">
+	<if test="_databaseId == 'sqlserver'">
+		UPDATE A
+		SET
+		A.REPORT_NM = B.REPORT_NM,
+		A.FLD_ID = B.FLD_ID,
+		A.FLD_TYPE = B.FLD_TYPE,
+		A.REPORT_ORDINAL = B.REPORT_ORDINAL,
+		A.REPORT_TYPE = B.REPORT_TYPE,
+		A.REPORT_TAG = B.REPORT_TAG,
+		A.REPORT_DESC = B.REPORT_DESC,
+		A.REPORT_LAYOUT = B.REPORT_LAYOUT,
+		A.GRID_INFO = B.GRID_INFO,
+		A.DATASRC_ID = B.DATASRC_ID,
+		A.DATASRC_TYPE = B.DATASRC_TYPE,
+		A.DATASET_TYPE = B.DATASET_TYPE,
+		A.REPORT_XML = B.REPORT_XML,
+		A.CHART_XML = B.CHART_XML,
+		A.LAYOUT_XML = B.LAYOUT_XML,
+		A.DATASET_XML = B.DATASET_XML,
+		A.PARAM_XML = B.PARAM_XML,
+		A.DATASET_QUERY = B.DATASET_QUERY,
+		A.DEL_YN = B.DEL_YN,
+		A.PROMPT_YN = B.PROMPT_YN,
+		A.REPORT_SUB_TITLE = B.REPORT_SUB_TITLE,
+		A.MOD_USER_NO = B.MOD_USER_NO,
+		A.MOD_DT = B.MOD_DT,
+		A.PRIVACY_YN = B.PRIVACY_YN,
+		A.LAYOUT_CONFIG = B.LAYOUT_CONFIG,
+		A.DIRECT_VIEW = B.DIRECT_VIEW
+		FROM REPORT_MSTR A
+		INNER JOIN REPORT_MSTR_HIS B ON A.REPORT_ID = B.REPORT_ID
+		WHERE A.REPORT_ID = #{REPORT_ID}
+		AND B.REPORT_SEQ = #{REPORT_SEQ}
+	</if>
+	<if test="_databaseId == 'Tibero'">
+	UPDATE REPORT_MSTR
+      SET (
+		REPORT_NM, 
+		FLD_ID,
+        FLD_TYPE,
+        REPORT_ORDINAL,
+        REPORT_TYPE,
+        REPORT_TAG,
+        REPORT_DESC,
+        REPORT_LAYOUT,
+        GRID_INFO,
+        DATASRC_ID,
+        DATASRC_TYPE,
+        DATASET_TYPE,
+        REPORT_XML,
+        CHART_XML,
+        LAYOUT_XML,
+        DATASET_XML,
+        PARAM_XML,
+        DATASET_QUERY,
+        DEL_YN,
+        PROMPT_YN,
+        REPORT_SUB_TITLE,
+        MOD_USER_NO,
+        MOD_DT,
+        PRIVACY_YN,
+        LAYOUT_CONFIG
+	) = (
+		SELECT 
+			REPORT_NM, 
+		FLD_ID,
+        FLD_TYPE,
+        REPORT_ORDINAL,
+        REPORT_TYPE,
+        REPORT_TAG,
+        REPORT_DESC,
+        REPORT_LAYOUT,
+        GRID_INFO,
+        DATASRC_ID,
+        DATASRC_TYPE,
+        DATASET_TYPE,
+        REPORT_XML,
+        CHART_XML,
+        LAYOUT_XML,
+        DATASET_XML,
+        PARAM_XML,
+        DATASET_QUERY,
+        DEL_YN,
+        PROMPT_YN,
+        REPORT_SUB_TITLE,
+        MOD_USER_NO,
+        MOD_DT,
+        PRIVACY_YN,
+        LAYOUT_CONFIG
+		FROM REPORT_MSTR_HIS
+		WHERE REPORT_ID = #{REPORT_ID}
+        AND REPORT_SEQ = #{REPORT_SEQ}
+	)
+	WHERE REPORT_ID = #{REPORT_ID}
+	</if>
+	</update>
+	
+	<select id="selectReportWorks" resultType="int">
+		SELECT	COUNT(*)
+		FROM	LOG_REPORT_USE2
+		WHERE	STATUS_CD = '50'
+	</select>
+	
+	<select id="userAuthByReport" parameterType="map" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT AUTH_EXPORT
+				,AUTH_VIEW
+				,AUTH_PUBLISH
+				,AUTH_DATAITEM
+		FROM USER_AUTH_REPORT_DETAIL
+		WHERE REPORT_ID = #{reportId}
+		AND USER_NO = #{userNo}
+	</select>
+	
+	<select id="grpAuthByReport" parameterType="map" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT AUTH_EXPORT
+				,AUTH_VIEW
+				,AUTH_PUBLISH
+				,AUTH_DATAITEM
+		FROM GRP_AUTH_REPORT_DETAIL
+		WHERE REPORT_ID = #{reportId}
+		AND GRP_ID = #{grpId}
+	</select>
+	
+	<select id="userAuthByFolder" parameterType="map" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT AUTH_EXPORT
+				,AUTH_VIEW
+				,AUTH_PUBLISH
+				,AUTH_DATAITEM
+		FROM USER_AUTH_REPORT_MSTR
+		WHERE FLD_ID = #{fldId}
+		AND USER_NO = #{userNo}
+	</select>
+	
+	<select id="grpAuthByFolder" parameterType="map" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT AUTH_EXPORT
+				,AUTH_VIEW
+				,AUTH_PUBLISH
+				,AUTH_DATAITEM
+		FROM GRP_AUTH_REPORT_MSTR
+		WHERE FLD_ID = #{fldId}
+		AND GRP_ID = #{grpId}
+	</select>
+	
+	<select id="selectSchedulePath" parameterType="int" resultType="String">
+	<if test="_databaseId == 'sqlserver'">
+			SELECT TOP 1 EXEC_DATA 
+			FROM REPORT_SCH_MSTR 
+			WHERE REPORT_ID = #{reportId}
+			AND STATUS_CD = 60
+			ORDER BY REG_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT EXEC_DATA 
+			FROM REPORT_SCH_MSTR 
+			WHERE REPORT_ID = #{reportId}
+			AND STATUS_CD = 60
+			AND ROWNUM = 1
+			ORDER BY REG_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT EXEC_DATA 
+			FROM REPORT_SCH_MSTR 
+			WHERE REPORT_ID = #{reportId}
+			AND STATUS_CD = 60
+			AND ROWNUM = 1
+			ORDER BY REG_DT DESC
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT EXEC_DATA 
+			FROM REPORT_SCH_MSTR 
+			WHERE REPORT_ID = #{reportId}
+			AND STATUS_CD = 60
+			AND ROWNUM = 1
+			ORDER BY REG_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT EXEC_DATA 
+			FROM REPORT_SCH_MSTR 
+			WHERE REPORT_ID = #{reportId}
+			AND STATUS_CD = 60
+			ORDER BY REG_DT DESC
+			LIMIT 1
+		</if>
+	</select>
+	
+	<select id="selectCubeGroupingData" parameterType="int" resultType="com.wise.ds.repository.DSViewColVO">
+		SELECT DISTINCT
+        	A.DS_VIEW_ID,
+        	A.TBL_NM,
+        	A.COL_NM,
+        	A.COL_CAPTION,
+        	A.DATA_TYPE,
+        	A.LENGTH,
+        	A.PK_YN,
+        	A.COL_DESC,
+        	DBMS_LOB.SUBSTR(A.COL_EXPRESS,4000,1) AS COL_EXPRESS,
+        	A.ALLOW_NULL,
+        	A.COL_ID,
+        	A.REG_USER_NO,
+        	A.REG_DT,
+        	A.UPD_USER_NO,
+        	A.UPD_DT,
+        	A.POPUP
+        FROM DS_VIEW_COL_MSTR A
+        INNER JOIN DS_VIEW_HIE_MSTR B ON A.DS_VIEW_ID = B.DS_VIEW_ID
+        INNER JOIN CUBE_HIE_MSTR C ON C.HIE_UNI_NM = B.HIE_UNI_NM
+        INNER JOIN CUBE_MSTR D ON D.CUBE_ID = C.CUBE_ID AND D.DS_VIEW_ID = B.DS_VIEW_ID
+		WHERE C.CUBE_ID = #{cubeId}
+		AND A.COL_EXPRESS IS NOT NULL
+	</select>
+	
+	<select id="selectCubeGroupingTblList" parameterType="int" resultType="com.wise.ds.repository.CubeHieMasterVO">
+		SELECT DISTINCT DIM_UNI_NM, HIE_CAPTION
+		FROM CUBE_HIE_MSTR  A 
+		INNER JOIN DS_VIEW_COL_MSTR B ON A.HIE_CAPTION = B.COL_CAPTION 
+		WHERE CUBE_ID = #{cubeId} 
+		AND B.COL_EXPRESS IS NULL
+	</select>
+	
+	<select id="selectMaxColId" resultType="int">
+		SELECT MAX(COL_ID)
+		FROM DS_VIEW_COL_MSTR
+	</select>
+	
+	<delete id="deleteDsViewColMstr" parameterType="int">
+		DELETE FROM DS_VIEW_COL_MSTR
+		WHERE DS_VIEW_ID = #{dsViewId}
+		AND COL_NM LIKE '%WISE_GROUP%'
+	</delete>
+	
+	<delete id="deleteDsViewHieMstr" parameterType="int">
+		DELETE FROM DS_VIEW_HIE_MSTR
+		WHERE DS_VIEW_ID = #{dsViewId} 
+		AND KEY_COL LIKE '%WISE_GROUP%'
+	</delete>
+	
+	<delete id="deleteCubeHieMstr" parameterType="int">
+		DELETE FROM CUBE_HIE_MSTR
+		WHERE CUBE_ID = #{cubeId}
+		AND HIE_UNI_NM LIKE '%WISE_GROUP%'
+	</delete>
+	
+	<insert id="insertDsViewColMstr" parameterType="map">
+		INSERT INTO DS_VIEW_COL_MSTR (
+			DS_VIEW_ID, 
+			TBL_NM , 
+			COL_NM, 
+			COL_CAPTION, 
+			DATA_TYPE, 
+			LENGTH, 
+			PK_YN, 
+			COL_DESC, 
+			COL_EXPRESS, 
+			ALLOW_NULL, 
+			COL_ID, 
+			REG_USER_NO, 
+			REG_DT, 
+			UPD_USER_NO, 
+			UPD_DT, 
+			POPUP)
+		VALUES (
+			#{DS_VIEW_ID},
+			#{TBL_NM},
+			#{COL_NM},
+			#{COL_CAPTION},
+			#{DATA_TYPE},
+			#{LENGTH},
+			#{PK_YN},
+			'',
+			#{COL_EXPRESS},
+			1,
+			#{COL_ID},
+			null,
+			null,
+			null,
+			null,
+			''
+		)
+	</insert>
+	
+	<insert id="insertDsViewHieMstr" parameterType="map">
+		INSERT INTO DS_VIEW_HIE_MSTR (
+			DS_VIEW_ID,
+			DIM_UNI_NM,
+			HIE_UNI_NM,
+			HIE_CAPTION,
+			HIE_DESC,
+			HIE_ORDINAL,
+			HIE_DSP_FLD,
+			TBL_NM,
+			KEY_COL,
+			NAME_COL,
+			IS_AUTH,
+			IS_DATEKEY,
+			IS_NOLOADING,
+			ORDER_BY,
+			LVL_TAG,
+			REG_USER_NO,
+			REG_DT,
+			UPD_UER_NO,
+			UPD_DT)
+		VALUES (
+			#{DS_VIEW_ID},
+			#{DIM_UNI_NM},
+			#{HIE_UNI_NM},
+			#{HIE_CAPTION},
+			'',
+			999,
+			'',
+			#{TBL_NM},
+			#{KEY_COL},
+			#{NAME_COL},
+			0,
+			0,
+			0,
+			'Key Column',
+			0,
+			null,
+			null,
+			null,
+			null
+		)
+	</insert>
+	
+	<insert id="insertCubeHieMstr" parameterType="map">
+		INSERT INTO CUBE_HIE_MSTR (
+			CUBE_ID,
+			HIE_UNI_NM,
+			DIM_UNI_NM,
+			HIE_CAPTION,
+			HIE_ORDINAL,
+			HIE_IS_VISIBLE,
+			DIM_DIM_UNI_NM,
+			HIE_HIE_UNI_NM,
+			HIE_FORMAT_STR)
+		VALUES (
+			#{CUBE_ID},
+			#{HIE_UNI_NM},
+			#{DIM_UNI_NM},
+			#{HIE_CAPTION},
+			999,
+			1,
+			#{DIM_DIM_UNI_NM},
+			#{HIE_HIE_UNI_NM},
+			''
+		)
+	</insert>
+	
+	<select id="selectCubeGroupingDimList" parameterType="map" resultType="com.wise.ds.repository.CubeHieMasterVO">
+		SELECT DISTINCT HIE_UNI_NM, HIE_CAPTION
+		FROM CUBE_HIE_MSTR  
+		WHERE CUBE_ID = #{cubeId}
+		AND DIM_UNI_NM = #{selectTableName}
+	</select>
+	
+	<select id="selectReportParamXmlList" parameterType="int" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT	DATASET_XML as DECODE_DATASET
+				, PARAM_XML as DECODE_PARAM
+		FROM	REPORT_MSTR
+		WHERE	REPORT_ID = #{REPORT_ID}
+	</select>
+	<update id="updateReportDatasetParam" parameterType="com.wise.ds.repository.ReportMasterVO">
+		UPDATE REPORT_MSTR
+		SET PARAM_XML = #{DECODE_PARAM}
+		WHERE REPORT_ID = #{DECODE_REPORT_ID}
+	</update>
+</mapper>

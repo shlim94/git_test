@@ -1,0 +1,94 @@
+.list-container {
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	box-shadow: 0 1px 3px transparent;
+	width: 460px;
+	height: 500px;
+}
+
+.scheduler-widget-container {
+	height: auto;
+	width: 100%;
+}
+
+.scheduler-widget {
+	display: inline-block;
+}
+
+.left-widget {
+	margin: 10px 10px 10px 0px;
+}
+
+.middle-widget {
+	margin: 10px;
+}
+
+.right-widget {
+	margin: 10px 0px 10px 10px;
+}
+
+.main-button {
+	width: 140px;
+}
+
+.date-button {
+	width: 140px;
+}
+
+#dateScheduleMaker {
+	margin-top: 10px;
+}
+
+#openScheduleButton {
+	margin-top: 6px;
+}
+
+#dateScheduleToolbar {
+	margin-bottom: 10px;
+}
+
+#dateScheduleBtnParent, #dateInRegularBtnParent {
+	text-align: center;
+	margin: 10px 0px 0px 0px;
+}
+
+.scheduleStartDateLabel {
+	width: 100px;
+	margin-top: 10px;
+}
+
+.scheduleEndDateLabel {
+	margin-top: 15px;
+}
+
+.scheduleStandardDateLabel {
+	margin-top: 10px;
+	width: 100px;
+}
+
+#regularTime {
+	margin-top: 15px;
+	margin-left: 10px;
+}
+
+#regularGrid1, #regularGrid2 {
+	margin-right: 5px;
+}
+
+#dateRegularBtnParent {
+	text-align: center;
+	margin: 10px 0px 0px 0px;
+}
+
+#dateRegularOKBtn {
+	margin-right: 10px;
+}
+
+.scheduleExecDateLabel {
+	width: 110px;
+	margin-top: 8px;
+}
+
+#dateInRegularOKBtn {
+	margin-right: 10px;
+}

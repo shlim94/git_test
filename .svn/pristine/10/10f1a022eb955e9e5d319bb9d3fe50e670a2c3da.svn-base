@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:TalendProperties="http://www.talend.org/properties">
+  <TalendProperties:Property xmi:id="_wK6R068-EemGPpvcWT5aLw" id="_nRPicK8-EemGPpvcWT5aLw" label="V6_Meta_MSSQL_Dev" creationDate="2019-07-26T09:46:06.699+0900" modificationDate="2019-07-26T09:51:55.321+0900" version="0.1" statusCode="" item="_wK6R1a8-EemGPpvcWT5aLw" displayName="V6.Meta.MSSQL.Dev">
+    <author href="../../../talend.project#_40RNIITaEeakRaXRQT3u6g"/>
+  </TalendProperties:Property>
+  <TalendProperties:ItemState xmi:id="_wK6R1K8-EemGPpvcWT5aLw" path="WISERND"/>
+  <TalendProperties:DatabaseConnectionItem xmi:id="_wK6R1a8-EemGPpvcWT5aLw" property="_wK6R068-EemGPpvcWT5aLw" state="_wK6R1K8-EemGPpvcWT5aLw">
+    <connection href="V6_Meta_MSSQL_Dev_0.1.item#_wK6R0K8-EemGPpvcWT5aLw"/>
+  </TalendProperties:DatabaseConnectionItem>
+</xmi:XMI>

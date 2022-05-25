@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Dashboard CurrencyCulture="ko-KR">
+  <Title Text="전체실업지표" Alignment="Left"/>
+  <DataSources>
+    <DataSource ComponentName="dataSource1" Name="1. 전체실업지표"/>
+    <DataSource ComponentName="dataSource2" Name="1-1. 월별"/>
+    <DataSource ComponentName="dataSource3" Name="1-2. 연령대별"/>
+    <DataSource ComponentName="dataSource4" Name="1-3. 성별"/>
+    <DataSource ComponentName="dataSource5" Name="1-4. 산업별"/>
+    <DataSource ComponentName="dataSource6" Name="1-5. 지역별"/>
+    <DataSource ComponentName="dataSource7" Name="1-6. 규모별"/>
+  </DataSources>
+  <Items>
+    <Pivot ComponentName="pivotDashboardItem1" Name="전체실업지표" MemoText="" DataSource="dataSource1" ShowCaption="false" DataFieldPosition="row">
+      <AutoExpandColumnGroups>true</AutoExpandColumnGroups>
+      <AutoExpandRowGroups>true</AutoExpandRowGroups>
+      <DataItems>
+        <Dimension DataMember="항목" Name="항목" UniqueName="DataItem1" SortByMeasure=""/>
+        <Measure DataMember="상실률" Name="상실률" SummaryType="Sum" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Precision="1" Unit="Ones" IncludeGroupSeparator="true"/>
+        </Measure>
+      </DataItems>
+      <Columns>
+        <Column UniqueName="DataItem1"/>
+      </Columns>
+      <Values>
+        <Value UniqueName="DataItem0"/>
+      </Values>
+    </Pivot>
+    <Chart ComponentName="chartDashboardItem2" Name="1-1. 월별 상실률" MemoText="" DataSource="dataSource2" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="월" Name="월" UniqueName="DataItem1"/>
+        <Dimension DataMember="년" Name="년" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY Title="상실률" ShowZero="false" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="1" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY Title="상실률" ShowZero="false">
+            <NumericFormat FormatType="Percent" Precision="1" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" SeriesType="Line" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <Chart ComponentName="chartDashboardItem3" Name="1-2. 연령별 현황" MemoText="" DataSource="dataSource3" Rotated="true" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="연령대분류" Name="연령대분류" SortOrder="Descending" UniqueName="DataItem1"/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="false" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="1" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="false">
+            <NumericFormat FormatType="Percent" Precision="1" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <Chart ComponentName="chartDashboardItem4" Name="1-3. 성별 현황" MemoText="" DataSource="dataSource4" Rotated="true" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="성별" Name="성별" SortOrder="Descending" UniqueName="DataItem1"/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="false" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="1" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="false">
+            <NumericFormat FormatType="Percent" Precision="1" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <Chart ComponentName="chartDashboardItem5" Name="1-4. 산업별 현황" MemoText="" DataSource="dataSource5" Rotated="true" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="표준산업대분류" Name="표준산업대분류" SortOrder="Descending" UniqueName="DataItem1"/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="false" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="1" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="false">
+            <NumericFormat FormatType="Percent" Precision="1" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <Chart ComponentName="chartDashboardItem6" Name="1-5. 지역별 현황" MemoText="" DataSource="dataSource6" Rotated="true" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="시도" Name="시도" SortOrder="Descending" UniqueName="DataItem1"/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="false" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="1" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="false">
+            <NumericFormat FormatType="Percent" Precision="1" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <Chart ComponentName="chartDashboardItem9" Name="1-6. 규모별 현황" MemoText="" DataSource="dataSource7" Rotated="true" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="규모" Name="규모" SortOrder="Descending" UniqueName="DataItem1"/>
+        <Dimension DataMember="구분" Name="구분" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="true" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="0" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="true">
+            <NumericFormat FormatType="Percent" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <TabContainer ComponentName="tabContainerDashboardItem1" Name="텝 컨테이너 1">
+      <Pages>
+        <Page ComponentName="dashboardTabPage1" Name="전체실업지표"/>
+        <Page ComponentName="dashboardTabPage6" Name="1-1. 월별 상실률"/>
+        <Page ComponentName="dashboardTabPage5" Name="1-2. 연령별 현황"/>
+        <Page ComponentName="dashboardTabPage7" Name="1-3. 성별 현황"/>
+        <Page ComponentName="dashboardTabPage2" Name="1-4. 산업별 현황"/>
+        <Page ComponentName="dashboardTabPage3" Name="1-5. 지역별 현황"/>
+        <Page ComponentName="dashboardTabPage4" Name="1-6. 규모별 현황"/>
+      </Pages>
+    </TabContainer>
+  </Items>
+  <LayoutTree>
+    <LayoutTabContainer DashboardItem="tabContainerDashboardItem1" Weight="100">
+      <LayoutTabPage DashboardItem="dashboardTabPage1" Orientation="Horizontal">
+        <LayoutItem DashboardItem="pivotDashboardItem1" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage6" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem2" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage5" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem3" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage7" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem4" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage2" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem5" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage3" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem6" Weight="100"/>
+      </LayoutTabPage>
+      <LayoutTabPage DashboardItem="dashboardTabPage4" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem9" Weight="100"/>
+      </LayoutTabPage>
+    </LayoutTabContainer>
+  </LayoutTree>
+</Dashboard>

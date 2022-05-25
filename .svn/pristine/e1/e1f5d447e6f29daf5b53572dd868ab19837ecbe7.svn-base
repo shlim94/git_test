@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configurations>
+	<config name="encoding" value="utf-8" />
+ <!--	<config name="devextreme.ver" value="18.2.7" /> -->
+  	<config name="devextreme.ver" value="20.1.6" /> 
+ 	<!-- IE10이면 devextreme버전을 18이하로 설정 -->
+ 	<config name="devextreme.ver.IE10" value="17.2.13" />
+	<config name="globalize.ver" value="1.1.1" />
+	<!-- 스케쥴링 -->
+	<config name="wise.schedule" value="false"/>
+	<config name="wise.ds.mainPage" value="edit" /><!-- 디자이너: edit, 뷰어: viewer, 관리자: config -->
+	<config name="wise.ds.secure.key.round" value="5" />
+	<config name="wise.ds.secure.key" value="Vm10UzNRMVV4Um5KTlNHUlBWbFphVlZZd1pHOVVNV3h6Vm0xR2FVMVdSalJXVnpWTFZHeGFWV0pHV2xaV2JXaHlWako0WVZKdFJYcGlSbFpYWVRGVk1WWlZXa1pQVmtKU1VGUXdQUT09" />
+	<config name="wise.ds.js.resource.debug" value="false" />
+	<!-- 20201020 AJKIM js 및 css 압축 파일로 적용 -->
+	<config name="wise.ds.js.resource.scriptcompress" value="false" />
+	<!-- 20201105 MKSONG 동적으로 리소스 임포트 옵션처리 -->
+	<config name="wise.ds.js.resource.dynamicimport" value="false" />
+	<!--	dogfoot web 서버 용 정적 파일 처리 shlim 20201124  -->
+	<config name="wise.ds.js.resource.staticwebscript" value="false" />
+
+	<list name="wise.ds.deny.browser">
+		<value>IE7</value>
+		<value>IE8</value>
+		<value>IE9</value>
+	</list>
+
+	<config name="wise.ds.repository.olap.xml.isBom" value="true" />
+
+	<config name="wise.ds.report.view.support.restful" value="true" /> <!-- report get 호출 -->
+    <config name="wise.ds.report.view.support.parameter" value="true" /> <!-- report post 호출 -->
+
+    <config name="wise.ds.authentication" value="false" /> <!-- default: false -->
+    <config name="wise.ds.authentication.cache" value="false" /> <!-- default: false, was 재기동 해야함. -->
+    <config name="wise.ds.authentication.user.mapper.table" /> <!-- 지정하지 않았을 경우 리파지토리 사용자 테이블을 사용(user_mstr) -->
+    <config name="wise.ds.authentication.user.mapper.column.source" /> <!-- wise.ds.authentication.user.mapper.table가 설정되었을 경우 사용됨, default: source_user_id -->
+    <config name="wise.ds.authentication.user.mapper.column.target" /> <!-- wise.ds.authentication.user.mapper.table가 설정되었을 경우 사용됨, default: user_id -->
+    <config name="wise.ds.authentication.method" value="PARAMETER" /> <!-- SESSION, PARAMETER, default: SESSION (session 방식일 경우는 반드시 SSO 연동을 해야 한다.)-->
+    <config name="wise.ds.authentication.key" value="USER" /> <!-- user id name, default USER -->
+    <config name="wise.ds.authentication.viewer.session.check" value="false" />
+    <config name="wise.ds.authentication.viewer.userid" value="admin" />
+
+    <!-- <config name="wise.ds.repository.url" value="" />
+    <config name="wise.ds.repository.url.encrypted" value="false" /> --> <!-- wise.ds.repository.url 암호화 여부, default: true -->
+    <config name="wise.ds.repository.url.connection.UseSVC" value="false"/>  <!-- reportxml을 db에서 가져올지 웹 서버에서 가져올지 여부, default: false -->
+    <!-- type IIS -->
+<!-- 	<config name="wise.ds.repository.url.connection.SVC.location" value="http://14.63.168.64/WISE.BI.R5.DEPT.UI/UploadFiles/ReportFile/ReportFileUpload.aspx"/> -->
+  	<config name="wise.ds.repository.url.connection.SVC.location" value="http://169.56.81.19/WISE.BI.R5.DEPT.UI/UploadFiles/ReportFile/ReportFileUpload.aspx"/>
+    <!-- type other -->
+<!--     <config name="wise.ds.repository.url.connection.SVC.location" value="http://14.63.168.64/WISE.BI.AUDI.WEB.SVC.v5/UploadFiles/ReportFile"/> -->
+
+    <config name="wise.ds.repository.mart.sql.cache" value="false" /> <!-- default: true -->
+
+    <!-- 로그 사용 -->
+    <config name="wise.ds.logUse" value="true"/><!-- 웹 사용 정보 등록 여부 default: false -->
+
+    <!-- 아래 가능하면 true로 하고 보안점검에 위배되는 사항이면 false로 설정 필요 -->
+    <!-- ajax오류 표시여부 -->
+    <config name="wise.ds.error.display.ajax" value="true"/>
+    <!-- exception 로그 표시여부 -->
+    <config name="wise.ds.error.display.system" value="true"/>
+
+    <config name="wise.ds.assign_name.security" value="base64"/><!-- aes : AES+MD5 base64 : base64 -->
+
+    <!-- Repository Mart Connector -->
+	<!-- MS Sql -->
+    <config name="wise.ds.repository.mart.connector.MS-SQL.driver" value="com.microsoft.sqlserver.jdbc.SQLServerDriver" />
+    <config name="wise.ds.repository.mart.connector.MS-SQL.class" value="com.wise.ds.repository.dataset.jdbc.SqlServerConnector" />
+    <!-- Oracle -->
+    <config name="wise.ds.repository.mart.connector.ORACLE.driver" value="oracle.jdbc.driver.OracleDriver" />
+    <config name="wise.ds.repository.mart.connector.ORACLE.class" value="com.wise.ds.repository.dataset.jdbc.OracleConnector" />
+    <!-- Tibero -->
+    <config name="wise.ds.repository.mart.connector.TIBERO.driver" value="com.tmax.tibero.jdbc.TbDriver" />
+    <config name="wise.ds.repository.mart.connector.TIBERO.class" value="com.wise.ds.repository.dataset.jdbc.TiberoConnector" />
+    <!-- DB2BLU -->
+    <config name="wise.ds.repository.mart.connector.DB2BLU.driver" value="com.ibm.db2.jcc.DB2Driver" />
+    <config name="wise.ds.repository.mart.connector.DB2BLU.class" value="com.wise.ds.repository.dataset.jdbc.DB2BLUConnector" />
+
+    <config name="wise.ds.repository.mart.connector.NETEZZA.driver" value="org.netezza.Driver" />
+    <config name="wise.ds.repository.mart.connector.NETEZZA.class" value="com.wise.ds.repository.dataset.jdbc.NetezzaConnector" />
+
+    <config name="wise.ds.repository.mart.connector.POSTGRES.driver" value="org.postgresql.Driver" />
+    <config name="wise.ds.repository.mart.connector.POSTGRES.class" value="com.wise.ds.repository.dataset.jdbc.POSTGRESConnector" />
+
+    <config name="wise.ds.repository.mart.connector.CUBRID.driver" value="cubrid.jdbc.driver.CUBRIDDriver" />
+    <config name="wise.ds.repository.mart.connector.CUBRID.class" value="com.wise.ds.repository.dataset.jdbc.CUBRIDConnector" />
+
+    <config name="wise.ds.repository.mart.connector.VERTICA.driver" value="com.vertica.jdbc.Driver" />
+    <config name="wise.ds.repository.mart.connector.VERTICA.class" value="com.wise.ds.repository.dataset.jdbc.VERTICAConnector" />
+
+    <config name="wise.ds.repository.mart.connector.TERADATA.driver" value="com.teradata.jdbc.TeraDriver" />
+    <config name="wise.ds.repository.mart.connector.TERADATA.class" value="com.wise.ds.repository.dataset.jdbc.TERADATAConnector" />
+
+    <config name="wise.ds.repository.mart.connector.ALTIBASE.driver" value="Altibase.jdbc.driver.AltibaseDriver" />
+    <config name="wise.ds.repository.mart.connector.ALTIBASE.class" value="com.wise.ds.repository.dataset.jdbc.ALTIBASEConnector" />
+
+    <config name="wise.ds.repository.mart.connector.MARIA.driver" value="org.mariadb.jdbc.Driver" />
+    <config name="wise.ds.repository.mart.connector.MARIA.class" value="com.wise.ds.repository.dataset.jdbc.MARIAConnector" />
+
+    <config name="wise.ds.repository.mart.connector.IMPALA.driver" value="com.cloudera.impala.jdbc41.Driver" />
+    <config name="wise.ds.repository.mart.connector.IMPALA.class" value="com.wise.ds.repository.dataset.jdbc.IMPALAConnector" />
+
+	<!--
+	### wise.ds.repository.connection.pool.* 설정은 /config/reload.do를 수행해도 적용되지 않는다. was 재기동 해야함.
+	##
+	## rules
+	## maxActive >= initialSize
+	## maxIdle >= minIdle
+	## maxActive = maxIdle
+	-->
+	<config name="wise.ds.repository.mart.connection.pool.testOnBorrow" value="false" />
+	<config name="wise.ds.repository.mart.connection.pool.testWhileIdle" value="false" />
+	<config name="wise.ds.repository.mart.connection.pool.initialSize" value="1" /> <!-- default: 8 -->
+    <config name="wise.ds.repository.mart.connection.pool.max.active" value="8" /> <!-- default: 8 -->
+    <config name="wise.ds.repository.mart.connection.pool.max.wait" value="0" /> <!-- default: 0 -->
+    <config name="wise.ds.repository.mart.connection.pool.min.idle" value="1" /> <!-- default: 0 -->
+    <config name="wise.ds.repository.mart.connection.pool.max.idle" value="8" /> <!-- default: 0 -->
+
+    <config name="wise.ds.repository.mart.connection.pool.MS-SQL.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.NETEZZA.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.POSTGRES.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.CUBRID.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.IMPALA.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.ALTIBASE.validationQuery" value="select 1 from dual" />
+    <config name="wise.ds.repository.mart.connection.pool.ORACLE.validationQuery" value="select 1 from dual" />
+    <config name="wise.ds.repository.mart.connection.pool.TIBERO.validationQuery" value="select 1 from dual" />
+    <config name="wise.ds.repository.mart.connection.pool.DB2BLU.validationQuery" value="select 1 from sysibm.sysdummy1" />
+    <config name="wise.ds.repository.mart.connection.pool.DB2.validationQuery" value="select 1 from sysibm.sysdummy1" />
+    <config name="wise.ds.repository.mart.connection.pool.MSAS.validationQuery" value="" />
+    <config name="wise.ds.repository.mart.connection.pool.MYIDB.validationQuery" value="" />
+    <config name="wise.ds.repository.mart.connection.pool.VERTICA.validationQuery" value="" />
+    <config name="wise.ds.repository.mart.connection.pool.TERADATA.validationQuery" value="" />
+    <config name="wise.ds.repository.mart.connection.pool.MARIA.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.MYSQL.validationQuery" value="select 1" />
+    <config name="wise.ds.repository.mart.connection.pool.POSTGRES.validationQuery" value="select 1" />
+
+    <config name="wise.ds.repository.mart.connection.pool.preparedstatement" value="false" /> <!-- default: false -->
+    <config name="wise.ds.repository.mart.connection.pool.preparedstatement.open.count" value="50" /> <!-- default: 50 -->
+
+    <!-- Database Data Type List -->
+    <list name="wise.ds.database.data.type.string">
+    	<value>varchar</value>
+    	<value>varchar2</value>
+    	<value>char</value>
+    	<value>nchar</value>
+    	<value>nvarchar</value>
+    	<value>nvarchar2</value>
+    	<value>text</value>
+    	<value>varbinary</value>
+    	<value>date</value>
+    	<value>datetime</value>
+    	<value>NVCHAR</value>
+    	<value>TIMESTAMP</value>
+    </list>
+    <list name="wise.ds.database.data.type.integer">
+    	<value>int</value>
+    	<value>number</value>
+    	<value>money</value>
+    	<value>numeric</value>
+    	<value>float</value>
+    	<value>BIGINT</value>
+    	<value>decimal</value>
+    	<value>integer</value>
+    	<value>double</value>
+    </list>
+
+	<!-- UI Config -->
+	<config name="WISE.libs.Dashboard.report.title.visible" value="true" />
+    <config name="WISE.libs.Dashboard.MessageHandler.showMessage" value="true" />
+    <config name="WISE.libs.Dashboard.MessageHandler.type" value="alert" />
+
+	<!-- UI CSS Stylesheet Custom or Hack! -->
+	<list name="WISE.libs.Dashboard.CSS.widget.font.family">
+		<value>Noto Sans KR</value>
+<!-- 		<value>malgun gothic</value> -->
+<!-- 		<value>Gulim</value> -->
+		<value>sans-serif</value>
+	</list>
+	<!-- <config name="WISE.libs.Dashboard.CSS.condition.font.size" value="12pt" /> --> <!-- default: 12pt -->
+	<!-- <config name="WISE.libs.Dashboard.CSS.condition.font.padding" value="4px 0 0 0" /> --> <!-- default: 4px 0 0 0 -->
+	<!-- <config name="WISE.libs.Dashboard.CSS.widget.font.size" value="14px" /> --> <!-- default: 14px (chart, pie 제외 )-->
+    <config name="WISE.libs.Dashboard.CSS.widget.grid.header.color" value="#fff" />
+    <config name="WISE.libs.Dashboard.CSS.widget.pivot.horizontal.header.color" value="#fff" />
+    <config name="WISE.libs.Dashboard.CSS.widget.pivot.vertical.header.color" value="#fff" />
+    <list name="WISE.libs.Dashboard.CSS.custom.elements">
+<!--     	<value>.sample-css-class {background-color: #ededed}</value> -->
+    </list>
+
+    <!-- Spark Sql 병렬처리를 위한 파티션 갯수 -->
+    <config name="wise.spark.sql.shuffle.partitions" value="5" />
+    <config name="wise.ds.was.weblogic" value="true" />
+    <config name="wise.ds.solution.companyname" value="" />
+</Configurations>

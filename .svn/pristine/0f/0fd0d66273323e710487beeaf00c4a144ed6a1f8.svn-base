@@ -1,0 +1,2005 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="DataSet">
+
+	<resultMap id="dataSetMasterResultMap" type="com.wise.ds.repository.DataSetMasterVO">
+	  <id property="id" column="ds_id" />
+	  <result property="name" column="ds_nm" />
+
+	  <result property="databaseName" column="db_nm" />
+	  <result property="databaseIp" column="ip" />
+	  <result property="databasePort" column="port" />
+	  <result property="databaseType" column="dbms_type" />
+	  <result property="databaseOwner" column="owner_nm" />
+	  <result property="databaseConnectString" column="ds_connstr" />
+
+	  <result property="databaseUser" column="user_id" />
+	  <result property="databasePassword" column="passwd" />
+	</resultMap>
+
+	<resultMap id="subjectViewMasterResultMap" type="com.wise.ds.repository.SubjectViewMasterVO">
+	</resultMap>
+
+	<resultMap id="subjectMasterResultMap" type="com.wise.ds.repository.SubjectMasterVO">
+	</resultMap>
+
+	<resultMap id="dataSetFolderMasterResultMap" type="com.wise.ds.repository.FolderMasterVO">
+	</resultMap>
+
+	<resultMap id="dataSetInfoMasterResultMap" type="com.wise.ds.repository.DataSetInfoMasterVO">
+	</resultMap>
+
+	<resultMap id="FolderMasterVO" type="com.wise.ds.repository.FolderMasterVO">
+		<result property="FLD_ID" column="FLD_ID" />
+		<result property="FLD_NM" column="FLD_NM" />
+		<result property="FLD_ORDINAL" column="FLD_ORDINAL" />
+		<result property="PARENT_FLD_ID" column="PARENT_FLD_ID" />
+	</resultMap>
+
+	<select id="selectDataSetMaster" parameterType="int" resultMap="dataSetMasterResultMap">
+		SELECT	*
+		FROM	DS_MSTR
+		WHERE	DS_ID = #{id}
+	</select>
+
+	<select id="selectDataSetViewMaster" parameterType="int" resultMap="dataSetMasterResultMap">
+		SELECT	*
+		FROM	DS_MSTR
+		WHERE	DS_ID = (SELECT DS_ID
+						FROM	DS_VIEW_MSTR
+						WHERE	DS_VIEW_ID = #{id})
+	</select>
+
+	<select id="selectCubeMaster" parameterType="int" resultMap="dataSetMasterResultMap">
+		SELECT	*
+		FROM	DS_MSTR
+		WHERE	DS_ID = (SELECT	DS_ID
+						FROM 	DS_VIEW_MSTR
+						WHERE DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{id}))
+	</select>
+
+	<!-- DOGFOOT ktkang 주제영역 폴더 형식으로 표시  20200120 -->
+	<select id="selectCubeList" resultType="com.wise.ds.repository.CubeVO">
+		SELECT 	*
+		FROM 	CUBE_MSTR
+	</select>
+
+	<select id="selectDsViewTableMatser" parameterType="int" resultType="com.wise.ds.sql.CubeTable">
+		SELECT	TBL_NM AS name
+			   ,TBL_CAPTION AS alias
+		FROM	DS_VIEW_TBL_MSTR
+		WHERE	DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+	</select>
+
+	<select id="selectDsViewTableList" parameterType="int" resultType="com.wise.ds.sql.CubeTable">
+		SELECT	TBL_NM AS name
+			   ,TBL_CAPTION AS alias
+		FROM	DS_VIEW_TBL_MSTR
+		WHERE	DS_VIEW_ID = #{ds_view_id}
+	</select>
+
+	<select id="selectDsViewId" parameterType="int" resultType="int">
+		SELECT 	DS_VIEW_ID
+		FROM	DS_VIEW_MSTR
+		WHERE 	DS_ID = #{dsId}
+		FETCH FIRST 1 ROW ONLY
+	</select>
+
+	<select id="selectCubeViewId" parameterType="int" resultType="com.wise.ds.repository.CubeVO">
+		SELECT 	CUBE_ID,
+				CUBE_NM
+		FROM 	CUBE_MSTR
+		WHERE DS_VIEW_ID = #{dsViewId}
+	</select>
+
+	<select id="selectCubeCubeNm" parameterType="String" resultType="com.wise.ds.repository.CubeVO">
+		SELECT 	CUBE_ID,
+				CUBE_NM
+		FROM 	CUBE_MSTR
+		WHERE CUBE_NM = #{cubeNm}
+	</select>
+
+	<select id="selectDsViewColumnList" parameterType="hashmap" resultType="com.wise.ds.repository.DSViewColVO">
+		SELECT DS_VIEW_ID,
+			   TBL_NM,
+			   COL_NM,
+			   DATA_TYPE,
+			   LENGTH,
+			   COL_ID,
+			   PK_YN,
+			   COL_CAPTION
+		FROM DS_VIEW_COL_MSTR
+		WHERE DS_VIEW_ID = #{ds_view_id}
+		AND TBL_NM = #{tbl_nm}
+		ORDER BY COL_ID
+	</select>
+
+	<!--  DOGFOOT ktkang KERIS cube아이디 파라미터로 받아서 주제영역 바로 열도록 하는 부분  20200114  -->
+	<select id="selectCubeMasterInformation" parameterType="int" resultType="com.wise.ds.repository.CubeVO">
+		SELECT 	CUBE_ID,
+				CUBE_NM
+		FROM 	CUBE_MSTR
+		WHERE	CUBE_ID = #{cubeId}
+	</select>
+
+	<select id="selectCubeReportDimensionTableList" parameterType="int" resultType="com.wise.ds.repository.CubeTableVO">
+		SELECT	CUBE_ID as cubeId
+		       ,DIM_UNI_NM as uniqueName
+		       ,DIM_DIM_UNI_NM as physicalName
+		       ,DIM_CAPTION as logicalName
+		       ,DIM_IS_VISIBLE as "visible"
+		       ,DIM_ORDINAL as "order"
+		       ,(SELECT DS_VIEW_ID FROM CUBE_MSTR T2 WHERE T2.CUBE_ID = T1.CUBE_ID) as dsViewId
+		FROM	CUBE_DIM_MSTR T1
+		WHERE	CUBE_ID = #{cubeId}
+		AND 	T1.DIM_IS_VISIBLE = 1
+		ORDER BY DIM_ORDINAL
+	</select>
+	<select id="selectCubeReportMeasureTableList" parameterType="int" resultType="com.wise.ds.repository.CubeTableVO">
+		SELECT	CUBE_ID as cubeId
+		       ,MEA_GRP_UNI_NM as uniqueName
+		       ,MEA_GRP_CAPTION as logicalName
+		       ,TBL_NM as physicalName
+		       ,IS_VISIBLE as "visible"
+		       ,MEA_GRP_ORDINAL as "order"
+		       ,(SELECT DS_VIEW_ID FROM CUBE_MSTR T2 WHERE T2.CUBE_ID = T1.CUBE_ID) as dsViewId
+		FROM	CUBE_MEA_GRP_MSTR T1
+		WHERE	CUBE_ID = #{cubeId}
+		AND 	T1.IS_VISIBLE = 1
+		ORDER BY MEA_GRP_ORDINAL
+	</select>
+
+	<select id="selectCubeReportDimensionTableColumnList" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.repository.CubeTableColumnVO">
+	<!-- DOGFOOT 20200206 cshan - 차원에도 folder 컬럼 추가 -->
+		<if test="_databaseId == 'sqlserver'">
+			SELECT DISTINCT T1.*
+			   ,T2.TBL_NM as physicalTableName
+        	   ,T2.KEY_COL as physicalColumnId
+        	   ,T2.NAME_COL as physicalColumnName
+		       ,CASE WHEN T1.displayType is not null then T1.displayType
+	            ELSE
+	              CASE WHEN T2.HIE_DSP_FLD IS NULL OR T2.HIE_DSP_FLD = '' THEN
+	                CASE WHEN T2.TBL_NM IS NULL OR T2.TBL_NM = '' THEN 'LEVEL'
+	                ELSE CASE WHEN CONCAT('[',CONCAT(T2.TBL_NM,']')) <![CDATA[<>]]> T1.DIM_DIM_UNI_NM THEN 'SF' END
+	                END
+	              ELSE CAST(T2.HIE_DSP_FLD AS CHAR) END
+			        END as hieFolderName
+		       ,'dimension' as type
+		       ,CAST(T2.ORDER_BY as CHAR) as orderBy
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T3
+		         WHERE	T3.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T3.TBL_NM = T2.TBL_NM
+		         AND	T3.COL_NM = T2.KEY_COL) AS dataType
+		       ,T2.HIE_DSP_FLD as folder
+		       ,T1.HIE_ORDINAL as t1ordinal
+			   ,T2.HIE_ORDINAL as t2ordinal
+			FROM   (
+		       SELECT	CUBE_ID as cubeId
+		       		   ,HIE_UNI_NM as uniqueName
+		               ,DIM_UNI_NM as tableName
+		               ,HIE_CAPTION as captionName
+		               ,'Count' as summaryType
+		               ,HIE_IS_VISIBLE as "visible"
+		               ,NULL AS displayType
+		               ,DIM_DIM_UNI_NM
+		               ,HIE_HIE_UNI_NM
+		               ,HIE_ORDINAL
+		        FROM    CUBE_HIE_MSTR
+		        WHERE	CUBE_ID = #{cubeId}
+		        AND		HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		        UNION ALL
+				SELECT  ${cubeId} AS CUBE_ID
+						,X.LVL_UNI_NM
+						,X.DIM_UNI_NM
+						,CASE WHEN Z.HIE_CAPTION IS NULL OR Z.HIE_CAPTION = '' THEN X.LVL_CAPTION
+             			 ELSE Z.HIE_CAPTION   END AS captionName
+						,'Count' AS MEA_AGG
+						,Z.HIE_IS_VISIBLE as "visible"
+						,CASE WHEN Y.HIE_DSP_FLD IS NULL OR Y.HIE_DSP_FLD = '' THEN 'LEVEL_LEAF'
+                  		 ELSE CAST(Y.HIE_DSP_FLD AS CHAR) END AS displayType
+						,X.DIM_UNI_NM
+						,X.LVL_UNI_NM
+						,Z.HIE_ORDINAL
+				FROM	DS_VIEW_LVL_MSTR X
+							INNER JOIN DS_VIEW_HIE_MSTR Y
+								ON X.DS_VIEW_ID = Y.DS_VIEW_ID
+								AND X.DIM_UNI_NM = Y.DIM_UNI_NM
+								AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+							LEFT OUTER JOIN CUBE_HIE_MSTR Z
+				                ON Z.CUBE_ID = #{cubeId}
+				                AND Y.HIE_UNI_NM = Z.HIE_UNI_NM
+				WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		        ) T1
+		        LEFT OUTER JOIN DS_VIEW_HIE_MSTR T2
+		          ON T1.HIE_HIE_UNI_NM = T2.HIE_UNI_NM
+			WHERE   T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			ORDER BY T1.HIE_ORDINAL, T2.HIE_ORDINAL, T1.uniqueName
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT DISTINCT T1.*
+			   ,T2.TBL_NM as physicalTableName
+        	   ,T2.KEY_COL as physicalColumnId
+        	   ,T2.NAME_COL as physicalColumnName
+		       ,CASE WHEN T1.displayType is not null then T1.displayType
+	            ELSE
+	              CASE WHEN T2.HIE_DSP_FLD IS NULL OR T2.HIE_DSP_FLD = '' THEN
+	                CASE WHEN T2.TBL_NM IS NULL OR T2.TBL_NM = '' THEN 'LEVEL'
+	                ELSE CASE WHEN CONCAT('[',CONCAT(T2.TBL_NM,']')) <![CDATA[<>]]> T1.DIM_DIM_UNI_NM THEN 'SF' END
+	                END
+	              ELSE TO_CHAR(T2.HIE_DSP_FLD) END
+			        END as hieFolderName
+		       ,'dimension' as type
+		       ,TO_CHAR(T2.ORDER_BY) as orderBy
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T3
+		         WHERE	T3.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T3.TBL_NM = T2.TBL_NM
+		         AND	T3.COL_NM = T2.KEY_COL) AS dataType
+		       ,T2.HIE_DSP_FLD as folder
+		       ,T1.HIE_ORDINAL as ordinal
+			   ,T2.HIE_ORDINAL as t2ordinal
+			FROM   (
+		       SELECT	CUBE_ID as cubeId
+		       		   ,HIE_UNI_NM as uniqueName
+		               ,DIM_UNI_NM as tableName
+		               ,HIE_CAPTION as captionName
+		               ,'Count' as summaryType
+		               ,HIE_IS_VISIBLE as "visible"
+		               ,NULL AS displayType
+		               ,DIM_DIM_UNI_NM
+		               ,HIE_HIE_UNI_NM
+		               ,HIE_ORDINAL
+		        FROM    CUBE_HIE_MSTR
+		        WHERE	CUBE_ID = #{cubeId}
+		        AND		HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		        UNION ALL
+				SELECT  ${cubeId} AS CUBE_ID
+						,X.LVL_UNI_NM
+						,X.DIM_UNI_NM
+						,CASE WHEN Z.HIE_CAPTION IS NULL OR Z.HIE_CAPTION = '' THEN X.LVL_CAPTION
+             			 ELSE Z.HIE_CAPTION   END AS captionName
+						,'Count' AS MEA_AGG
+						,Z.HIE_IS_VISIBLE as "visible"
+						,CASE WHEN Y.HIE_DSP_FLD IS NULL OR Y.HIE_DSP_FLD = '' THEN 'LEVEL_LEAF'
+                  		 ELSE TO_CHAR(Y.HIE_DSP_FLD) END AS displayType
+						,X.DIM_UNI_NM
+						,X.LVL_UNI_NM
+						,Z.HIE_ORDINAL
+				FROM	DS_VIEW_LVL_MSTR X
+							INNER JOIN DS_VIEW_HIE_MSTR Y
+								ON X.DS_VIEW_ID = Y.DS_VIEW_ID
+								AND X.DIM_UNI_NM = Y.DIM_UNI_NM
+								AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+							LEFT OUTER JOIN CUBE_HIE_MSTR Z
+				                ON Z.CUBE_ID = #{cubeId}
+				                AND Y.HIE_UNI_NM = Z.HIE_UNI_NM
+				WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		        ) T1
+		        LEFT OUTER JOIN DS_VIEW_HIE_MSTR T2
+		          ON T1.HIE_HIE_UNI_NM = T2.HIE_UNI_NM
+			WHERE   T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			ORDER BY T1.HIE_ORDINAL, T2.HIE_ORDINAL, T1.uniqueName
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT DISTINCT T1.*
+			   ,T2.TBL_NM as physicalTableName
+        	   ,T2.KEY_COL as physicalColumnId
+        	   ,T2.NAME_COL as physicalColumnName
+		       ,CASE WHEN T1.displayType is not null then T1.displayType
+	            ELSE
+	              CASE WHEN T2.HIE_DSP_FLD IS NULL OR T2.HIE_DSP_FLD = '' THEN
+	                CASE WHEN T2.TBL_NM IS NULL OR T2.TBL_NM = '' THEN 'LEVEL'
+	                ELSE CASE WHEN CONCAT('[',CONCAT(T2.TBL_NM,']')) <![CDATA[<>]]> T1.DIM_DIM_UNI_NM THEN 'SF' END
+	                END
+	              ELSE CAST(T2.HIE_DSP_FLD AS CHAR) END
+			        END as hieFolderName
+		       ,'dimension' as type
+		       ,CAST(T2.ORDER_BY as CHAR) as orderBy
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T3
+		         WHERE	T3.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T3.TBL_NM = T2.TBL_NM
+		         AND	T3.COL_NM = T2.KEY_COL) AS dataType
+		       ,T2.HIE_DSP_FLD as folder
+		       ,T1.HIE_ORDINAL as t1ordinal
+			   ,T2.HIE_ORDINAL as t2ordinal
+		FROM   (
+		       SELECT	CUBE_ID as cubeId
+		       		   ,HIE_UNI_NM as uniqueName
+		               ,DIM_UNI_NM as tableName
+		               ,HIE_CAPTION as captionName
+		               ,'Count' as summaryType
+		               ,HIE_IS_VISIBLE as "visible"
+		               ,NULL AS displayType
+		               ,DIM_DIM_UNI_NM
+		               ,HIE_HIE_UNI_NM
+		               ,HIE_ORDINAL
+		        FROM    CUBE_HIE_MSTR
+		        WHERE	CUBE_ID = #{cubeId}
+		        AND		HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		        UNION ALL
+				SELECT  ${cubeId} AS CUBE_ID
+						,X.LVL_UNI_NM
+						,X.DIM_UNI_NM
+						,CASE WHEN Z.HIE_CAPTION IS NULL OR Z.HIE_CAPTION = '' THEN X.LVL_CAPTION
+             			 ELSE Z.HIE_CAPTION   END AS captionName
+						,'Count' AS MEA_AGG
+						,Z.HIE_IS_VISIBLE as "visible"
+						,CASE WHEN Y.HIE_DSP_FLD IS NULL OR Y.HIE_DSP_FLD = '' THEN 'LEVEL_LEAF'
+                  		 ELSE CAST(Y.HIE_DSP_FLD AS CHAR) END AS displayType
+						,X.DIM_UNI_NM
+						,X.LVL_UNI_NM
+						,Z.HIE_ORDINAL
+				FROM	DS_VIEW_LVL_MSTR X
+							INNER JOIN DS_VIEW_HIE_MSTR Y
+								ON X.DS_VIEW_ID = Y.DS_VIEW_ID
+								AND X.DIM_UNI_NM = Y.DIM_UNI_NM
+								AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+							LEFT OUTER JOIN CUBE_HIE_MSTR Z
+				                ON Z.CUBE_ID = #{cubeId}
+				                AND Y.HIE_UNI_NM = Z.HIE_UNI_NM
+				WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		        ) T1
+		        LEFT OUTER JOIN DS_VIEW_HIE_MSTR T2
+		          ON T1.HIE_HIE_UNI_NM = T2.HIE_UNI_NM
+		WHERE   T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		ORDER BY T1.HIE_ORDINAL, T2.HIE_ORDINAL, T1.uniqueName
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT DISTINCT T1.*
+			   ,T2.TBL_NM as physicalTableName
+        	   ,T2.KEY_COL as physicalColumnId
+        	   ,T2.NAME_COL as physicalColumnName
+		       ,CASE WHEN T1.displayType is not null then T1.displayType
+	            ELSE
+	              CASE WHEN T2.HIE_DSP_FLD IS NULL OR T2.HIE_DSP_FLD = '' THEN
+	                CASE WHEN T2.TBL_NM IS NULL OR T2.TBL_NM = '' THEN 'LEVEL'
+	                ELSE CASE WHEN CONCAT('[',CONCAT(T2.TBL_NM,']')) <![CDATA[<>]]> T1.DIM_DIM_UNI_NM THEN 'SF' END
+	                END
+	              ELSE TO_CHAR(T2.HIE_DSP_FLD) END
+			        END as hieFolderName
+		       ,'dimension' as type
+		       ,TO_CHAR(T2.ORDER_BY) as orderBy
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T3
+		         WHERE	T3.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T3.TBL_NM = T2.TBL_NM
+		         AND	T3.COL_NM = T2.KEY_COL) AS dataType
+		       ,T2.HIE_DSP_FLD as folder
+		       ,T1.HIE_ORDINAL as t1ordinal
+			   ,T2.HIE_ORDINAL as t2ordinal
+			FROM   (
+		       SELECT	CUBE_ID as cubeId
+		       		   ,HIE_UNI_NM as uniqueName
+		               ,DIM_UNI_NM as tableName
+		               ,HIE_CAPTION as captionName
+		               ,'Count' as summaryType
+		               ,HIE_IS_VISIBLE as "visible"
+		               ,NULL AS displayType
+		               ,DIM_DIM_UNI_NM
+		               ,HIE_HIE_UNI_NM
+		               <!-- DOGFOOT ktkang 주제영역 정렬 기준 수정  20200221 -->
+		               ,HIE_ORDINAL
+		        FROM    CUBE_HIE_MSTR
+		        WHERE	CUBE_ID = #{cubeId}
+		        AND		HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		        UNION ALL
+				SELECT  ${cubeId} AS CUBE_ID
+						,X.LVL_UNI_NM
+						,X.DIM_UNI_NM
+						,CASE WHEN Z.HIE_CAPTION IS NULL OR Z.HIE_CAPTION = '' THEN X.LVL_CAPTION
+             			 ELSE Z.HIE_CAPTION   END AS captionName
+						,'Count' AS MEA_AGG
+						,Z.HIE_IS_VISIBLE as "visible"
+						,CASE WHEN Y.HIE_DSP_FLD IS NULL OR Y.HIE_DSP_FLD = '' THEN 'LEVEL_LEAF'
+                  		 ELSE TO_CHAR(Y.HIE_DSP_FLD) END AS displayType
+						,X.DIM_UNI_NM
+						,X.LVL_UNI_NM
+						<!-- DOGFOOT ktkang 주제영역 정렬 기준 수정  20200221 -->
+						,Z.HIE_ORDINAL
+				FROM	DS_VIEW_LVL_MSTR X
+							INNER JOIN DS_VIEW_HIE_MSTR Y
+								ON X.DS_VIEW_ID = Y.DS_VIEW_ID
+								AND X.DIM_UNI_NM = Y.DIM_UNI_NM
+								AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+							LEFT OUTER JOIN CUBE_HIE_MSTR Z
+				                ON Z.CUBE_ID = #{cubeId}
+				                AND Y.HIE_UNI_NM = Z.HIE_UNI_NM
+				WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		        ) T1
+		        LEFT OUTER JOIN DS_VIEW_HIE_MSTR T2
+		          ON T1.HIE_HIE_UNI_NM = T2.HIE_UNI_NM
+			WHERE   T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			<!-- DOGFOOT ktkang 주제영역 정렬 기준 수정  20200221 -->
+			ORDER BY T1.HIE_ORDINAL, T2.HIE_ORDINAL, T1.uniqueName
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT DISTINCT T1.*
+			   ,T2.TBL_NM as physicalTableName
+        	   ,T2.KEY_COL as physicalColumnId
+        	   ,T2.NAME_COL as physicalColumnName
+		       ,CASE WHEN T1.displayType is not null then T1.displayType
+	            ELSE
+	              CASE WHEN T2.HIE_DSP_FLD IS NULL OR T2.HIE_DSP_FLD = '' THEN
+	                CASE WHEN T2.TBL_NM IS NULL OR T2.TBL_NM = '' THEN 'LEVEL'
+	                ELSE CASE WHEN CONCAT('[',CONCAT(T2.TBL_NM,']')) <![CDATA[<>]]> T1.DIM_DIM_UNI_NM THEN 'SF' END
+	                END
+	              ELSE CAST(T2.HIE_DSP_FLD AS CHAR) END
+			        END as hieFolderName
+		       ,'dimension' as type
+		       ,CAST(T2.ORDER_BY as CHAR) as orderBy
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T3
+		         WHERE	T3.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T3.TBL_NM = T2.TBL_NM
+		         AND	T3.COL_NM = T2.KEY_COL) AS dataType
+		       ,T2.HIE_DSP_FLD as folder
+		       ,T1.HIE_ORDINAL as t1ordinal
+			   ,T2.HIE_ORDINAL as t2ordinal
+			FROM   (
+		       SELECT	CUBE_ID as cubeId
+		       		   ,HIE_UNI_NM as uniqueName
+		               ,DIM_UNI_NM as tableName
+		               ,HIE_CAPTION as captionName
+		               ,'Count' as summaryType
+		               ,HIE_IS_VISIBLE as "visible"
+		               ,NULL AS displayType
+		               ,DIM_DIM_UNI_NM
+		               ,HIE_HIE_UNI_NM
+		               ,HIE_ORDINAL
+		        FROM    CUBE_HIE_MSTR
+		        WHERE	CUBE_ID = #{cubeId}
+		        AND		HIE_HIE_UNI_NM NOT IN (SELECT LVL_UNI_NM FROM DS_VIEW_LVL_MSTR WHERE DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId}))
+		        UNION ALL
+				SELECT  ${cubeId} AS CUBE_ID
+						,X.LVL_UNI_NM
+						,X.DIM_UNI_NM
+						,CASE WHEN Z.HIE_CAPTION IS NULL OR Z.HIE_CAPTION = '' THEN X.LVL_CAPTION
+             			 ELSE Z.HIE_CAPTION   END AS captionName
+						,'Count' AS MEA_AGG
+						,Z.HIE_IS_VISIBLE as "visible"
+						,CASE WHEN Y.HIE_DSP_FLD IS NULL OR Y.HIE_DSP_FLD = '' THEN 'LEVEL_LEAF'
+                  		 ELSE CAST(Y.HIE_DSP_FLD AS CHAR) END AS displayType
+						,X.DIM_UNI_NM
+						,X.LVL_UNI_NM
+						,Z.HIE_ORDINAL
+				FROM	DS_VIEW_LVL_MSTR X
+							INNER JOIN DS_VIEW_HIE_MSTR Y
+								ON X.DS_VIEW_ID = Y.DS_VIEW_ID
+								AND X.DIM_UNI_NM = Y.DIM_UNI_NM
+								AND X.LVL_UNI_NM = Y.HIE_UNI_NM
+							LEFT OUTER JOIN CUBE_HIE_MSTR Z
+				                ON Z.CUBE_ID = #{cubeId}
+				                AND Y.HIE_UNI_NM = Z.HIE_UNI_NM
+				WHERE  X.DS_VIEW_ID  = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		        ) T1
+		        LEFT OUTER JOIN DS_VIEW_HIE_MSTR T2
+		          ON T1.HIE_HIE_UNI_NM = T2.HIE_UNI_NM
+			WHERE   T2.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+			ORDER BY T1.HIE_ORDINAL, T2.HIE_ORDINAL, T1.uniqueName
+		</if>
+	</select>
+
+	<select id="selectCubeReportMeasureTableColumnList" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.repository.CubeTableColumnVO">
+		<!-- DOGFOOT 20200206 cshan - 물리적 테이블이름, 컬럼이름을 logicalTableName, logicalColumnName이란 이름으로 추가 -->
+		SELECT  T2.CUBE_ID as cubeId
+			   ,T2.MEA_UNI_NM as uniqueName
+		       ,T2.MEA_GRP_UNI_NM as tableName  			<!-- logical table name -->
+		       ,T2.MEA_CAPTION as captionName
+		       ,T2.MEA_AGG as summaryType
+		       ,T2.MEA_IS_VISIBLE as "visible"
+		       ,T2.MEA_FORMAT_STR as "format"
+		       ,T2.MEA_DSP_FLD AS "folder"
+		       <!-- DOGFOOT ktkang 주제영역 정렬 기준 수정  20200221 -->
+		       ,T2.MEA_ORDINAL as "ordinal"
+		       ,(SELECT COL_EXPRESS
+		         FROM	DS_VIEW_COL_MSTR T1
+		         WHERE	T1.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+		         AND	T1.TBL_NM = T2.MEA_TBL_NM
+		         AND	T1.COL_NM = T2.MEA_COL_NM) AS expression
+		       ,'measure' as type
+		       ,(SELECT DATA_TYPE
+		         FROM	DS_VIEW_COL_MSTR T1
+		         WHERE	T1.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+				 AND	T1.TBL_NM = T2.MEA_TBL_NM
+		         AND	T1.COL_NM = T2.MEA_COL_NM) AS dataType
+		       , T2.MEA_TBL_NM as logicalTableName
+		       , T2.MEA_COL_NM as logicalColumnName
+		FROM	CUBE_MEA_MSTR T2
+		WHERE	T2.CUBE_ID = #{cubeId}
+		<!-- DOGFOOT ktkang 주제영역 정렬 기준 수정  20200221 -->
+		ORDER BY  T2.MEA_ORDINAL
+	</select>
+
+	<!-- DS_VIEW,  DataSetSingleDsView 일경우 계산된 컬럼 수식 찾기 -->
+	<select id="selectDsViewColumnInformationList" parameterType="int" resultType="com.wise.ds.sql.CubeTableColumn">
+		SELECT	DS_VIEW_ID AS dsViewId
+					   ,TBL_NM AS physicalTableName
+					   ,COL_NM AS physicalColumnName
+					   ,COL_CAPTION AS columnCaption
+					   ,DATA_TYPE AS dataType
+					   ,CASE WHEN DATA_TYPE = 'Int32' OR DATA_TYPE = 'int' THEN 'SUM'
+					               ELSE 'COUNT' END AS  aggregationType
+					   ,COL_EXPRESS AS expression
+		FROM		DS_VIEW_COL_MSTR
+		WHERE	DS_VIEW_ID = #{dsViewId}
+	</select>
+	<!-- MS-SQL-->
+
+
+	<select id="selectCubeColumnLevelInfomations" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.sql.CubeTableColumn">
+		SELECT  T1.DS_VIEW_ID as dsViewId
+			   ,${cubeId} AS cubeId
+			   ,T2.TBL_NM AS physicalTableName
+			   ,T2.KEY_COL AS physicalColumnName
+			   ,T1.DIM_UNI_NM AS logicalTableName
+			   ,T1.HIE_UNI_NM AS logicalColumnName
+			   ,T1.LVL_UNI_NM AS levelLogicalColumnName
+			   ,T1.LVL_CAPTION AS levelColumnCaption
+			   ,T1.LVL AS "level"
+		FROM	DS_VIEW_LVL_MSTR T1
+					INNER JOIN DS_VIEW_HIE_MSTR T2
+						ON T1.DS_VIEW_ID = T2.DS_VIEW_ID
+						AND T1.DIM_UNI_NM = T2.DIM_UNI_NM
+						AND T1.LVL_UNI_NM = T2.HIE_UNI_NM
+		WHERE	T1.DS_VIEW_ID = (SELECT DS_VIEW_ID FROM CUBE_MSTR WHERE CUBE_ID = #{cubeId})
+	</select>
+
+	<select id="selectCubeReportTableConstraints" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.repository.CubeTableConstraintVO">
+		SELECT  CUBE_ID as cubeId
+		       ,CONST_NM as constName
+		       ,FK_TBL_NM as fkTableName
+		       ,FK_COL_NM as fkColumnName
+		       ,PK_TBL_NM as pkTableName
+		       ,PK_COL_NM as pkColumnName
+		       ,JOIN_TYPE as joinType
+		       ,JOIN_SET_OWNER as joinSetOwner
+		       ,REL_CONST_NM as relConstNm
+		       ,DIM_UNI_NM as dimensionLogicalTableName
+		       ,MEA_GRP_UNI_NM as factLogicalTableName
+		FROM	CUBE_REL_MSTR
+		WHERE	CUBE_ID = #{cubeId}
+		ORDER BY FK_TBL_NM
+	</select>
+
+	<select id="selectCubeReportTableConstraints2" parameterType="com.wise.ds.repository.CubeTableVO" resultType="map">
+		SELECT	A.DS_ID AS DS_ID
+               ,B.DS_VIEW_ID AS DS_VIEW_ID
+               ,C.CUBE_ID AS CUBE_ID
+               ,D.CONST_NM as CONST_NM
+               ,D.FK_TBL_NM as FK_TBL_NM
+               ,D.FK_COL_NM as FK_COL_NM
+               ,D.PK_TBL_NM  as PK_TBL_NM
+               ,D.PK_COL_NM as PK_COL_NM
+               ,D.JOIN_TYPE as JOIN_TYPE
+               ,D.JOIN_SET_OWNER as JOIN_SET_OWNER
+               ,D.REL_CONST_NM as REL_CONST_NM
+               ,D.DIM_UNI_NM as DIM_UNI_NM
+               ,D.MEA_GRP_UNI_NM as MEA_GRP_UNI_NM
+               ,'' AS MODIFY_TAG
+          FROM	  DS_MSTR A
+                INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+                INNER JOIN CUBE_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID
+                INNER JOIN CUBE_REL_MSTR D ON C.CUBE_ID = D.CUBE_ID
+   		  WHERE	  1 = 1
+   		  AND C.CUBE_ID = #{cubeId}
+	</select>
+
+	<select id="selectViewReportTableConstraints" parameterType="com.wise.ds.repository.CubeTableVO" resultType="com.wise.ds.repository.CubeTableConstraintVO">
+		SELECT  DS_VIEW_ID as dsViewId
+		       ,CONST_NM as constName
+		       ,FK_TBL_NM as fkTableName
+		       ,FK_COL_NM as fkColumnName
+		       ,PK_TBL_NM as pkTableName
+		       ,PK_COL_NM as pkColumnName
+		       ,JOIN_TYPE as joinType
+		       ,JOIN_SET_OWNER as joinSetOwner
+		FROM	DS_VIEW_REL_MSTR
+		WHERE	DS_VIEW_ID = (select DS_VIEW_ID from CUBE_MSTR T2 WHERE T2.CUBE_ID = #{cubeId})
+		ORDER BY FK_TBL_NM
+	</select>
+
+	<select id="selectViewReportTableConstraints2" parameterType="com.wise.ds.repository.CubeTableVO" resultType="map">
+		SELECT	A.DS_ID
+               ,B.DS_VIEW_ID
+               ,C.CONST_NM
+               ,C.FK_TBL_NM
+               ,C.FK_COL_NM
+               ,C.PK_TBL_NM
+               ,C.PK_COL_NM
+               ,C.JOIN_TYPE
+               ,C.JOIN_SET_OWNER
+               ,'''' AS MODIFY_TAG
+           FROM	 DS_MSTR A
+	             INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+	             INNER JOIN DS_VIEW_REL_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID
+   		  WHERE	 1 = 1
+   		  AND B.DS_VIEW_ID  = (select DS_VIEW_ID from CUBE_MSTR T2 WHERE T2.CUBE_ID = #{cubeId})
+	</select>
+
+	<!-- DOGFOOT ktkang 주제영역 권한 추가  20200120 -->
+	<select id="selectSubjectUserViewList" parameterType="String" resultMap="subjectViewMasterResultMap">
+	<!-- 2019.12.20 mksong 데이터원본 중복 노출 제거 dogfoot-->
+<!-- 		SELECT DISTINCT *  -->
+<!-- 		FROM DS_MSTR A  -->
+<!-- 		JOIN GRP_AUTH_DS_MSTR B ON A.DS_ID = B.DS_ID  -->
+<!-- 		JOIN DS_VIEW_MSTR C ON C.DS_ID = B.DS_ID  -->
+<!-- 		WHERE GRP_ID = 1000 -->
+		SELECT *
+		FROM DS_MSTR A
+		JOIN USER_AUTH_DS_MSTR B ON A.DS_ID = B.DS_ID
+		JOIN DS_VIEW_MSTR C ON C.DS_ID = B.DS_ID
+		WHERE USER_NO = (SELECT USER_NO FROM USER_MSTR WHERE USER_ID = #{user_id})
+	</select>
+
+	<select id="selectSubjectGrpViewList" parameterType="String" resultMap="subjectViewMasterResultMap">
+		SELECT DISTINCT *
+		FROM DS_MSTR A
+		JOIN GRP_AUTH_DS_MSTR B ON A.DS_ID = B.DS_ID
+		JOIN DS_VIEW_MSTR C ON C.DS_ID = B.DS_ID
+		WHERE GRP_ID = (SELECT GRP_ID FROM USER_MSTR WHERE USER_ID = #{user_id})
+	</select>
+
+	<select id="selectSubjectList" resultMap="subjectMasterResultMap">
+		SELECT *
+		FROM DS_MSTR
+		ORDER BY DS_NM
+	</select>
+
+	<!-- DOGFOOT ktkang 폴더 정렬 순서 수정  20200619 -->
+	<select id="selectGrpAuthDataSetFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT DISTINCT DFM.FLD_ID, DFM.FLD_NM, DFM.FLD_ORDINAL, DFM.PARENT_FLD_ID
+		FROM DATASET_FLD_MSTR DFM
+		INNER JOIN GRP_AUTH_DATASET_MSTR B ON B.FLD_ID = DFM.FLD_ID
+		INNER JOIN USER_MSTR C ON C.GRP_ID = B.GRP_ID
+		WHERE C.USER_ID = #{userId}
+		ORDER BY DFM.FLD_ORDINAL ASC, DFM.FLD_NM ASC
+	</select>
+
+	<!-- DOGFOOT ktkang 폴더 정렬 순서 수정  20200619 -->
+	<select id="selectUserAuthDataSetFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT DISTINCT DFM.FLD_ID, DFM.FLD_NM, DFM.FLD_ORDINAL, DFM.PARENT_FLD_ID
+		FROM DATASET_FLD_MSTR DFM
+		INNER JOIN USER_AUTH_DATASET_MSTR B ON B.FLD_ID = DFM.FLD_ID
+		INNER JOIN USER_MSTR C ON C.USER_NO = B.USER_NO
+		WHERE C.USER_ID = #{userId}
+		ORDER BY DFM.FLD_ORDINAL ASC, DFM.FLD_NM ASC
+	</select>
+
+	<select id="selectDataSetInfoList" parameterType="int" resultMap="dataSetInfoMasterResultMap">
+		SELECT DATASET_ID, DATASET_NM, DATASET_ORDINAL, FLD_ID AS PARENT_FLD_ID, DATASRC_ID, DATASRC_TYPE, DATASET_TYPE,DATASET_DESC
+		FROM DATASET_MSTR
+		ORDER BY FLD_ID, DATASET_ORDINAL
+	</select>
+
+	<select id="selectDataSetInfoListDsType" parameterType="list" resultMap="dataSetInfoMasterResultMap">
+		SELECT DATASET_ID, DATASET_NM, DATASET_ORDINAL, FLD_ID AS PARENT_FLD_ID, DATASRC_ID, DATASRC_TYPE, DATASET_TYPE,DATASET_DESC
+		FROM DATASET_MSTR
+		WHERE FLD_ID != 0 AND DATASET_TYPE IN
+		<foreach item="item" index="index" collection="dsType" open="(" close=")" separator=",">
+            #{item}
+	    </foreach>
+		ORDER BY FLD_ID, DATASET_ORDINAL
+	</select>
+
+	<select id="selectDataSetInfo" parameterType="int" resultType="com.wise.ds.repository.DataSetInfoMasterVO">
+		SELECT *
+		FROM DATASET_MSTR
+		WHERE DATASET_ID = #{id}
+	</select>
+
+	<select id="selectPrivateUserReportFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT FLD_ID AS FLD_ID,
+			FLD_NM AS FLD_NM,
+			FLD_PARENT_ID AS PARENT_FLD_ID,
+			FLD_ORDINAL AS FLD_ORDINAL
+		FROM USER_FLD_MSTR
+		INNER JOIN USER_MSTR
+			    ON USER_MSTR.USER_NO = USER_FLD_MSTR.USER_NO
+		WHERE USER_MSTR.USER_ID = #{userId}
+	</select>
+
+	<select id="selectUserReportFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT PUB_FLD_MSTR.FLD_ID AS FLD_ID,
+			FLD_NM AS FLD_NM,
+			FLD_PARENT_ID AS PARENT_FLD_ID,
+			FLD_ORDINAL AS FLD_ORDINAL
+		FROM  USER_AUTH_REPORT_MSTR
+		INNER JOIN USER_MSTR
+			    ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+		INNER JOIN PUB_FLD_MSTR
+			    ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+		WHERE USER_MSTR.USER_ID = #{userId}
+        AND AUTH_VIEW != 'N'
+		ORDER BY PARENT_FLD_ID, FLD_ORDINAL
+	</select>
+
+	<select id="selectGrpReportFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT 		PUB_FLD_MSTR.FLD_ID 		AS FLD_ID,
+					FLD_NM 						AS FLD_NM,
+					FLD_PARENT_ID 				AS PARENT_FLD_ID,
+					FLD_ORDINAL 				AS FLD_ORDINAL
+		FROM  		GRP_AUTH_REPORT_MSTR
+					INNER JOIN USER_MSTR 		ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+					INNER JOIN PUB_FLD_MSTR 	ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+		WHERE 		USER_MSTR.USER_ID = #{userId}
+					AND USER_MSTR.DEL_YN = 'N'
+        			AND AUTH_VIEW != 'N'
+		ORDER BY 	PARENT_FLD_ID, FLD_ORDINAL
+	</select>
+
+	<select id="selectAllReportFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT PUB_FLD_MSTR.FLD_ID AS FLD_ID,
+			FLD_NM AS FLD_NM,
+			FLD_PARENT_ID AS PARENT_FLD_ID,
+			FLD_ORDINAL AS FLD_ORDINAL
+		FROM  GRP_AUTH_REPORT_MSTR
+		INNER JOIN USER_MSTR
+			    ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+		INNER JOIN PUB_FLD_MSTR
+			    ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+		Where  AUTH_VIEW != 'N'
+		ORDER BY PARENT_FLD_ID, FLD_ORDINAL
+	</select>
+
+	<select id="selectAllMyReportFolderList" parameterType="String" resultMap="dataSetFolderMasterResultMap">
+		SELECT USER_FLD_MSTR.FLD_ID AS FLD_ID,
+			FLD_NM AS FLD_NM,
+			FLD_PARENT_ID AS PARENT_FLD_ID,
+			FLD_ORDINAL AS FLD_ORDINAL
+		FROM  USER_FLD_MSTR
+		WHERE USER_NO = #{userNo}
+		ORDER BY PARENT_FLD_ID, FLD_ORDINAL
+	</select>
+
+	<select id="selectReportFLDInfo" statementType="CALLABLE" parameterType="com.wise.ds.repository.FolderParamVO" resultType="com.wise.ds.repository.FolderMasterVO">
+		<if test="_databaseId == 'sqlserver'">
+			{call UP_PUB_FLD_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call UP_PUB_FLD_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=FolderMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call UP_PUB_FLD_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{FLD_ID, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call UP_PUB_FLD_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=FolderMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL UP_PUB_FLD_MSTR
+			(
+				#{P_PARAM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=STRING, mode=OUT}
+			)}
+		</if>
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<!-- DOGFOOT shlim mysql,maria DB 저장오류 수정 20200908  -->
+	<!--<select id="selectReportUserFLDInfo" statementType="CALLABLE" parameterType="com.wise.ds.repository.FolderParamVO" resultType="com.wise.ds.repository.FolderMasterVO">-->
+	<select id="selectReportUserFLDInfo" parameterType="com.wise.ds.repository.FolderParamVO" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT *
+		FROM USER_FLD_MSTR
+		WHERE FLD_ID = #{FLD_ID}
+	</select>
+
+	<select id="selectReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				USER_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+			    	UNION ALL
+			    (SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID        		AS ID,
+			             			PUB_FLD_MSTR.FLD_NM       		AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                  	 	AS TYPE,
+			             			NULL							AS REG_DT
+				FROM   				GRP_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND 				AUTH_VIEW != 'N')
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				WHERE  				REPORT_MSTR.DEL_YN != 'Y') ) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<!-- DOGFOOT ktkang 보고서 및 폴더 권한 체크 추가  20200717 -->
+	<select id="selectUserAuthReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+	SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (
+			    (SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				USER_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+					UNION ALL
+			    (SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			USER_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y')
+				) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal}
+		<!-- SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				USER_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			USER_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y') ) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal} -->
+	</select>
+
+	<select id="selectGrpAuthReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT,
+				AUTH_PUBLISH
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT,
+			             			AUTH_PUBLISH					AS AUTH_PUBLISH
+			  	FROM   				GRP_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N'
+<!-- 			    <if test='editMode == "designer"'>
+       			AND AUTH_PUBLISH != 'N'
+	       		 </if> -->)
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT,
+				         			AUTH_PUBLISH					AS AUTH_PUBLISH
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			GRP_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y') ) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectGrpReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT *
+		FROM  (( SELECT DISTINCT PUB_FLD_MSTR.FLD_ID        AS ID,
+		               PUB_FLD_MSTR.FLD_NM        AS TEXT,
+		               PUB_FLD_MSTR.FLD_PARENT_ID AS UPPERID,
+		               PUB_FLD_MSTR.FLD_ORDINAL   AS ORDINAL,
+		               NULL AS REPORT_TYPE,
+		               'FOLDER'                   AS TYPE,
+			           NULL						  AS REG_DT
+		        FROM   GRP_AUTH_REPORT_MSTR
+		               INNER JOIN USER_MSTR
+		                       ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+		        WHERE  USER_MSTR.USER_ID = #{userId}
+            	AND AUTH_VIEW != 'N')
+		       UNION ALL
+		       (SELECT REPORT_MSTR.REPORT_ID          	AS ID,
+		               REPORT_MSTR.REPORT_NM          	AS TEXT,
+		               REPORT_MSTR.FLD_ID 				AS UPPERID,
+		               REPORT_MSTR.REPORT_ORDINAL     	AS ORDINAL,
+		               REPORT_MSTR.REPORT_TYPE 			AS REPORT_TYPE,
+		               'REPORT'           				AS TYPE,
+				       REPORT_MSTR.REG_DT				AS REG_DT
+		        FROM   REPORT_MSTR
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y'
+<!-- 		               AND REPORT_MSTR.REPORT_TYPE = 'DashAny')) A  -->
+			    )) A
+		ORDER  BY UPPERID,
+		          TYPE,
+		          ORDINAL, ${reportOrdinal}
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="selectUserReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	USER_FLD_MSTR.FLD_ID				AS ID,
+									USER_FLD_MSTR.FLD_NM				AS TEXT,
+			             			USER_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			USER_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 								AS REPORT_TYPE,
+			             			'FOLDER'                   			AS TYPE,
+			           				NULL						  		AS REG_DT
+			  	FROM   				USER_FLD_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_FLD_MSTR.USER_NO
+				WHERE  				USER_MSTR.USER_ID = #{userId})
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID				AS ID,
+			         				REPORT_MSTR.REPORT_NM				AS TEXT,
+									REPORT_MSTR.FLD_ID 					AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 			AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 			AS REPORT_TYPE,
+				         			'REPORT'           					AS TYPE,
+				         			REPORT_MSTR.REG_DT					AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			USER_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = USER_FLD_MSTR.FLD_ID
+				WHERE  				REPORT_MSTR.DEL_YN != 'Y'
+				AND REPORT_MSTR.FLD_TYPE = 'MY'  ) ) A
+		ORDER BY UPPERID, TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectAllReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT *
+		FROM  (( SELECT DISTINCT PUB_FLD_MSTR.FLD_ID        AS ID,
+		               PUB_FLD_MSTR.FLD_NM        			AS TEXT,
+		               PUB_FLD_MSTR.FLD_PARENT_ID 			AS UPPERID,
+		               PUB_FLD_MSTR.FLD_ORDINAL   			AS ORDINAL,
+		               NULL 								AS REPORT_TYPE,
+		               'FOLDER'                   			AS TYPE,
+			           NULL						  			AS REG_DT
+		        FROM   USER_AUTH_REPORT_MSTR
+		               INNER JOIN USER_MSTR
+		                       ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+		        WHERE  AUTH_VIEW != 'N')
+		       UNION ALL
+		       (SELECT REPORT_MSTR.REPORT_ID          		AS ID,
+		               REPORT_MSTR.REPORT_NM          		AS TEXT,
+		               REPORT_MSTR.FLD_ID 					AS UPPERID,
+		               REPORT_MSTR.REPORT_ORDINAL     		AS ORDINAL,
+		               REPORT_MSTR.REPORT_TYPE 				AS REPORT_TYPE,
+		               'REPORT'           					AS TYPE,
+				       REPORT_MSTR.REG_DT					AS REG_DT
+		        FROM   REPORT_MSTR
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y'
+			    )) A
+		ORDER  BY UPPERID,
+		          TYPE,
+		          ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectGrpSpreadReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT *
+		FROM  (( SELECT DISTINCT PUB_FLD_MSTR.FLD_ID        AS ID,
+		               PUB_FLD_MSTR.FLD_NM        			AS TEXT,
+		               PUB_FLD_MSTR.FLD_PARENT_ID 			AS UPPERID,
+		               PUB_FLD_MSTR.FLD_ORDINAL   			AS ORDINAL,
+		               NULL 								AS REPORT_TYPE,
+		               'FOLDER'                   			AS TYPE,
+			           NULL						  			AS REG_DT
+		        FROM   GRP_AUTH_REPORT_MSTR
+		               INNER JOIN USER_MSTR
+		                       ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+		        WHERE  USER_MSTR.USER_ID = #{userId}
+            	AND AUTH_VIEW != 'N')
+		       UNION ALL
+		       (SELECT REPORT_MSTR.REPORT_ID          		AS ID,
+		               REPORT_MSTR.REPORT_NM          		AS TEXT,
+		               REPORT_MSTR.FLD_ID 					AS UPPERID,
+		               REPORT_MSTR.REPORT_ORDINAL     		AS ORDINAL,
+		               REPORT_MSTR.REPORT_TYPE 				AS REPORT_TYPE,
+		               'REPORT'           					AS TYPE,
+				       REPORT_MSTR.REG_DT					AS REG_DT
+		        FROM   REPORT_MSTR
+		               INNER JOIN PUB_FLD_MSTR
+		                       ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y'
+		               AND REPORT_MSTR.REPORT_TYPE = 'Spread'
+			    )) A
+		ORDER  BY UPPERID,
+		          TYPE,
+		          ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectUserSpreadReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT *
+		FROM  (( SELECT DISTINCT USER_FLD_MSTR.FLD_ID       AS ID,
+		               USER_FLD_MSTR.FLD_NM        			AS TEXT,
+		               USER_FLD_MSTR.FLD_PARENT_ID 			AS UPPERID,
+		               USER_FLD_MSTR.FLD_ORDINAL   			AS ORDINAL,
+		               NULL 								AS REPORT_TYPE,
+		               'FOLDER'                   			AS TYPE,
+			           NULL						 			AS REG_DT
+		        FROM   USER_FLD_MSTR
+		               INNER JOIN USER_MSTR
+		                       ON USER_MSTR.USER_NO = USER_FLD_MSTR.USER_NO
+		        WHERE  USER_MSTR.USER_ID = #{userId}
+            	)
+		       UNION ALL
+		       (SELECT REPORT_MSTR.REPORT_ID          		AS ID,
+		               REPORT_MSTR.REPORT_NM          		AS TEXT,
+		               REPORT_MSTR.FLD_ID 					AS UPPERID,
+		               REPORT_MSTR.REPORT_ORDINAL     		AS ORDINAL,
+		               REPORT_MSTR.REPORT_TYPE 				AS REPORT_TYPE,
+		               'REPORT'           					AS TYPE,
+				       REPORT_MSTR.REG_DT					AS REG_DT
+		        FROM   REPORT_MSTR
+		               INNER JOIN USER_FLD_MSTR
+		                       ON REPORT_MSTR.FLD_ID = USER_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y'
+		               AND REPORT_MSTR.REPORT_TYPE IN ('Spread','Excel')
+			    )) A
+		ORDER  BY UPPERID,
+		          TYPE,
+		          ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectNotUserSpreadReportList" parameterType="String" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT *
+		FROM  (( SELECT DISTINCT USER_FLD_MSTR.FLD_ID       AS ID,
+		               USER_FLD_MSTR.FLD_NM        			AS TEXT,
+		               USER_FLD_MSTR.FLD_PARENT_ID 			AS UPPERID,
+		               USER_FLD_MSTR.FLD_ORDINAL   			AS ORDINAL,
+		               NULL 								AS REPORT_TYPE,
+		               'FOLDER'                   			AS TYPE,
+			           NULL						  			AS REG_DT
+		        FROM   USER_FLD_MSTR
+		               INNER JOIN USER_MSTR
+		                       ON USER_MSTR.USER_NO = USER_FLD_MSTR.USER_NO
+		        WHERE  USER_MSTR.USER_ID = #{userId}
+            	)
+		       UNION ALL
+		       (SELECT REPORT_MSTR.REPORT_ID          		AS ID,
+		               REPORT_MSTR.REPORT_NM          		AS TEXT,
+		               REPORT_MSTR.FLD_ID 					AS UPPERID,
+		               REPORT_MSTR.REPORT_ORDINAL     		AS ORDINAL,
+		               REPORT_MSTR.REPORT_TYPE 				AS REPORT_TYPE,
+		               'REPORT'           					AS TYPE,
+				       REPORT_MSTR.REG_DT					AS REG_DT
+		        FROM   REPORT_MSTR
+		               INNER JOIN USER_FLD_MSTR
+		                       ON REPORT_MSTR.FLD_ID = USER_FLD_MSTR.FLD_ID
+		        WHERE  REPORT_MSTR.DEL_YN != 'Y'
+		               AND REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')
+			    )) A
+		ORDER  BY UPPERID,
+		          TYPE,
+		          ORDINAL , ${reportOrdinal}
+	</select>
+
+	<select id="selectSpreadReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			           				NULL						  	AS REG_DT
+			  	FROM   				USER_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+			    	UNION ALL
+			    (SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID        		AS ID,
+			             			PUB_FLD_MSTR.FLD_NM       		AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                  	 	AS TYPE,
+			           				NULL						  	AS REG_DT
+				FROM   				GRP_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND 				AUTH_VIEW != 'N')
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				WHERE  				REPORT_MSTR.DEL_YN != 'Y'
+				AND 				REPORT_MSTR.REPORT_TYPE IN ('Spread','Excel')) ) A
+		ORDER BY UPPERID, TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<!-- DOGFOOT ktkang 보고서 및 폴더 권한 체크 추가  20200717 -->
+	<!-- DOGFOOT ajkim 보고서 및 폴더 유저 권한 체크 추가  20200721 -->
+	<select id="selectNotSpreadReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM ( SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				USER_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N'
+					UNION ALL
+				SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			USER_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.USER_NO = USER_AUTH_REPORT_MSTR.USER_NO
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y'
+				AND 				REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')
+				) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal}
+		<!-- SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				GRP_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			GRP_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y'
+				AND 				REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')) ) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal} -->
+	</select>
+
+	<select id="selectNotSpreadGrpReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (	(SELECT DISTINCT 	PUB_FLD_MSTR.FLD_ID				AS ID,
+									PUB_FLD_MSTR.FLD_NM				AS TEXT,
+			             			PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			PUB_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS REPORT_TYPE,
+			             			'FOLDER'                   		AS TYPE,
+			             			NULL							AS REG_DT
+			  	FROM   				GRP_AUTH_REPORT_MSTR
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				INNER JOIN 			PUB_FLD_MSTR 					ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+			    AND 				AUTH_VIEW != 'N')
+					UNION ALL
+				(SELECT 			REPORT_MSTR.REPORT_ID			AS ID,
+			         				REPORT_MSTR.REPORT_NM			AS TEXT,
+									REPORT_MSTR.FLD_ID 				AS UPPERID,
+				         			REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+				         			REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+				         			'REPORT'           				AS TYPE,
+				         			REPORT_MSTR.REG_DT				AS REG_DT
+				FROM   				REPORT_MSTR
+				INNER JOIN 			PUB_FLD_MSTR 					ON REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID
+				INNER JOIN			GRP_AUTH_REPORT_MSTR			ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+				INNER JOIN 			USER_MSTR 						ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+				WHERE  				USER_MSTR.USER_ID = #{userId}
+				AND					REPORT_MSTR.DEL_YN != 'Y'
+				AND 				REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')) ) A
+		ORDER BY UPPERID, REPORT_TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<update id="deleteReport" parameterType="int">
+		UPDATE REPORT_MSTR
+		SET DEL_YN = 'Y',
+			MOD_USER_NO = (select USER_NO FROM USER_MSTR WHERE USER_ID = 'admin'),
+			MOD_DT = CURRENT TIMESTAMP
+		WHERE report_id = #{report_id}
+	</update>
+	<delete id="deleteReportRelevance" parameterType="int">
+		DELETE	FROM REPORT_LINK_MSTR
+		WHERE	REPORT_ID = #{report_id};
+
+		DELETE	FROM REPORT_LINK_MSTR
+		WHERE	LINK_REPORT_ID = #{report_id};
+
+		DELETE  FROM HOME_REPORT_ITEM_MSTR
+		WHERE	REPORT_ID =  #{report_id};
+
+		DELETE	FROM HOME_MSTR
+		WHERE	CONT_TYPE = 'R'
+		AND		CONT_ID =  #{report_id};
+	</delete>
+	<select id="getTossBatch" resultType="com.wise.ds.repository.TossExeVO">
+		SELECT * FROM TBL_MI_MSTR WHERE TBL_NM = #{TBL_NM} AND CODE = #{CODE}
+	</select>
+
+	<!-- DOGFOOT ktkang 사용자 데이터 업로드 권한 추가  20200716 -->
+	<select id="selectUserAreaSubjectList" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT *
+		FROM DS_MSTR DM
+		INNER JOIN GRP_AUTH_DS_MSTR GADM ON DM.DS_ID = GADM.DS_ID
+		INNER JOIN USER_MSTR UM ON GADM.GRP_ID = UM.GRP_ID
+		WHERE USER_AREA_YN = 'Y'
+		AND UM.USER_ID = #{userId}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectUploadTableList" parameterType="int" resultType="com.wise.ds.repository.UserUploadMstrVO">
+		SELECT *
+		FROM USER_UPLOAD_MSTR
+		WHERE DS_ID = #{ds_id}
+		ORDER BY DATA_SEQ
+	</select>
+	<select id="selectSubjectListForOpen" parameterType="int" resultMap="subjectMasterResultMap">
+		SELECT *
+		FROM DS_MSTR
+		WHERE DS_ID = #{ds_id}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectSubjectListViewForOpen" parameterType="int" resultMap="subjectMasterResultMap">
+		SELECT * FROM DS_MSTR WHERE DS_ID = (SELECT DS_ID FROM DS_VIEW_MSTR WHERE DS_VIEW_ID = #{ds_id})
+	</select>
+	<select id="selectUserAuthDsList" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN
+		FROM USER_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = USER_AUTH_DS_MSTR.DS_ID
+		WHERE USER_NO = #{USER_NO}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectUserAuthDsViewList" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN,
+			DS_VIEW_MSTR.DS_VIEW_ID,
+			DS_VIEW_MSTR.DS_VIEW_NM
+		FROM USER_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = USER_AUTH_DS_MSTR.DS_ID
+			INNER JOIN DS_VIEW_MSTR ON DS_MSTR.DS_ID = DS_VIEW_MSTR.DS_ID
+		WHERE USER_NO = #{USER_NO}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectGrpAuthDsList" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			DS_MSTR.USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN
+		from GRP_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = GRP_AUTH_DS_MSTR.DS_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_DS_MSTR.GRP_ID
+		WHERE USER_NO = #{USER_NO}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectGrpAuthDsViewList" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			DS_MSTR.USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN,
+			DS_VIEW_MSTR.DS_VIEW_ID,
+			DS_VIEW_MSTR.DS_VIEW_NM
+		from GRP_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = GRP_AUTH_DS_MSTR.DS_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_DS_MSTR.GRP_ID
+			INNER JOIN DS_VIEW_MSTR ON DS_VIEW_MSTR.DS_ID = DS_MSTR.DS_ID
+		WHERE USER_NO = #{USER_NO}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectUserAuthCubeList" parameterType="String" resultType="com.wise.ds.repository.SubjectCubeMasterVO">
+		SELECT	B.DS_ID,
+				C.DS_VIEW_ID,
+				D.CUBE_ID,
+				B.DS_NM,
+				B.IP,
+				B.DB_NM,
+				B.PORT,
+				B.OWNER_NM,
+				B.USER_ID,
+				B.DS_DESC,
+				B.DBMS_TYPE,
+				B.WF_YN,
+				B.USER_AREA_YN,
+				C.DS_VIEW_NM,
+				D.CUBE_NM
+		FROM	USER_AUTH_DS_MSTR A
+				INNER JOIN DS_MSTR B ON A.DS_ID = B.DS_ID
+				inner join DS_VIEW_MSTR C on B.DS_ID = C.DS_ID
+				INNER JOIN CUBE_MSTR D on D.DS_VIEW_ID = C.DS_VIEW_ID
+		WHERE	1 = 1
+		and user_no = #{USER_NO}
+		ORDER BY D.CUBE_ID
+	</select>
+	<select id="selectGrpAuthCubeList" parameterType="String" resultType="com.wise.ds.repository.SubjectCubeMasterVO">
+		SELECT	C.DS_ID,
+				C.DS_NM,
+				C.IP,
+				C.DB_NM,
+				C.PORT,
+				C.OWNER_NM,
+				C.USER_ID,
+				C.DS_DESC,
+				C.DBMS_TYPE,
+				C.WF_YN,
+				C.USER_AREA_YN,
+				D.DS_VIEW_ID,
+				D.DS_VIEW_NM,
+				E.CUBE_ID,
+				E.CUBE_NM
+		FROM	GRP_AUTH_DS_MSTR A
+				INNER JOIN USER_MSTR B ON A.GRP_ID = B.GRP_ID
+				INNER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+				inner join DS_VIEW_MSTR D on C.DS_ID = D.DS_ID
+				INNER JOIN CUBE_MSTR E on E.DS_VIEW_ID = D.DS_VIEW_ID
+		WHERE	1 = 1
+		and B.user_no = #{USER_NO}
+		ORDER BY E.CUBE_ID
+	</select>
+	<select id="selectUserAuthDsListByDsId" parameterType="hashmap" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			DS_MSTR.USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN
+		from GRP_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = GRP_AUTH_DS_MSTR.DS_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_DS_MSTR.GRP_ID
+		WHERE USER_NO = #{USER_NO}
+			AND DS_MSTR.DS_ID = #{DS_ID}
+		ORDER BY DS_NM
+	</select>
+	<select id="selectGrpAuthDsListByDsId" parameterType="String" resultMap="subjectMasterResultMap">
+		SELECT
+			DS_MSTR.DS_ID,
+			DS_NM,
+			DB_NM,
+			IP,
+			DS_MSTR.USER_ID,
+			PORT,
+			DBMS_TYPE,
+			OWNER_NM,
+			DS_DESC,
+			WF_YN,
+			USER_AREA_YN
+		from GRP_AUTH_DS_MSTR
+			INNER JOIN DS_MSTR ON DS_MSTR.DS_ID = GRP_AUTH_DS_MSTR.DS_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_DS_MSTR.GRP_ID
+		WHERE USER_NO = #{USER_NO}
+			AND DS_MSTR.DS_ID = #{DS_ID}
+		ORDER BY DS_NM
+	</select>
+	<select id="UP_DATASET_MSTR_ACT" statementType="CALLABLE"  parameterType="com.wise.ds.repository.DataSetInfoVO" resultType="com.wise.ds.repository.DataSetInfoVO" useCache="false">
+		<if test="_databaseId == 'sqlserver'">
+			{call
+			UP_DATASET_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{DATASET_ID, mode=IN},
+				#{DATASET_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{SQL_XML, mode=IN},
+				#{SQL_QUERY,mode=IN},
+				#{DATASET_DESC, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			{call
+			UP_DATASET_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{DATASET_ID, mode=IN},
+				#{DATASET_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{SQL_XML, mode=IN},
+				#{SQL_QUERY,mode=IN},
+				#{DATASET_DESC, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{p_result, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'db2'">
+			{call
+			UP_DATASET_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{DATASET_ID, mode=IN},
+				#{DATASET_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{SQL_XML, mode=IN},
+				#{SQL_QUERY,mode=IN},
+				#{DATASET_DESC, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN}
+			)}
+		</if>
+		<if test="_databaseId == 'mysql'">
+		</if>
+		<if test="_databaseId == 'h2'">
+		</if>
+		<if test="_databaseId == 'postgres'">
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			{call
+			UP_DATASET_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{DATASET_ID, mode=IN},
+				#{DATASET_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{SQL_XML, mode=IN},
+				#{SQL_QUERY,mode=IN},
+				#{DATASET_DESC, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{p_result, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=ReportMasterVO},
+				#{p_error, mode=OUT, jdbcType=TB_CURSOR, javaType=ResultSet, resultMap=p_error}
+			)}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			{CALL
+			UP_DATASET_MSTR_ACT
+			(
+				#{P_PARAM, mode=IN},
+				#{DATASET_ID, mode=IN},
+				#{DATASET_NM, mode=IN},
+				#{FLD_ID, mode=IN},
+				#{DATASRC_ID, mode=IN},
+				#{DATASRC_TYPE, mode=IN},
+				#{SQL_XML, mode=IN},
+				#{SQL_QUERY,mode=IN},
+				#{DATASET_DESC, mode=IN},
+				#{DATASET_TYPE, mode=IN},
+				#{REG_USER_NO, mode=IN},
+				#{MOD_USER_NO, mode=IN},
+				#{PRIVACY_YN, mode=IN},
+				#{out_RtnVal,jdbcType=VARCHAR,javaType=string, mode=OUT}
+			)}
+		</if>
+	</select>
+	<select id="openDataSet"  parameterType="com.wise.ds.repository.DataSetInfoVO" resultType="com.wise.ds.repository.DataSetInfoVO" useCache="false">
+		SELECT DATASET_ID,
+				DATASET_NM,
+				FLD_ID,
+				DATASRC_ID,
+				DATASRC_TYPE,
+				DATASET_TYPE,
+				SQL_XML,
+				SQL_QUERY,
+				DATASET_DESC,
+				DATASET_ORDINAL,
+				REG_USER_NO,
+				REG_DT,
+				PRIVACY_YN
+		FROM DATASET_MSTR
+		WHERE DATASET_ID = #{DATASET_ID}
+			AND DATASRC_ID = #{DATASRC_ID}
+			AND DATASRC_TYPE = #{DATASRC_TYPE}
+	</select>
+	<delete id="deleteDataSet" parameterType="String" >
+		DELETE
+			FROM	DATASET_MSTR
+			WHERE	DATASET_ID = #{DATASET_ID}
+	</delete>
+
+	<!-- DOGFOOT ktkang 주제영역 폴더 형식으로 표시  20200120 -->
+	<select id="selectCubeFldList" parameterType="String" resultType="com.wise.ds.repository.CubeListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				TYPE,
+				CUBE_DESC
+		FROM (	(SELECT DISTINCT 	CUBE_FLD_MSTR.FLD_ID				AS ID,
+									CUBE_FLD_MSTR.FLD_NM				AS TEXT,
+			             			CUBE_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			CUBE_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS CUBE_DESC,
+			             			'FOLDER'                   		AS TYPE
+			  	FROM   				CUBE_FLD_MSTR
+			  	INNER JOIN			CUBE_MSTR ON CUBE_MSTR.FLD_ID = CUBE_FLD_MSTR.FLD_ID
+			  	WHERE				CUBE_MSTR.DS_VIEW_ID = #{ds_view_id})
+			    	UNION ALL
+			    (SELECT DISTINCT 	CUBE_FLD_MSTR.FLD_ID        		AS ID,
+			             			CUBE_FLD_MSTR.FLD_NM       		AS TEXT,
+			             			CUBE_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+			             			CUBE_FLD_MSTR.FLD_ORDINAL   		AS ORDINAL,
+			             			NULL 							AS CUBE_DESC,
+			             			'FOLDER'                  	 	AS TYPE
+				FROM   				CUBE_FLD_MSTR
+				INNER JOIN			CUBE_MSTR ON CUBE_MSTR.FLD_ID = CUBE_FLD_MSTR.FLD_ID
+			  	WHERE				CUBE_MSTR.DS_VIEW_ID = #{ds_view_id})
+					UNION ALL
+				(SELECT 			CUBE_MSTR.CUBE_ID			AS ID,
+			         				CUBE_MSTR.CUBE_NM			AS TEXT,
+									CUBE_MSTR.FLD_ID 				AS UPPERID,
+				         			CUBE_MSTR.CUBE_ORDINAL 		AS ORDINAL,
+				         			CUBE_MSTR.CUBE_DESC 		AS CUBE_DESC,
+				         			'CUBE'           				AS TYPE
+				FROM   				CUBE_MSTR
+				INNER JOIN 			CUBE_FLD_MSTR 					ON CUBE_MSTR.FLD_ID = CUBE_FLD_MSTR.FLD_ID
+				WHERE				CUBE_MSTR.DS_VIEW_ID = #{ds_view_id}
+					) ) A
+		ORDER BY UPPERID, TYPE, ORDINAL
+	</select>
+
+	<!-- DOGFOOT ktkang KERIS 보고서 백업 기능  20200205 -->
+	<select id="sidoToChong" resultType="com.wise.ds.repository.ReportBackup">
+		SELECT REPORT_MSTR.*
+		FROM REPORT_MSTR
+		INNER JOIN PUB_FLD_MSTR ON (REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID)
+		WHERE PUB_FLD_MSTR.FLD_PARENT_ID=5039
+		AND REPORT_MSTR.DEL_YN = 'N'
+	</select>
+
+	<select id="chong" resultType="com.wise.ds.repository.ReportBackup">
+		SELECT REPORT_MSTR.*
+		FROM REPORT_MSTR
+		INNER JOIN PUB_FLD_MSTR ON (REPORT_MSTR.FLD_ID = PUB_FLD_MSTR.FLD_ID)
+		WHERE PUB_FLD_MSTR.FLD_PARENT_ID=5038
+		AND REPORT_MSTR.DEL_YN = 'N'
+	</select>
+
+	<!-- DOGFOOT ktkang 주제영역 연결되어있는 차원 필터로 올리는 부분 추가  20200207 -->
+<!-- 	<select id="selectHieHieUniNm" parameterType="hashmap" resultType="com.wise.ds.repository.CubeHieMasterVO"> -->
+<!-- 		SELECT HIE_HIE_UNI_NM -->
+<!-- 		FROM CUBE_HIE_MSTR  -->
+<!-- 		WHERE HIE_UNI_NM = #{uni_nm}  -->
+<!-- 		AND cube_id = #{cube_id} -->
+<!-- 	</select> -->
+	<!-- DOGFOOT 주제영역 측정값 차원으로 변경시 오류 수정 shlim 20210125 -->
+	<select id="selectHieHieUniNm" parameterType="hashmap" resultType="com.wise.ds.repository.CubeHieMasterVO">
+		SELECT MEA_UNI_NM as HIE_HIE_UNI_NM
+		FROM CUBE_MEA_MSTR
+		WHERE MEA_UNI_NM = #{uni_nm}
+				AND cube_id = #{cube_id}
+		UNION ALL
+		SELECT HIE_HIE_UNI_NM
+		FROM CUBE_HIE_MSTR
+		WHERE HIE_UNI_NM = #{uni_nm}
+		AND cube_id = #{cube_id}
+	</select>
+
+	<!-- DOGFOOT ktkang 주제영역 연계되어있는 측정값이나 차원만 보여주는 기능   20200212 -->
+	<select id="selectCubeRelationList" parameterType="wise.querygen.dto.Relation" resultType="wise.querygen.dto.Relation">
+		SELECT DISTINCT B.DIM_UNI_NM as DIM_UNI_NM
+        FROM CUBE_MSTR A
+        INNER JOIN CUBE_REL_MSTR B ON A.CUBE_ID = B.CUBE_ID
+   		WHERE 1 = 1
+   		AND A.CUBE_ID = #{CUBE_ID}
+   		AND B.FK_TBL_NM = #{FK_TBL_NM}
+   	</select>
+   	
+	<!-- dogfoot shlim  본사적용 필요 20210701 -->
+	<select id="selectDsViewCubeRelationList" parameterType="wise.querygen.dto.Relation" resultType="wise.querygen.dto.Relation">
+		SELECT  DISTINCT A.PK_TBL_NM as DIM_UNI_NM
+			FROM PEOESADM.DS_VIEW_REL_MSTR A 
+			INNER JOIN CUBE_MSTR B ON A.DS_VIEW_ID = B.DS_VIEW_ID 
+			WHERE 1 = 1
+			AND A.FK_TBL_NM = #{FK_TBL_NM}
+			AND B.CUBE_ID = #{CUBE_ID}
+   	</select>
+
+   	<select id="getDatasourceInfoById" parameterType="hashmap" resultType="com.wise.ds.repository.SubjectMasterVO">
+		SELECT 	*
+		FROM 	DS_MSTR
+		WHERE 	DS_ID = ${id}
+	</select>
+
+	<select id="getCubeDatasourceInfoById" parameterType="hashmap" resultType="com.wise.ds.repository.SubjectCubeMasterVO">
+		SELECT		A.DS_ID,
+					B.DS_VIEW_ID,
+					C.CUBE_ID,
+					A.DS_NM,
+					A.IP,
+					A.DB_NM,
+					A.PORT,
+					A.OWNER_NM,
+					A.USER_ID,
+					A.DS_DESC,
+					A.DBMS_TYPE,
+					A.WF_YN,
+					A.USER_AREA_YN,
+					B.DS_VIEW_NM,
+					C.CUBE_NM
+		FROM		DS_MSTR A
+					INNER JOIN DS_VIEW_MSTR B on A.DS_ID = B.DS_ID
+					INNER JOIN CUBE_MSTR C on B.DS_VIEW_ID = C.DS_VIEW_ID
+		WHERE		C.CUBE_ID = ${id}
+	</select>
+
+	<select id="selectGrpAuthReportDetailList" parameterType="hashmap" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (
+			SELECT
+				DISTINCT PUB_FLD_MSTR.FLD_ID ID,
+				PUB_FLD_MSTR.FLD_NM TEXT,
+				PUB_FLD_MSTR.FLD_PARENT_ID UPPERID,
+				PUB_FLD_MSTR.FLD_ORDINAL ORDINAL,
+				NULL REPORT_TYPE,
+				'FOLDER' TYPE,
+				NULL REG_DT
+			FROM PUB_FLD_MSTR
+			INNER JOIN GRP_AUTH_REPORT_DETAIL ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_DETAIL.FLD_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_DETAIL.GRP_ID
+			WHERE GRP_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			UNION ALL
+			SELECT
+				REPORT_MSTR.REPORT_ID ID,
+				REPORT_MSTR.REPORT_NM TEXT,
+				GRP_AUTH_REPORT_DETAIL.FLD_ID UPPERID,
+				REPORT_MSTR.REPORT_ORDINAL ORDINAL,
+				REPORT_MSTR.REPORT_TYPE,
+				'REPORT' TYPE,
+				REPORT_MSTR.REG_DT
+			FROM REPORT_MSTR
+			INNER JOIN GRP_AUTH_REPORT_DETAIL ON REPORT_MSTR.REPORT_ID = GRP_AUTH_REPORT_DETAIL.REPORT_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_DETAIL.GRP_ID
+			INNER JOIN PUB_FLD_MSTR ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_DETAIL.FLD_ID
+			WHERE GRP_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			AND REPORT_MSTR.DEL_YN != 'Y'
+		) A
+		ORDER BY UPPERID, TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectUserAuthReportDetailList" parameterType="hashmap" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (
+			SELECT
+				DISTINCT PUB_FLD_MSTR.FLD_ID ID,
+				PUB_FLD_MSTR.FLD_NM TEXT,
+				PUB_FLD_MSTR.FLD_PARENT_ID UPPERID,
+				PUB_FLD_MSTR.FLD_ORDINAL ORDINAL,
+				NULL REPORT_TYPE,
+				'FOLDER' TYPE,
+				NULL REG_DT
+			FROM PUB_FLD_MSTR
+			INNER JOIN USER_AUTH_REPORT_DETAIL ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_DETAIL.FLD_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.USER_NO = USER_AUTH_REPORT_DETAIL.USER_NO
+			WHERE USER_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			UNION ALL
+			SELECT
+				REPORT_MSTR.REPORT_ID ID,
+				REPORT_MSTR.REPORT_NM TEXT,
+				USER_AUTH_REPORT_DETAIL.FLD_ID UPPERID,
+				REPORT_MSTR.REPORT_ORDINAL ORDINAL,
+				REPORT_MSTR.REPORT_TYPE,
+				'REPORT' TYPE,
+				REPORT_MSTR.REG_DT
+			FROM REPORT_MSTR
+			INNER JOIN USER_AUTH_REPORT_DETAIL ON REPORT_MSTR.REPORT_ID = USER_AUTH_REPORT_DETAIL.REPORT_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.USER_NO = USER_AUTH_REPORT_DETAIL.USER_NO
+			INNER JOIN PUB_FLD_MSTR ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_DETAIL.FLD_ID
+			WHERE USER_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			AND REPORT_MSTR.DEL_YN != 'Y'
+		) A
+		ORDER BY UPPERID, TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectNotSpreadUserAuthReportDetailList" parameterType="hashmap" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (
+			SELECT
+				DISTINCT PUB_FLD_MSTR.FLD_ID ID,
+				PUB_FLD_MSTR.FLD_NM TEXT,
+				PUB_FLD_MSTR.FLD_PARENT_ID UPPERID,
+				PUB_FLD_MSTR.FLD_ORDINAL ORDINAL,
+				NULL REPORT_TYPE,
+				'FOLDER' TYPE,
+				NULL REG_DT
+			FROM PUB_FLD_MSTR
+			INNER JOIN USER_AUTH_REPORT_DETAIL ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_DETAIL.FLD_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.USER_NO = USER_AUTH_REPORT_DETAIL.USER_NO
+			WHERE USER_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			UNION ALL
+			SELECT
+				REPORT_MSTR.REPORT_ID ID,
+				REPORT_MSTR.REPORT_NM TEXT,
+				USER_AUTH_REPORT_DETAIL.FLD_ID UPPERID,
+				REPORT_MSTR.REPORT_ORDINAL ORDINAL,
+				REPORT_MSTR.REPORT_TYPE,
+				'REPORT' TYPE,
+				REPORT_MSTR.REG_DT
+			FROM REPORT_MSTR
+			INNER JOIN USER_AUTH_REPORT_DETAIL ON REPORT_MSTR.REPORT_ID = USER_AUTH_REPORT_DETAIL.REPORT_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.USER_NO = USER_AUTH_REPORT_DETAIL.USER_NO
+			INNER JOIN PUB_FLD_MSTR ON PUB_FLD_MSTR.FLD_ID = USER_AUTH_REPORT_DETAIL.FLD_ID
+			WHERE USER_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			AND REPORT_MSTR.DEL_YN != 'Y'
+			AND REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')
+			) A
+		ORDER BY UPPERID, TYPE, ORDINAL
+	</select>
+
+	<select id="selectNotSpreadGrpAuthReportDetailList" parameterType="hashmap" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 	DISTINCT ID,
+				TEXT,
+				UPPERID,
+				ORDINAL,
+				REPORT_TYPE,
+				TYPE,
+				REG_DT
+		FROM (
+			SELECT
+				DISTINCT PUB_FLD_MSTR.FLD_ID ID,
+				PUB_FLD_MSTR.FLD_NM TEXT,
+				PUB_FLD_MSTR.FLD_PARENT_ID UPPERID,
+				PUB_FLD_MSTR.FLD_ORDINAL ORDINAL,
+				NULL REPORT_TYPE,
+				'FOLDER' TYPE,
+				NULL REG_DT
+			FROM PUB_FLD_MSTR
+			INNER JOIN GRP_AUTH_REPORT_MSTR ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_MSTR.FLD_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_MSTR.GRP_ID
+			WHERE GRP_AUTH_REPORT_MSTR.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			UNION ALL
+			SELECT
+				REPORT_MSTR.REPORT_ID ID,
+				REPORT_MSTR.REPORT_NM TEXT,
+				GRP_AUTH_REPORT_DETAIL.FLD_ID UPPERID,
+				REPORT_MSTR.REPORT_ORDINAL ORDINAL,
+				REPORT_MSTR.REPORT_TYPE,
+				'REPORT' TYPE,
+				REPORT_MSTR.REG_DT
+			FROM REPORT_MSTR
+			INNER JOIN GRP_AUTH_REPORT_DETAIL ON REPORT_MSTR.REPORT_ID = GRP_AUTH_REPORT_DETAIL.REPORT_ID
+			INNER JOIN USER_MSTR ON USER_MSTR.GRP_ID = GRP_AUTH_REPORT_DETAIL.GRP_ID
+			INNER JOIN PUB_FLD_MSTR ON PUB_FLD_MSTR.FLD_ID = GRP_AUTH_REPORT_DETAIL.FLD_ID
+			WHERE GRP_AUTH_REPORT_DETAIL.AUTH_VIEW != 'N'
+			AND USER_MSTR.USER_ID = #{userId}
+			AND REPORT_MSTR.DEL_YN != 'Y'
+			AND REPORT_MSTR.REPORT_TYPE NOT IN ('Spread','Excel')
+		) A
+		ORDER BY UPPERID, TYPE, ORDINAL, ${reportOrdinal}
+	</select>
+
+	<select id="selectPubFldMstrInfo" parameterType="int" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT
+			PUB_FLD_MSTR.FLD_ID ID,
+			PUB_FLD_MSTR.FLD_NM TEXT,
+			PUB_FLD_MSTR.FLD_PARENT_ID UPPERID,
+			PUB_FLD_MSTR.FLD_ORDINAL ORDINAL,
+			NULL REPORT_TYPE,
+			'FOLDER' TYPE
+		FROM PUB_FLD_MSTR
+		WHERE FLD_ID = #{fldId}
+	</select>
+</mapper>

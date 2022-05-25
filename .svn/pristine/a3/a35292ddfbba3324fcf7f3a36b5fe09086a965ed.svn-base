@@ -1,0 +1,14 @@
+[
+  { "len": 31, "color": "#8dd3c7", "label": "1월", "id": "01" },
+  { "len": 28, "color": "#ffffb3", "label": "2월", "id": "02" },
+  { "len": 31, "color": "#bebada", "label": "3월", "id": "03" },
+  { "len": 30, "color": "#fb8072", "label": "4월", "id": "04" },
+  { "len": 31, "color": "#80b1d3", "label": "5월", "id": "05" },
+  { "len": 30, "color": "#fdb462", "label": "6월", "id": "06" },
+  { "len": 31, "color": "#b3de69", "label": "7월", "id": "07" },
+  { "len": 31, "color": "#fccde5", "label": "8월", "id": "08" },
+  { "len": 30, "color": "#d9d9d9", "label": "9월", "id": "09" },
+  { "len": 31, "color": "#bc80bd", "label": "10월", "id": "10" },
+  { "len": 30, "color": "#ccebc5", "label": "11월", "id": "11" },
+  { "len": 31, "color": "#ffed6f", "label": "12월", "id": "12" }
+]

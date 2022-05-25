@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CubeMapper">
+
+    <cache />
+    
+	 <select id="cuberelmstr" resultType="hashmap">
+		 SELECT	A.DS_ID AS DS_ID
+
+               ,B.DS_VIEW_ID AS DS_VIEW_ID
+
+               ,C.CUBE_ID AS CUBE_ID
+
+               ,D.CONST_NM as CONST_NM
+
+               ,D.FK_TBL_NM as FK_TBL_NM
+
+               ,D.FK_COL_NM as FK_COL_NM
+
+               ,D.PK_TBL_NM  as PK_TBL_NM
+
+               ,D.PK_COL_NM as PK_COL_NM
+
+               ,D.JOIN_TYPE as JOIN_TYPE
+
+               ,D.JOIN_SET_OWNER as JOIN_SET_OWNER
+
+               ,D.REL_CONST_NM as REL_CONST_NM
+
+               ,D.DIM_UNI_NM as DIM_UNI_NM
+
+               ,D.MEA_GRP_UNI_NM as MEA_GRP_UNI_NM
+
+               ,'' AS MODIFY_TAG 
+
+          FROM	  DS_MSTR A
+
+                INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID 
+
+                INNER JOIN CUBE_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+
+                INNER JOIN CUBE_REL_MSTR D ON C.CUBE_ID = D.CUBE_ID
+
+   		  WHERE	  1 = 1
+   		  AND C.CUBE_ID = 1857
+    </select>
+
+     <select id="dsviewrelmstr" resultType="hashmap">
+		 	SELECT	A.DS_ID
+
+               ,B.DS_VIEW_ID 
+
+               ,C.CONST_NM 
+
+               ,C.FK_TBL_NM 
+
+               ,C.FK_COL_NM 
+
+               ,C.PK_TBL_NM 
+
+               ,C.PK_COL_NM 
+
+               ,C.JOIN_TYPE 
+
+               ,C.JOIN_SET_OWNER 
+
+               ,'''' AS MODIFY_TAG 
+
+           FROM	 DS_MSTR A
+
+	             INNER JOIN DS_VIEW_MSTR B ON A.DS_ID = B.DS_ID
+
+	             INNER JOIN DS_VIEW_REL_MSTR C ON B.DS_VIEW_ID = C.DS_VIEW_ID 
+
+   		  WHERE	 1 = 1  
+   		  AND B.DS_VIEW_ID = 1782
+    </select>   
+</mapper>

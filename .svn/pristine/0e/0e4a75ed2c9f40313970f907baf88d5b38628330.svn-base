@@ -1,0 +1,2393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Config">
+<!-- user/group -->
+	<select id="selectGroupList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	GRP_NM,
+				GRP_ID,
+				GRP_DESC,
+				RUN_MODE AS GRP_RUN_MODE,
+				GRP_REL_CD
+		FROM 	GRP_MSTR
+		WHERE 	DEL_YN = 'N'
+	</select>
+	<select id="selectDataSourceList" resultType="com.wise.authn.DataSourceVO">
+		SELECT  DS_ID,
+				DS_NM,
+				IP,
+				DB_NM,
+				DBMS_TYPE,
+				OWNER_NM,
+				PORT,
+				USER_ID,
+				PASSWD,
+				CONN_TYPE,
+				USER_AREA_YN,
+				REG_USER_NO
+		FROM DS_MSTR
+		<if test="list != null">
+		WHERE DS_ID IN
+			<foreach collection="list" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+	<select id="selectDataSourceUserList" resultType="com.wise.authn.DataSourceUserVO" parameterType="int">
+		SELECT  *
+		FROM USER_AUTH_DS_MSTR
+		WHERE USER_NO = #{no}
+	</select>
+	<select id="selectDataSourceGRPList" resultType="com.wise.authn.DataSourceGRPVO" parameterType="int">
+		SELECT  *
+		FROM GRP_AUTH_DS_MSTR
+		WHERE GRP_ID = #{no}
+	</select>
+	<select id="selectUserListAndGroupName" resultType="com.wise.authn.UserGroupVO" parameterType="com.wise.authn.UserGroupVO">
+		SELECT	USER_MSTR.USER_NO AS USER_NO,
+				USER_MSTR.USER_ID AS USER_ID,
+				USER_MSTR.USER_NM AS USER_NM,
+				USER_MSTR.RUN_MODE AS USER_RUN_MODE,
+				USER_MSTR.USER_REL_CD AS USER_REL_CD,
+				USER_MSTR.USER_DESC AS USER_DESC,
+				GRP_MSTR.GRP_ID AS GRP_ID,
+				GRP_MSTR.GRP_NM AS GRP_NM,
+				GRP_MSTR.RUN_MODE AS GRP_RUN_MODE
+		FROM	USER_MSTR LEFT JOIN GRP_MSTR
+		ON		USER_MSTR.GRP_ID = GRP_MSTR.GRP_ID
+		AND		GRP_MSTR.DEL_YN = 'N'
+		WHERE	USER_MSTR.DEL_YN = 'N'
+	</select>
+	<select id="selectUserCnt" resultType="java.lang.Integer">
+		SELECT	COUNT(*) AS TOT_CNT
+			FROM	USER_MSTR LEFT JOIN GRP_MSTR
+			ON		USER_MSTR.GRP_ID = GRP_MSTR.GRP_ID
+			AND		GRP_MSTR.DEL_YN = 'N'
+			WHERE	USER_MSTR.DEL_YN = 'N'
+	</select>
+	<select id="selectGroupIdByGroupName" parameterType="String" resultType="java.lang.Integer">
+		SELECT 	GRP_ID
+		FROM 	GRP_MSTR
+		WHERE 	GRP_NM = #{groupName}
+		AND 	DEL_YN = 'N'
+	</select>
+	<update id="updateUserList" parameterType="com.wise.authn.UserGroupVO">
+		UPDATE 	USER_MSTR
+		SET 	USER_NM = #{USER_NM},
+				E_MAIL1 = #{USER_EMAIL1},
+				E_MAIL2 = #{USER_EMAIL2},
+				HP_NO = #{USER_HP_NO},
+				TEL_NO = #{USER_TEL_NO},
+				RUN_MODE = #{USER_RUN_MODE},
+				GRP_ID = #{GRP_ID},
+				USER_REL_CD = #{USER_REL_CD},
+				USER_DESC = #{USER_DESC}
+		WHERE 	USER_ID = #{selectedUser}
+	</update>
+		<update id="updateDatasourceList" parameterType="com.wise.authn.DataSourceVO">
+		UPDATE 	DS_MSTR
+		SET 	DS_NM = #{DS_NM},
+				DB_NM = #{DB_NM},
+				IP = #{IP},
+				USER_ID = #{USER_ID},
+				PASSWD = #{PASSWD},
+				PORT = #{PORT},
+				DBMS_TYPE = #{DBMS_TYPE},
+				OWNER_NM = #{OWNER_NM},
+				UPD_DT = #{UPD_DT},
+				UPD_USER_NO = #{UPD_USER_NO},
+				DS_CONNSTR = #{DS_CONNSTR},
+				CONN_TYPE = #{CONN_TYPE}
+		WHERE 	DS_ID = #{DS_ID}
+	</update>
+	<insert id="insertNewDatasourceUser" parameterType="com.wise.authn.DataSourceUserVO">
+		INSERT INTO USER_AUTH_DS_MSTR
+		(
+			USER_NO,
+			DS_ID
+		)
+		VALUES
+		(
+			#{USER_NO},
+			#{DS_ID}
+		)
+	</insert>
+	<insert id="insertNewDatasource" parameterType="com.wise.authn.DataSourceVO">
+		<selectKey keyProperty="DS_ID" resultType="int" order="AFTER">
+				SELECT DS_ID FROM DS_MSTR WHERE UPD_DT=(SELECT MAX(UPD_DT) FROM DS_MSTR)
+		</selectKey>
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+			INSERT INTO DS_MSTR
+			(
+				DS_ID,
+				DS_NM,
+				DB_NM,
+				IP,
+				USER_ID,
+				PASSWD,
+				PORT,
+				DBMS_TYPE,
+				OWNER_NM,
+				DS_DESC,
+				DS_CONNSTR,
+				REG_DT,
+				REG_USER_NO,
+				UPD_DT,
+				UPD_USER_NO,
+				RACIP,
+				RACPORT,
+				WF_YN,
+				USER_AREA_YN,
+				CONN_TYPE,
+				HASH_YN
+			)
+			VALUES
+			(
+				DS_MSTR_DS_ID_SEQ.NEXTVAL,
+				#{DS_NM},
+				#{DB_NM},
+				#{IP},
+				#{USER_ID},
+				#{PASSWD},
+				#{PORT},
+				#{DBMS_TYPE},
+				#{OWNER_NM},
+				#{DS_DESC},
+				#{DS_CONNSTR},
+				#{REG_DT},
+				#{REG_USER_NO},
+				#{UPD_DT},
+				#{UPD_USER_NO},
+				#{RACIP},
+				#{RACPORT},
+				#{WF_YN},
+				#{USER_AREA_YN},
+				#{CONN_TYPE},
+				#{HASH_YN}
+			)
+			</when>
+			<otherwise>
+			INSERT INTO DS_MSTR
+			(
+				DS_NM,
+				DB_NM,
+				IP,
+				USER_ID,
+				PASSWD,
+				PORT,
+				DBMS_TYPE,
+				OWNER_NM,
+				DS_DESC,
+				DS_CONNSTR,
+				REG_DT,
+				REG_USER_NO,
+				UPD_DT,
+				UPD_USER_NO,
+				RACIP,
+				RACPORT,
+				WF_YN,
+				USER_AREA_YN,
+				CONN_TYPE,
+				HASH_YN
+			)
+			VALUES
+			(
+				#{DS_NM},
+				#{DB_NM},
+				#{IP},
+				#{USER_ID},
+				#{PASSWD},
+				#{PORT},
+				#{DBMS_TYPE},
+				#{OWNER_NM},
+				#{DS_DESC},
+				#{DS_CONNSTR},
+				#{REG_DT},
+				#{REG_USER_NO},
+				#{UPD_DT},
+				#{UPD_USER_NO},
+				#{RACIP},
+				#{RACPORT},
+				#{WF_YN},
+				#{USER_AREA_YN},
+				#{CONN_TYPE},
+				#{HASH_YN}
+			)
+			</otherwise>
+		</choose>
+	</insert>
+	<insert id="insertNewUser" parameterType="com.wise.authn.UserGroupVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO USER_MSTR
+				(
+					USER_NO,
+					USER_ID,
+					PASSWD,
+					USER_NM,
+					E_MAIL1,
+					E_MAIL2,
+					HP_NO,
+					TEL_NO,
+					RUN_MODE,
+					GRP_ID,
+					USER_REL_CD,
+					USER_DESC,
+					DEL_YN
+				)
+				VALUES
+				(
+					USER_MSTR_USER_NO_SEQ.NEXTVAL,
+					#{USER_ID},
+					#{USER_PW},
+					#{USER_NM},
+					#{USER_EMAIL1},
+					#{USER_EMAIL2},
+					#{USER_HP_NO},
+					#{USER_TEL_NO},
+					#{USER_RUN_MODE},
+					#{GRP_ID},
+					#{USER_REL_CD},
+					#{USER_DESC},
+					'N'
+				)
+			</when>
+			<otherwise>
+				INSERT INTO USER_MSTR
+				(
+					USER_ID,
+					PASSWD,
+					USER_NM,
+					E_MAIL1,
+					E_MAIL2,
+					HP_NO,
+					TEL_NO,
+					RUN_MODE,
+					GRP_ID,
+					USER_REL_CD,
+					USER_DESC,
+					DEL_YN
+				)
+				VALUES
+				(
+					#{USER_ID},
+					#{USER_PW},
+					#{USER_NM},
+					#{USER_EMAIL1},
+					#{USER_EMAIL2},
+					#{USER_HP_NO},
+					#{USER_TEL_NO},
+					#{USER_RUN_MODE},
+					#{GRP_ID},
+					#{USER_REL_CD},
+					#{USER_DESC},
+					'N'
+				)
+			</otherwise>
+		</choose>
+	</insert>
+	<update id="deleteUserFromList" parameterType="com.wise.authn.UserGroupVO">
+		UPDATE 	USER_MSTR
+		SET 	DEL_YN = 'Y'
+		WHERE 	USER_ID = #{selectedUser}
+	</update>
+	<delete id="deleteDataSourceInfo" parameterType="com.wise.authn.DataSourceVO">
+		DELETE FROM DS_MSTR
+		WHERE DS_ID = #{DS_ID}
+	</delete>
+
+	<delete id="deleteDataSourceUserInfo" parameterType="com.wise.authn.DataSourceUserVO">
+		DELETE FROM USER_AUTH_DS_MSTR
+		WHERE USER_NO = #{USER_NO}
+		  AND DS_ID = #{DS_ID}
+	</delete>
+
+	<delete id="deleteDataSourceGrpInfo" parameterType="com.wise.authn.DataSourceGRPVO">
+		DELETE FROM GRP_AUTH_DS_MSTR
+		WHERE GRP_ID = #{GRP_ID}
+		  AND DS_ID = #{DS_ID}
+	</delete>
+
+	<update id="changeUserPassword" parameterType="com.wise.authn.UserGroupVO">
+		UPDATE 	USER_MSTR
+		SET 	PASSWD = #{newPw},
+				PW_CHANGE_DT = #{PW_CHANGE_DT}
+		WHERE 	USER_ID = #{selectedUser} AND DEL_YN = 'N'
+	</update>
+	<insert id="insertGroupInfo" parameterType="com.wise.authn.UserGroupVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO GRP_MSTR
+				(
+					GRP_ID,
+					GRP_NM,
+					GRP_DESC,
+					GRP_REL_CD,
+					RUN_MODE,
+					DEL_YN
+				)
+				VALUES
+				(
+					GRP_MSTR_GRP_ID_SEQ.NEXTVAL,
+					#{GRP_NM},
+					#{GRP_DESC},
+					#{GRP_REL_CD},
+					#{GRP_RUN_MODE},
+					'N'
+				)
+			</when>
+			<otherwise>
+				INSERT INTO GRP_MSTR
+				(
+					GRP_NM,
+					GRP_DESC,
+					GRP_REL_CD,
+					RUN_MODE,
+					DEL_YN
+				)
+				VALUES
+				(
+					#{GRP_NM},
+					#{GRP_DESC},
+					#{GRP_REL_CD},
+					#{GRP_RUN_MODE},
+					'N'
+				)
+			</otherwise>
+		</choose>
+	</insert>
+	<update id="updateGroupInfo" parameterType="com.wise.authn.UserGroupVO">
+		UPDATE 	GRP_MSTR
+		SET		GRP_NM = #{GRP_NM},
+				GRP_DESC = #{GRP_DESC},
+				GRP_REL_CD = #{GRP_REL_CD},
+				RUN_MODE = #{GRP_RUN_MODE}
+		WHERE 	GRP_ID = #{selectedGroup}
+	</update>
+	<update id="deleteGroupInfo" parameterType="com.wise.authn.UserGroupVO">
+		UPDATE 	GRP_MSTR
+		SET 	DEL_YN = 'Y'
+		WHERE 	GRP_ID = #{selectedGroup}
+	</update>
+	<update id="initGroupUsers" parameterType="java.lang.Integer">
+		UPDATE 	USER_MSTR
+		SET 	GRP_ID = NULL
+		WHERE 	GRP_ID = #{groupId}
+	</update>
+	<update id="updateGroupUsers" parameterType="java.lang.Integer">
+		UPDATE 	USER_MSTR
+		SET 	GRP_ID = #{GRP_ID}
+		WHERE 	USER_NO IN
+			<foreach item="id" index="index" collection="selectedUsers" separator="," open="(" close=")">
+				#{id}
+			</foreach>
+	</update>
+<!-- report/folder -->
+	<select id="selectPublicReportList" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 		*
+		FROM		((
+						SELECT 	DISTINCT PUB_FLD_MSTR.FLD_ID 	AS ID,
+								'FOLDER' 						AS TYPE,
+								PUB_FLD_MSTR.FLD_NM 			AS TEXT,
+								PUB_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+								PUB_FLD_MSTR.FLD_ORDINAL 		AS ORDINAL,
+								NULL 							AS REPORT_TYPE,
+								NULL							AS PROMPT,
+								NULL							AS SUBTITLE,
+								NULL							AS CREATED_BY,
+								NULL 							AS CREATED_DATE,
+								NULL							AS TAG,
+								NULL							AS DESCRIPTION
+								<!-- DOGFOOT ktkang KERIS 보고서 폴더 보기에서 쿼리때문에 너무 느려서 뺌  20200130 -->
+<!-- 								NULL							AS QUERY, -->
+<!-- 								NULL 							AS DATASET_XML -->
+						FROM   	PUB_FLD_MSTR
+					)
+				    UNION ALL
+					(
+						SELECT	REPORT_MSTR.REPORT_ID 			AS ID,
+								'REPORT' 						AS TYPE,
+								REPORT_MSTR.REPORT_NM 			AS TEXT,
+								REPORT_MSTR.FLD_ID 				AS UPPERID,
+								REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+								REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+								REPORT_MSTR.PROMPT_YN			AS PROMPT,
+								REPORT_MSTR.REPORT_SUB_TITLE	AS SUBTITLE,
+								USER_MSTR.USER_ID 				AS CREATED_BY,
+								REPORT_MSTR.REG_DT 				AS CREATED_DATE,
+								REPORT_MSTR.REPORT_TAG			AS TAG,
+								REPORT_MSTR.REPORT_DESC			AS DESCRIPTION
+								<!-- DOGFOOT ktkang KERIS 보고서 폴더 보기에서 쿼리때문에 너무 느려서 뺌  20200130 -->
+<!-- 								REPORT_MSTR.DATASET_QUERY		AS QUERY, -->
+<!-- 								REPORT_MSTR.DATASET_XML 		AS DATASET_XML -->
+						FROM  	REPORT_MSTR
+								LEFT OUTER JOIN USER_MSTR		ON REPORT_MSTR.REG_USER_NO = USER_MSTR.USER_NO
+						WHERE 	REPORT_MSTR.DEL_YN != 'Y'
+					)) A
+		ORDER BY 	TYPE, UPPERID, ORDINAL
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="selectUserReportList" parameterType="int" resultType="com.wise.ds.repository.ReportListMasterVO">
+		SELECT 		*
+		FROM		((
+						SELECT 	DISTINCT USER_FLD_MSTR.FLD_ID 	AS ID,
+								'FOLDER' 						AS TYPE,
+								USER_FLD_MSTR.FLD_NM 			AS TEXT,
+								USER_FLD_MSTR.FLD_PARENT_ID 		AS UPPERID,
+								USER_FLD_MSTR.FLD_ORDINAL 		AS ORDINAL,
+								NULL 							AS REPORT_TYPE,
+								NULL							AS PROMPT,
+								NULL							AS SUBTITLE,
+								NULL							AS CREATED_BY,
+								NULL 							AS CREATED_DATE,
+								NULL							AS TAG,
+								NULL							AS DESCRIPTION,
+								NULL							AS QUERY,
+								NULL 							AS DATASET_XML
+						FROM   	USER_FLD_MSTR
+						WHERE 	USER_NO = #{user_id}
+					)
+				    UNION ALL
+					(
+						SELECT	REPORT_MSTR.REPORT_ID 			AS ID,
+								'REPORT' 						AS TYPE,
+								REPORT_MSTR.REPORT_NM 			AS TEXT,
+								REPORT_MSTR.FLD_ID 				AS UPPERID,
+								REPORT_MSTR.REPORT_ORDINAL 		AS ORDINAL,
+								REPORT_MSTR.REPORT_TYPE 		AS REPORT_TYPE,
+								REPORT_MSTR.PROMPT_YN			AS PROMPT,
+								REPORT_MSTR.REPORT_SUB_TITLE	AS SUBTITLE,
+								USER_MSTR.USER_ID 				AS CREATED_BY,
+								REPORT_MSTR.REG_DT 				AS CREATED_DATE,
+								REPORT_MSTR.REPORT_TAG			AS TAG,
+								REPORT_MSTR.REPORT_DESC			AS DESCRIPTION,
+								REPORT_MSTR.DATASET_QUERY		AS QUERY,
+								REPORT_MSTR.DATASET_XML 		AS DATASET_XML
+						FROM  	REPORT_MSTR
+						LEFT OUTER JOIN USER_MSTR		ON REPORT_MSTR.REG_USER_NO = USER_MSTR.USER_NO
+						INNER JOIN 	USER_FLD_MSTR 		ON REPORT_MSTR.FLD_ID = USER_FLD_MSTR.FLD_ID
+						WHERE 	REPORT_MSTR.DEL_YN != 'Y'
+						AND USER_FLD_MSTR.USER_NO = #{user_id}
+					)) A
+		ORDER BY 	UPPERID, TYPE, ORDINAL
+	</select>
+
+	<insert id="savePublicReport" parameterType="com.wise.ds.repository.ReportListMasterVO">
+		UPDATE 	REPORT_MSTR
+		SET		REPORT_NM = #{TEXT},
+				PROMPT_YN = #{PROMPT},
+				REPORT_SUB_TITLE = #{SUBTITLE},
+				REPORT_TAG = #{TAG},
+				<if test="FLD_ID!=null and FLD_ID!=0">
+				FLD_ID = #{FLD_ID},
+				</if>
+				REPORT_ORDINAL = #{ORDINAL},
+				REPORT_DESC = #{DESCRIPTION}
+	<choose>
+		<when test='DIRECTVIEW == "Y" || DIRECTVIEW == "N"'>
+				,DIRECT_VIEW = #{DIRECTVIEW}
+		</when>
+	</choose>
+		WHERE 	REPORT_ID = #{ID}
+	</insert>
+	<insert id="deletePublicReport" parameterType="int">
+		UPDATE 	REPORT_MSTR
+		SET		DEL_YN = 'Y'
+		WHERE 	REPORT_ID = #{id}
+	</insert>
+	<delete id="deleteLinkedReport" parameterType="com.wise.ds.repository.FolderMasterVO">
+		DELETE
+		FROM	REPORT_LINK_MSTR
+		WHERE	LINK_REPORT_ID = #{FLD_ID}
+	</delete>
+	<select id="getPublicFolderWithNameAndParent" parameterType="com.wise.ds.repository.FolderMasterVO" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT 	FLD_ID,
+               	FLD_NM,
+               	<!-- 테이블끼리 이름이 다름(FLD_MSTR > DATASET_FLD_MSTR) -->
+               	FLD_PARENT_ID AS PARENT_FLD_ID,
+               	FLD_ORDINAL
+        FROM   	PUB_FLD_MSTR
+        WHERE 	FLD_PARENT_ID = #{PARENT_FLD_ID}
+        		AND FLD_NM = #{FLD_NM}
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="getUserFolderWithNameAndParent" parameterType="com.wise.ds.repository.FolderMasterVO" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT 	FLD_ID,
+               	FLD_NM,
+               	<!-- 테이블끼리 이름이 다름(FLD_MSTR > DATASET_FLD_MSTR) -->
+               	FLD_PARENT_ID AS PARENT_FLD_ID,
+               	FLD_ORDINAL
+        FROM   	USER_FLD_MSTR
+        WHERE 	FLD_PARENT_ID = #{PARENT_FLD_ID}
+        		AND FLD_NM = #{FLD_NM}
+	</select>
+
+	<select id="getPublicFolderList" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT 		FLD_ID,
+               		FLD_NM,
+               		<!-- 테이블끼리 이름이 다름(FLD_MSTR > DATASET_FLD_MSTR) -->
+               		FLD_PARENT_ID AS PARENT_FLD_ID,
+               		FLD_ORDINAL
+        FROM   		PUB_FLD_MSTR
+        ORDER BY 	FLD_ORDINAL
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="getUserFolderList" parameterType="int" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT 		FLD_ID,
+               		FLD_NM,
+               		FLD_PARENT_ID AS PARENT_FLD_ID,
+               		FLD_ORDINAL
+        FROM   		USER_FLD_MSTR
+        WHERE		USER_NO = #{user_no}
+        ORDER BY 	FLD_ORDINAL
+	</select>
+
+	<insert id="insertPublicFolder" parameterType="com.wise.ds.repository.FolderMasterVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO PUB_FLD_MSTR
+				(
+					FLD_ID,
+					FLD_NM,
+					FLD_LVL,
+					FLD_PARENT_ID,
+					FLD_ORDINAL
+				)
+				VALUES
+				(
+					PUB_FLD_MSTR_FLD_ID_SEQ.NEXTVAL,
+					#{FLD_NM},
+					#{FLD_LVL},
+					#{PARENT_FLD_ID},
+					#{FLD_ORDINAL}
+				)
+			</when>
+			<otherwise>
+				INSERT INTO PUB_FLD_MSTR
+				(
+					FLD_NM,
+					FLD_LVL,
+					FLD_PARENT_ID,
+					FLD_ORDINAL
+				)
+				VALUES
+				(
+					#{FLD_NM},
+					#{FLD_LVL},
+					#{PARENT_FLD_ID},
+					#{FLD_ORDINAL}
+				)
+			</otherwise>
+		</choose>
+	</insert>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<insert id="insertUserFolder" parameterType="com.wise.ds.repository.FolderMasterVO">
+		<choose>
+			<when test="_databaseId == 'Oracle' || _databaseId == 'Tibero'">
+				INSERT INTO USER_FLD_MSTR
+				(
+					FLD_ID,
+					USER_NO,
+					FLD_NM,
+					FLD_LVL,
+					FLD_PARENT_ID,
+					FLD_ORDINAL
+				)
+				VALUES
+				(
+					USER_FLD_MSTR_FLD_ID_SEQ.NEXTVAL,
+					#{USER_NO},
+					#{FLD_NM},
+					#{FLD_LVL},
+					#{PARENT_FLD_ID},
+					#{FLD_ORDINAL}
+				)
+			</when>
+			<otherwise>
+				INSERT INTO USER_FLD_MSTR
+				(
+					USER_NO,
+					FLD_NM,
+					FLD_LVL,
+					FLD_PARENT_ID,
+					FLD_ORDINAL
+				)
+				VALUES
+				(
+					#{USER_NO},
+					#{FLD_NM},
+					#{FLD_LVL},
+					#{PARENT_FLD_ID},
+					#{FLD_ORDINAL}
+				)
+			</otherwise>
+		</choose>
+	</insert>
+
+	<select id="getPublicFolderLevel" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT 	FLD_LVL
+		FROM 	PUB_FLD_MSTR
+		WHERE 	FLD_ID = #{parentFldId}
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="getUserFolderLevel" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT 	FLD_LVL
+		FROM 	USER_FLD_MSTR
+		WHERE 	FLD_ID = #{parentFldId}
+	</select>
+
+	<select id="getPublicFolderMaxOrdinal" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT 	MAX(FLD_ORDINAL)
+		FROM 	PUB_FLD_MSTR
+		WHERE 	FLD_PARENT_ID = #{parentFldId}
+	</select>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<select id="getUserFolderMaxOrdinal" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT 	MAX(FLD_ORDINAL)
+		FROM 	USER_FLD_MSTR
+		WHERE 	FLD_PARENT_ID = #{parentFldId}
+	</select>
+	
+	<!-- dogfoot shlim 20210414  -->
+	<update id="editPublicFolderName" parameterType="com.wise.ds.repository.FolderMasterVO">
+		UPDATE	PUB_FLD_MSTR
+		SET 	FLD_NM = #{FLD_NM},FLD_PARENT_ID = #{PARENT_FLD_ID}
+		WHERE 	FLD_ID = #{FLD_ID}
+	</update>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<update id="editUserFolderName" parameterType="com.wise.ds.repository.FolderMasterVO">
+		UPDATE	USER_FLD_MSTR
+		SET 	FLD_NM = #{FLD_NM}
+		WHERE 	FLD_ID = #{FLD_ID}
+	</update>
+
+	<delete id="deletePublicFolder" parameterType="com.wise.ds.repository.FolderMasterVO">
+		DELETE
+		FROM	PUB_FLD_MSTR
+		WHERE	FLD_ID = #{FLD_ID}
+	</delete>
+	<select id="selectReportsInFolders" parameterType="java.util.List" resultType="com.wise.ds.repository.ReportMasterVO">
+		SELECT 	REPORT_ID,
+				FLD_ID
+		FROM	REPORT_MSTR
+		WHERE 	FLD_ID IN
+				<foreach item="id" index="index" collection="list" separator="," open="(" close=")">
+					#{id}
+				</foreach>
+	</select>
+	<delete id="deleteChildFolders" parameterType="java.util.List">
+		DELETE
+		FROM 	PUB_FLD_MSTR
+		WHERE 	FLD_PARENT_ID IN
+				<foreach item="id" index="index" collection="list" separator="," open="(" close=")">
+					#{id}
+				</foreach>
+	</delete>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<delete id="deleteChildUserFolders" parameterType="java.util.List">
+		DELETE
+		FROM 	USER_FLD_MSTR
+		WHERE 	FLD_PARENT_ID IN
+				<foreach item="id" index="index" collection="list" separator="," open="(" close=")">
+					#{id}
+				</foreach>
+	</delete>
+
+	<update id="deleteChildReports" parameterType="java.util.List">
+		UPDATE 	REPORT_MSTR
+		SET		DEL_YN = 'Y'
+		WHERE 	FLD_ID IN
+				<foreach item="id" index="index" collection="list" separator="," open="(" close=")">
+					#{id}
+				</foreach>
+	</update>
+	<delete id="deleteFolder" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	PUB_FLD_MSTR
+		WHERE 	FLD_ID = #{folderId}
+	</delete>
+
+	<!-- DOGFOOT ktkang 개인보고서 추가  20200107  -->
+	<delete id="deleteUserFolder" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	USER_FLD_MSTR
+		WHERE 	FLD_ID = #{folderId}
+	</delete>
+
+<!-- log -->
+	<select id="selectLoginLog" parameterType="com.wise.ds.repository.LogParamVO" resultType="com.wise.ds.repository.DashLoginOutMasterVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 	A.EVENT_DT AS EVENT_DT,
+					SUBSTRING(CONVERT(VARCHAR, A.EVENT_DT, 108), 1, 8) AS EVENT_TIME,
+					A.LOG_TYPE,
+					A.USER_ID,
+					A.USER_NM,
+					A.USER_NO,
+					A.GRP_ID,
+					C.GRP_NM,
+					A.ACCESS_IP,
+					A.ACCESS_GUID,
+					A.MOD_USER_NO,
+					A.MOD_DT,
+					B.USER_ID AS MOD_USER_ID
+			FROM 	LOG_LOGINOUT A
+					LEFT OUTER JOIN USER_MSTR B ON A.MOD_USER_NO = B.USER_NO
+					LEFT OUTER JOIN GRP_MSTR C ON A.GRP_ID = C.GRP_ID
+			WHERE 	CONVERT(VARCHAR, EVENT_DT, 112) between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT A.EVENT_DT AS EVENT_DT,
+			SUBSTR(TO_CHAR(A.EVENT_DT, 'HH24:MI:SS'), 1, 8) AS EVENT_TIME,
+			A.LOG_TYPE,
+			A.USER_ID,
+			A.USER_NM,
+			A.USER_NO,
+			A.GRP_ID,
+			C.GRP_NM,
+			A.ACCESS_IP,
+			A.ACCESS_GUID,
+			A.MOD_USER_NO,
+			A.MOD_DT,
+			B.USER_ID AS MOD_USER_ID
+			FROM LOG_LOGINOUT A
+			LEFT OUTER JOIN USER_MSTR B ON A.MOD_USER_NO = B.USER_NO
+			LEFT OUTER JOIN GRP_MSTR C ON A.GRP_ID = C.GRP_ID
+			WHERE TO_CHAR(EVENT_DT, 'YYYYMMDD') between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT A.EVENT_DT AS EVENT_DT,
+			SUBSTR(VARCHAR_FORMAT(A.EVENT_DT, 'HH24:MI:SS'), 1, 8) AS EVENT_TIME,
+			A.LOG_TYPE,
+			A.USER_ID,
+			A.USER_NM,
+			A.USER_NO,
+			A.GRP_ID,
+			C.GRP_NM,
+			A.ACCESS_IP,
+			A.ACCESS_GUID,
+			A.MOD_USER_NO,
+			A.MOD_DT,
+			B.USER_ID AS MOD_USER_ID
+			FROM LOG_LOGINOUT A
+			LEFT OUTER JOIN USER_MSTR AS B ON A.MOD_USER_NO = B.USER_NO
+			LEFT OUTER JOIN GRP_MSTR AS C ON A.GRP_ID = C.GRP_ID
+			WHERE ( VARCHAR_FORMAT(EVENT_DT, 'YYYYMMDD')) BETWEEN  (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT A.EVENT_DT AS EVENT_DT,
+			SUBSTR(TO_CHAR(A.EVENT_DT, 'HH24:MI:SS'), 1, 8) AS EVENT_TIME,
+			A.LOG_TYPE,
+			A.USER_ID,
+			A.USER_NM,
+			A.USER_NO,
+			A.GRP_ID,
+			C.GRP_NM,
+			A.ACCESS_IP,
+			A.ACCESS_GUID,
+			A.MOD_USER_NO,
+			A.MOD_DT,
+			B.USER_ID AS MOD_USER_ID
+			FROM LOG_LOGINOUT A
+			LEFT OUTER JOIN USER_MSTR B ON A.MOD_USER_NO = B.USER_NO
+			LEFT OUTER JOIN GRP_MSTR C ON A.GRP_ID = C.GRP_ID
+			WHERE TO_CHAR(EVENT_DT, 'YYYYMMDD') between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 	A.EVENT_DT AS EVENT_DT,
+					SUBSTR(DATE_FORMAT(A.EVENT_DT, '%H:%i:%s'), 1, 8) AS EVENT_TIME,
+					A.LOG_TYPE,
+					A.USER_ID,
+					A.USER_NM,
+					A.USER_NO,
+					A.GRP_ID,
+					C.GRP_NM,
+					A.ACCESS_IP,
+					A.ACCESS_GUID,
+					A.MOD_USER_NO,
+					A.MOD_DT,
+					B.USER_ID AS MOD_USER_ID
+			FROM 	LOG_LOGINOUT A
+					LEFT OUTER JOIN USER_MSTR B ON A.MOD_USER_NO = B.USER_NO
+					LEFT OUTER JOIN GRP_MSTR C ON A.GRP_ID = C.GRP_ID
+			WHERE 	DATE_FORMAT(EVENT_DT, '%Y%m%d') between (#{startdate}) and (#{enddate})
+		</if>
+	</select>
+	<select id="selectReportLog"
+		parameterType="com.wise.ds.repository.LogParamVO"
+		resultType="com.wise.ds.repository.DashReportMasterVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 	A.STATUS_CD 	AS STATUS_CD,
+					A.LOG_SEQ 		AS LOG_SEQ,
+					A.REPORT_ID		AS REPORT_ID,
+					A.REPORT_NM		AS REPORT_NM,
+					A.REPORT_TYPE	AS REPORT_TYPE,
+					A.ST_DT			AS ST_DT,
+					A.ED_DT			AS ED_DT,
+					A.USER_ID		AS USER_ID,
+					A.USER_NM		AS USER_NM,
+					B.GRP_NM 		AS GRP_NM,
+					A.ACCESS_IP		AS ACCESS_IP
+			FROM 	LOG_REPORT_USE2 A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+			WHERE 	1=1
+					AND ( CONVERT(VARCHAR, ST_DT, 112)) between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 	A.STATUS_CD 	AS STATUS_CD,
+					A.LOG_SEQ 		AS LOG_SEQ,
+					A.REPORT_ID		AS REPORT_ID,
+					A.REPORT_NM		AS REPORT_NM,
+					A.REPORT_TYPE	AS REPORT_TYPE,
+					A.ST_DT			AS ST_DT,
+					A.ED_DT			AS ED_DT,
+					A.USER_ID		AS USER_ID,
+					A.USER_NM		AS USER_NM,
+					B.GRP_NM 		AS GRP_NM,
+					A.ACCESS_IP		AS ACCESS_IP
+			FROM 	LOG_REPORT_USE2 A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+			WHERE 	1=1
+					AND ( TO_CHAR(ST_DT, 'YYYYMMDD')) between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 	A.STATUS_CD 	AS STATUS_CD,
+					A.LOG_SEQ 		AS LOG_SEQ,
+					A.REPORT_ID		AS REPORT_ID,
+					A.REPORT_NM		AS REPORT_NM,
+					A.REPORT_TYPE	AS REPORT_TYPE,
+					A.ST_DT			AS ST_DT,
+					A.ED_DT			AS ED_DT,
+					A.USER_ID		AS USER_ID,
+					A.USER_NM		AS USER_NM,
+					B.GRP_NM	 	AS GRP_NM,
+					A.ACCESS_IP		AS ACCESS_IP
+			FROM 	LOG_REPORT_USE2 A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+			WHERE 	1=1
+					AND ( VARCHAR_FORMAT(ST_DT, 'YYYYMMDD')) between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 	A.STATUS_CD 	AS STATUS_CD,
+					A.LOG_SEQ 		AS LOG_SEQ,
+					A.REPORT_ID		AS REPORT_ID,
+					A.REPORT_NM		AS REPORT_NM,
+					A.REPORT_TYPE	AS REPORT_TYPE,
+					A.ST_DT			AS ST_DT,
+					A.ED_DT			AS ED_DT,
+					A.USER_ID		AS USER_ID,
+					A.USER_NM		AS USER_NM,
+					B.GRP_NM	 	AS GRP_NM,
+					A.ACCESS_IP		AS ACCESS_IP
+			FROM 	LOG_REPORT_USE2 A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+			WHERE 	1=1
+					AND ( TO_CHAR(ST_DT, 'YYYYMMDD')) between (#{startdate}) and (#{enddate})
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 	A.STATUS_CD 	AS STATUS_CD,
+					A.LOG_SEQ 		AS LOG_SEQ,
+					A.REPORT_ID		AS REPORT_ID,
+					A.REPORT_NM		AS REPORT_NM,
+					A.REPORT_TYPE	AS REPORT_TYPE,
+					A.ST_DT			AS ST_DT,
+					A.ED_DT			AS ED_DT,
+					A.USER_ID		AS USER_ID,
+					A.USER_NM		AS USER_NM,
+					B.GRP_NM	 	AS GRP_NM,
+					A.ACCESS_IP		AS ACCESS_IP
+			FROM 	LOG_REPORT_USE2 A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+			WHERE 	1=1
+					AND ( DATE_FORMAT(ST_DT, '%Y%m%d')) between (#{startdate}) and (#{enddate})
+		</if>
+	</select>
+	<select id="selectExportLog" parameterType="com.wise.ds.repository.LogParamVO" resultType="com.wise.ds.repository.ExportLogVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT	CONVERT(VARCHAR(10), A.EVENT_DT, 126) AS EVENT_DT,
+					CONVERT(VARCHAR(8), A.EVENT_DT, 108) AS EVENT_TIME,
+					A.REPORT_NM AS REPORT_NM,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					A.CTRL_ID AS CTRL_ID,
+					A.CTRL_CAPTION AS CTRL_CAPTION
+			FROM	LOG_EXPORT_USE A
+					LEFT OUTER JOIN GRP_MSTR B
+					ON A.GRP_ID = B.GRP_ID
+			WHERE	1=1
+					AND REPORT_NM != ''
+					AND CONVERT(VARCHAR, A.EVENT_DT, 112) BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT	TO_CHAR(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					TO_CHAR(A.EVENT_DT, 'HH24:MI:SS') AS EVENT_TIME,
+					A.REPORT_NM AS REPORT_NM,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					A.CTRL_ID AS CTRL_ID,
+					A.CTRL_CAPTION AS CTRL_CAPTION
+			FROM	LOG_EXPORT_USE A
+					LEFT OUTER JOIN GRP_MSTR B
+					ON A.GRP_ID = B.GRP_ID
+			WHERE	1=1
+					AND REPORT_NM IS NOT NULL
+					AND TO_CHAR(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT	VARCHAR_FORMAT(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					VARCHAR_FORMAT(A.EVENT_DT, 'HH24:MI:SS') AS EVENT_TIME,
+					A.REPORT_NM AS REPORT_NM,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					A.CTRL_ID AS CTRL_ID,
+					A.CTRL_CAPTION AS CTRL_CAPTION
+			FROM	LOG_EXPORT_USE A
+					LEFT OUTER JOIN GRP_MSTR B
+					ON A.GRP_ID = B.GRP_ID
+			WHERE	1=1
+					AND REPORT_NM != ''
+					AND VARCHAR_FORMAT(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT	TO_CHAR(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					TO_CHAR(A.EVENT_DT, 'HH24:MI:SS') AS EVENT_TIME,
+					A.REPORT_NM AS REPORT_NM,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					A.CTRL_ID AS CTRL_ID,
+					A.CTRL_CAPTION AS CTRL_CAPTION
+			FROM	LOG_EXPORT_USE A
+					LEFT OUTER JOIN GRP_MSTR B
+					ON A.GRP_ID = B.GRP_ID
+			WHERE	1=1
+					AND REPORT_NM IS NOT NULL
+					AND TO_CHAR(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT	DATE_FORMAT(A.EVENT_DT, '%Y-%m-%d') AS EVENT_DT,
+					DATE_FORMAT(A.EVENT_DT, '%H:%i:%s') AS EVENT_TIME,
+					A.REPORT_NM AS REPORT_NM,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					A.CTRL_ID AS CTRL_ID,
+					A.CTRL_CAPTION AS CTRL_CAPTION
+			FROM	LOG_EXPORT_USE A
+					LEFT OUTER JOIN GRP_MSTR B
+					ON A.GRP_ID = B.GRP_ID
+			WHERE	1=1
+					AND REPORT_NM IS NOT NULL
+					AND DATE_FORMAT(A.EVENT_DT, '%Y%m%d') BETWEEN #{startdate} AND #{enddate}
+		</if>
+	</select>
+	<select id="selectQueryLog" parameterType="com.wise.ds.repository.LogParamVO" resultType="com.wise.ds.repository.QueryLogVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT	CONVERT(VARCHAR(10), A.EVENT_DT, 126) AS EVENT_DT,
+					CONVERT(VARCHAR(8), A.EVENT_DT, 108) AS EVENT_TIME,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					C.DS_NM AS DS_NM,
+					C.DB_NM AS DB_NM,
+					C.IP AS DB_IP,
+					C.DBMS_TYPE AS DBMS_TYPE,
+					A.RUN_TIME AS RUN_TIME,
+					A.RUN_QUERY AS RUN_QUERY_BASE64
+			FROM	LOG_EXEC_QUERY A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+					LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+			WHERE	1=1
+					AND CONVERT(VARCHAR, A.EVENT_DT, 112) BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT	TO_CHAR(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					TO_CHAR(A.EVENT_DT, 'HH24:MI:SS') AS EVENT_TIME,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					C.DS_NM AS DS_NM,
+					C.DB_NM AS DB_NM,
+					C.IP AS DB_IP,
+					C.DBMS_TYPE AS DBMS_TYPE,
+					A.RUN_TIME AS RUN_TIME,
+					A.RUN_QUERY AS RUN_QUERY_BASE64
+			FROM	LOG_EXEC_QUERY A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+					LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+			WHERE	1=1
+					AND TO_CHAR(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT	VARCHAR_FORMAT(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					VARCHAR_FORMAT(A.EVENT_DT, 'HH24:MI:SS') AS EVENT_TIME,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					C.DS_NM AS DS_NM,
+					C.DB_NM AS DB_NM,
+					C.IP AS DB_IP,
+					C.DBMS_TYPE AS DBMS_TYPE,
+					A.RUN_TIME AS RUN_TIME,
+					A.RUN_QUERY AS RUN_QUERY_BASE64
+			FROM	LOG_EXEC_QUERY A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+					LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+			WHERE	1=1
+					AND VARCHAR_FORMAT(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT	TO_CHAR(A.EVENT_DT, 'YYYY-MM-DD') AS EVENT_DT,
+					TO_CHAR(A.EVENT_DT, 'HH24:mm:ss') AS EVENT_TIME,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					C.DS_NM AS DS_NM,
+					C.DB_NM AS DB_NM,
+					C.IP AS DB_IP,
+					C.DBMS_TYPE AS DBMS_TYPE,
+					A.RUN_TIME AS RUN_TIME,
+					A.RUN_QUERY AS RUN_QUERY_BASE64
+			FROM	LOG_EXEC_QUERY A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+					LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+			WHERE	1=1
+					AND TO_CHAR(A.EVENT_DT, 'YYYYMMDD') BETWEEN #{startdate} AND #{enddate}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT	DATE_FORMAT(A.EVENT_DT, '%Y-%m-%d') AS EVENT_DT,
+					DATE_FORMAT(A.EVENT_DT, '%H:%i:%s') AS EVENT_TIME,
+					A.REPORT_TYPE AS REPORT_TYPE,
+					A.USER_ID AS USER_ID,
+					A.USER_NM AS USER_NM,
+					B.GRP_NM AS GRP_NM,
+					A.ACCESS_IP AS ACCESS_IP,
+					C.DS_NM AS DS_NM,
+					C.DB_NM AS DB_NM,
+					C.IP AS DB_IP,
+					C.DBMS_TYPE AS DBMS_TYPE,
+					A.RUN_TIME AS RUN_TIME,
+					A.RUN_QUERY AS RUN_QUERY_BASE64
+			FROM	LOG_EXEC_QUERY A
+					LEFT OUTER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+					LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+			WHERE	1=1
+					AND DATE_FORMAT(A.EVENT_DT, '%Y%m%d') BETWEEN #{startdate} AND #{enddate}
+		</if>
+	</select>
+	<select id="selectAnalysisLog" resultType="com.wise.ds.repository.AnalysisLogVO">
+		SELECT	B.REPORT_NM AS REPORT_NM,
+				C.DS_NM AS DS_NM,
+				C.DB_NM AS DB_NM,
+				C.IP AS IP,
+				C.DBMS_TYPE AS DBMS_TYPE,
+				C.OWNER_NM AS OWNER_NM,
+				A.TBL_NM AS TBL_NM,
+				A.TBL_CAPTION AS TBL_CAPTION,
+				A.COL_NM AS COL_NM,
+				A.COL_CAPTION AS COL_CAPTION
+		FROM	LOG_ANALYSIS_ITEMS A
+				LEFT OUTER JOIN REPORT_MSTR B ON A.REPORT_ID = B.REPORT_ID
+				LEFT OUTER JOIN DS_MSTR C ON A.DS_ID = C.DS_ID
+	</select>
+<!-- monitoring -->
+	<select id="selectJobListMaster" resultType="com.wise.ds.repository.JobListVO">
+		 SELECT *
+		 FROM	LOG_REPORT_USE2
+		 WHERE 	STATUS_CD = 50
+	</select>
+	<select id="selectSameTimeConMaster" resultType="com.wise.ds.repository.SameTimeConVO">
+		 SELECT *
+		 FROM 	USER_SESSION_MSTR
+		 WHERE 	LOG_TYPE = 'LOGIN'
+	</select>
+<!-- authentication -->
+	<select id="selectUserList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.USER_ID AS USER_ID,
+		 		A.USER_NM AS USER_NM,
+		 		A.USER_NO AS USER_NO,
+		 		B.GRP_NM AS GRP_NM
+		FROM 	USER_MSTR A
+		 		INNER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+ 		WHERE 	A.DEL_YN = 'N'
+	</select>
+	<select id="selectUserAuthDataList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.USER_ID AS USER_ID,
+		 		A.USER_NM AS USER_NM,
+		 		A.USER_NO AS USER_NO,
+		 		B.GRP_NM AS GRP_NM,
+		 		(
+		 			SELECT 	COUNT(USER_NO)
+		 			FROM 	USER_AUTH_DATA_MSTR
+		 			WHERE 	USER_NO = A.USER_NO
+		 		) AS authCount
+		FROM 	USER_MSTR A
+		 		INNER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+ 		WHERE 	A.DEL_YN = 'N'
+	</select>
+	<select id="selectGroupAuthDataList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.GRP_NM,
+				A.GRP_ID,
+				A.GRP_DESC,
+				(
+		 			SELECT 	COUNT(GRP_ID)
+		 			FROM 	GRP_AUTH_DATA_MSTR
+		 			WHERE 	GRP_ID = A.GRP_ID
+		 		) AS authCount
+		FROM 	GRP_MSTR A
+		WHERE 	DEL_YN = 'N'
+	</select>
+	<select id="selectGroupAuthDsList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.GRP_NM,
+				A.GRP_ID,
+				A.GRP_DESC,
+				(
+		 			SELECT 	COUNT(GRP_ID)
+		 			FROM 	GRP_AUTH_DS_MSTR
+		 			WHERE 	GRP_ID = A.GRP_ID
+		 		) AS authCount
+		FROM 	GRP_MSTR A
+		WHERE 	DEL_YN = 'N'
+	</select>
+	
+	<select id="selectUserAuthDsList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.USER_ID AS USER_ID,
+		 		A.USER_NM AS USER_NM,
+		 		A.USER_NO AS USER_NO,
+		 		B.GRP_NM AS GRP_NM,
+		 		(
+		 			SELECT 	COUNT(USER_NO)
+		 			FROM 	USER_AUTH_DS_MSTR
+		 			WHERE 	USER_NO = A.USER_NO
+		 		) AS authCount
+		FROM 	USER_MSTR A
+		 		INNER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+ 		WHERE 	A.DEL_YN = 'N'
+	</select>
+	<select id="selectDsList" resultType="com.wise.authn.DataSourceVO">
+		SELECT * FROM DS_MSTR ORDER BY DS_NM ASC
+	</select>
+	<select id="selectUserDsAuth" parameterType="java.lang.Integer" resultType="com.wise.authn.DataSourceUserVO">
+		SELECT	DS_ID
+		FROM	USER_AUTH_DS_MSTR
+		WHERE	USER_NO = #{USER_NO}
+	</select>
+	<select id="selectGrpDsAuth" parameterType="java.lang.String" resultType="com.wise.authn.DataSourceGRPVO">
+		SELECT	DS_ID
+		FROM	GRP_AUTH_DS_MSTR
+		WHERE	GRP_ID = #{grpId}
+	</select>
+	
+	<delete id="initUserDsAuth" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	USER_AUTH_DS_MSTR
+		WHERE 	USER_NO = #{userNo}
+	</delete>
+	<delete id="initGrpDsAuth" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	GRP_AUTH_DS_MSTR
+		WHERE 	GRP_ID = #{grpId}
+	</delete>
+		
+	<insert id="insertGrpDsAuth" parameterType="com.wise.authn.DataSourceGRPVO">
+		INSERT INTO 	GRP_AUTH_DS_MSTR
+		VALUES 			(#{GRP_ID}, #{DS_ID})
+	</insert>
+	
+	<insert id="insertUserDsAuth" parameterType="com.wise.authn.DataSourceUserVO">
+		INSERT INTO 	USER_AUTH_DS_MSTR
+		VALUES 			(#{USER_NO}, #{DS_ID})
+	</insert>
+	
+	<select id="selectDSViewList" resultType="com.wise.ds.repository.DSViewVO">
+		SELECT	A.DS_ID AS DS_ID
+			   ,B.DS_NM AS DS_NM
+			   ,B.DB_NM AS DB_NM
+			   ,B.IP AS IP
+			   ,B.USER_ID AS USER_ID
+			   ,B.PASSWD AS PASSWD
+			   ,B.PORT AS PORT
+			   ,B.OWNER_NM AS OWNER_NM
+			   ,B.DBMS_TYPE AS DBMS_TYPE
+			   ,B.DS_DESC AS DS_DESC
+			   ,B.DS_CONNSTR AS DS_CONNSTR
+			   ,A.DS_VIEW_ID AS DS_VIEW_ID
+			   ,A.DS_VIEW_NM AS DS_VIEW_NM
+			   ,A.DS_VIEW_DESC AS DS_VIEW_DESC
+		FROM	DS_VIEW_MSTR A
+				INNER JOIN DS_MSTR B ON A.DS_ID = B.DS_ID
+		WHERE	1 = 1
+		ORDER BY DS_NM ASC
+	</select>
+	<select id="selectUserAuthDataSet" parameterType="int" resultType="com.wise.ds.repository.UserAuthDataSetVO">
+		SELECT	user_no as userNo
+			   ,data_xml as dataAuthnXmlBase64
+		FROM	user_auth_data_mstr
+		WHERE	user_no in (#{userId})
+	</select>
+	<select id="selectGroupAuthDataSet" parameterType="int" resultType="com.wise.ds.repository.GrpAuthDataSetVO">
+		SELECT	GRP_ID 		AS GRP_ID,
+			    DATA_XML 	AS dataAuthnXmlBase64
+		FROM	GRP_AUTH_DATA_MSTR
+		WHERE	GRP_ID = #{GRP_ID}
+	</select>
+	<select id="selectCubeList" parameterType="int" resultType="com.wise.ds.repository.CubeVO">
+		SELECT	CUBE_ID
+			, DS_VIEW_ID
+			, CUBE_NM
+			, CUBE_DESC
+			,CUBE_ORDINAL
+		FROM CUBE_MSTR
+		WHERE 1=1
+		AND DS_VIEW_ID = #{dsViewId}
+	</select>
+	<select id="selectDSViewDimList" parameterType="int" resultType="com.wise.ds.repository.DSViewDimVO">
+		SELECT	DS_VIEW_ID
+				, DIM_UNI_NM
+				, DIM_CAPTION
+				, DIM_ORDINAL
+				, DIM_DESC
+				, TBL_NM
+				, REG_USER_NO
+				, REG_DT
+				, UPD_USER_NO
+				, UPD_DT
+		FROM	DS_VIEW_DIM_MSTR
+		WHERE	1=1
+		AND DS_VIEW_ID = #{dsViewId}
+	</select>
+	<select id="selectDSViewHieList" parameterType="int" resultType="com.wise.ds.repository.DSViewHieVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT	A.DS_VIEW_ID AS DS_VIEW_ID
+					, A.DIM_UNI_NM AS DIM_UNI_NM
+					, C.DIM_ORDINAL AS DIM_ORDINAL
+					, A.HIE_UNI_NM AS HIE_UNI_NM
+					, A.HIE_CAPTION AS HIE_CAPTION
+					, A.HIE_DESC AS HIE_DESC
+					, A.HIE_ORDINAL AS HIE_ORDINAL
+					, A.HIE_DSP_FLD AS HIE_DSP_FLD
+					, A.TBL_NM AS TBL_NM
+					, A.KEY_COL AS KEY_COL
+					, A.NAME_COL AS NAME_COL
+					, A.ORDER_BY AS ORDER_BY
+					, ISNULL(A.IS_AUTH,0) AS IS_AUTH
+					, ISNULL(A.IS_DATEKEY,0) AS IS_DATEKEY
+					, A.REG_USER_NO AS REG_USER_NO
+					, A.REG_DT AS REG_DT
+					, A.UPD_UER_NO AS UPD_UER_NO
+					, A.UPD_DT AS UPD_DT
+			FROM	DS_VIEW_HIE_MSTR AS A
+					INNER JOIN DS_VIEW_DIM_MSTR AS C ON A.DS_VIEW_ID = C.DS_VIEW_ID AND A.DIM_UNI_NM = C.DIM_UNI_NM
+			WHERE	1=1
+			AND a.ds_view_id = #{dsViewId}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT	A.DS_VIEW_ID  DS_VIEW_ID
+					, A.DIM_UNI_NM  DIM_UNI_NM
+					, C.DIM_ORDINAL  DIM_ORDINAL
+					, A.HIE_UNI_NM  HIE_UNI_NM
+					, A.HIE_CAPTION  HIE_CAPTION
+					, A.HIE_DESC  HIE_DESC
+					, A.HIE_ORDINAL  HIE_ORDINAL
+					, A.HIE_DSP_FLD  HIE_DSP_FLD
+					, A.TBL_NM  TBL_NM
+					, A.KEY_COL  KEY_COL
+					, A.NAME_COL  NAME_COL
+					, A.ORDER_BY  ORDER_BY
+					, NVL(A.IS_AUTH,0)  IS_AUTH
+					, NVL(A.IS_DATEKEY,0)  IS_DATEKEY
+					, A.REG_USER_NO  REG_USER_NO
+					, A.REG_DT  REG_DT
+					, A.UPD_UER_NO  UPD_UER_NO
+					, A.UPD_DT  UPD_DT
+			FROM	DS_VIEW_HIE_MSTR  A
+					INNER JOIN DS_VIEW_DIM_MSTR  C ON A.DS_VIEW_ID = C.DS_VIEW_ID AND A.DIM_UNI_NM = C.DIM_UNI_NM
+			WHERE	1=1
+			AND a.ds_view_id = #{dsViewId}
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT	A.DS_VIEW_ID AS DS_VIEW_ID
+				, A.DIM_UNI_NM AS DIM_UNI_NM
+				, C.DIM_ORDINAL AS DIM_ORDINAL
+				, A.HIE_UNI_NM AS HIE_UNI_NM
+				, A.HIE_CAPTION AS HIE_CAPTION
+				, A.HIE_DESC AS HIE_DESC
+				, A.HIE_ORDINAL AS HIE_ORDINAL
+				, A.HIE_DSP_FLD AS HIE_DSP_FLD
+				, A.TBL_NM AS TBL_NM
+				, A.KEY_COL AS KEY_COL
+				, A.NAME_COL AS NAME_COL
+				, A.ORDER_BY AS ORDER_BY
+				, COALESCE(A.IS_AUTH,0) AS IS_AUTH
+				, COALESCE(A.IS_DATEKEY,0) AS IS_DATEKEY
+				, A.REG_USER_NO AS REG_USER_NO
+				, A.REG_DT AS REG_DT
+				, A.UPD_UER_NO AS UPD_UER_NO
+				, A.UPD_DT AS UPD_DT
+			FROM	DS_VIEW_HIE_MSTR AS A
+				INNER JOIN DS_VIEW_DIM_MSTR AS C ON A.DS_VIEW_ID = C.DS_VIEW_ID AND A.DIM_UNI_NM = C.DIM_UNI_NM
+			WHERE	1=1
+			AND a.ds_view_id = #{dsViewId}
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT	A.DS_VIEW_ID  DS_VIEW_ID
+					, A.DIM_UNI_NM  DIM_UNI_NM
+					, C.DIM_ORDINAL  DIM_ORDINAL
+					, A.HIE_UNI_NM  HIE_UNI_NM
+					, A.HIE_CAPTION  HIE_CAPTION
+					, A.HIE_DESC  HIE_DESC
+					, A.HIE_ORDINAL  HIE_ORDINAL
+					, A.HIE_DSP_FLD  HIE_DSP_FLD
+					, A.TBL_NM  TBL_NM
+					, A.KEY_COL  KEY_COL
+					, A.NAME_COL  NAME_COL
+					, A.ORDER_BY  ORDER_BY
+					, NVL(A.IS_AUTH,0)  IS_AUTH
+					, NVL(A.IS_DATEKEY,0)  IS_DATEKEY
+					, A.REG_USER_NO  REG_USER_NO
+					, A.REG_DT  REG_DT
+					, A.UPD_UER_NO  UPD_UER_NO
+					, A.UPD_DT  UPD_DT
+			FROM	DS_VIEW_HIE_MSTR  A
+					INNER JOIN DS_VIEW_DIM_MSTR  C ON A.DS_VIEW_ID = C.DS_VIEW_ID AND A.DIM_UNI_NM = C.DIM_UNI_NM
+			WHERE	1=1
+			AND a.ds_view_id = #{dsViewId}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT	A.DS_VIEW_ID AS DS_VIEW_ID
+					, A.DIM_UNI_NM AS DIM_UNI_NM
+					, C.DIM_ORDINAL AS DIM_ORDINAL
+					, A.HIE_UNI_NM AS HIE_UNI_NM
+					, A.HIE_CAPTION AS HIE_CAPTION
+					, A.HIE_DESC AS HIE_DESC
+					, A.HIE_ORDINAL AS HIE_ORDINAL
+					, A.HIE_DSP_FLD AS HIE_DSP_FLD
+					, A.TBL_NM AS TBL_NM
+					, A.KEY_COL AS KEY_COL
+					, A.NAME_COL AS NAME_COL
+					, A.ORDER_BY AS ORDER_BY
+					, IFNULL(A.IS_AUTH,0) AS IS_AUTH
+					, IFNULL(A.IS_DATEKEY,0) AS IS_DATEKEY
+					, A.REG_USER_NO AS REG_USER_NO
+					, A.REG_DT AS REG_DT
+					, A.UPD_UER_NO AS UPD_UER_NO
+					, A.UPD_DT AS UPD_DT
+			FROM	DS_VIEW_HIE_MSTR AS A
+					INNER JOIN DS_VIEW_DIM_MSTR AS C ON A.DS_VIEW_ID = C.DS_VIEW_ID AND A.DIM_UNI_NM = C.DIM_UNI_NM
+			WHERE	1=1
+			AND a.ds_view_id = #{dsViewId}
+		</if>
+	</select>
+	<delete id="initUserDataAuth" parameterType="int">
+		DELETE
+		FROM 	USER_AUTH_DATA_MSTR
+		WHERE 	USER_NO = #{userNo}
+	</delete>
+	<delete id="initGroupDataAuth" parameterType="int">
+		DELETE
+		FROM 	GRP_AUTH_DATA_MSTR
+		WHERE 	GRP_ID = #{groupId}
+	</delete>
+	<insert id="insertUserDataAuth" parameterType="com.wise.ds.repository.InsertUserAuthDataSetVO">
+		INSERT INTO USER_AUTH_DATA_MSTR (
+						USER_NO,
+						DATA_XML
+					)
+					VALUES (
+						#{userNo},
+						#{dataBase64}
+					)
+	</insert>
+	<insert id="insertGroupDataAuth" parameterType="com.wise.ds.repository.InsertGroupAuthDataSetVO">
+		INSERT INTO GRP_AUTH_DATA_MSTR (
+						GRP_ID,
+						DATA_XML
+					)
+					VALUES (
+						#{groupId},
+						#{dataBase64}
+					)
+	</insert>
+	<select id="selectGrpList" resultType="com.wise.ds.repository.GrpListVO">
+		 SELECT GRP_ID, GRP_NM,GRP_DESC
+		 FROM GRP_MSTR
+		 WHERE DEL_YN = 'N'
+	</select>
+	<select id="selectUserAuthReportList" parameterType="java.lang.Integer" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT	A.REPORT_ID AS FLD_ID,
+				A.AUTH_VIEW,
+				A.AUTH_PUBLISH,
+				A.AUTH_DATAITEM,
+				A.AUTH_EXPORT
+		FROM	USER_AUTH_REPORT_DETAIL A
+				JOIN REPORT_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE 	A.USER_NO = #{userNo}
+				AND B.FLD_TYPE = 'PUBLIC'
+				AND B.DEL_YN = 'N'
+	</select>
+	<select id="selectUserAuthFolderList" parameterType="java.lang.Integer" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT	A.FLD_ID AS FLD_ID,
+				A.AUTH_VIEW,
+				A.AUTH_PUBLISH,
+				A.AUTH_DATAITEM,
+				A.AUTH_EXPORT
+		FROM	USER_AUTH_REPORT_MSTR A
+				JOIN PUB_FLD_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE 	A.USER_NO= #{userNo}
+	</select>
+	<select id="selectGrpAuthReportList" parameterType="string" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT	A.REPORT_ID AS FLD_ID, A.AUTH_VIEW, A.AUTH_PUBLISH, A.AUTH_DATAITEM, A.AUTH_EXPORT
+		FROM	GRP_AUTH_REPORT_DETAIL A JOIN REPORT_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE A.GRP_ID= #{grp_id}
+		AND B.FLD_TYPE = 'PUBLIC'
+		AND B.DEL_YN = 'N'
+	</select>
+	<select id="selectGrpAuthFolderList" parameterType="string" resultType="com.wise.ds.repository.UserGrpAuthReportListVO">
+		SELECT	A.FLD_ID AS FLD_ID, A.AUTH_VIEW, A.AUTH_PUBLISH, A.AUTH_DATAITEM, A.AUTH_EXPORT
+		FROM	GRP_AUTH_REPORT_MSTR A JOIN PUB_FLD_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE A.GRP_ID= #{grp_id}
+	</select>
+	<select id="selectPubFldlist" resultType="com.wise.ds.repository.PublicFolderListVO">
+		SELECT 		FLD_ID,
+					FLD_PARENT_ID AS PARENT_FLD_ID,
+					FLD_NM,
+					FLD_ORDINAL,
+					'FOLDER' AS TYPE
+		FROM 		PUB_FLD_MSTR
+		ORDER BY 	FLD_ORDINAL
+	</select>
+	<select id="selectPubFldReportlist" resultType="com.wise.ds.repository.PublicFolderListVO">
+		(SELECT
+			FLD_ID,
+			FLD_PARENT_ID AS PARENT_FLD_ID,
+			FLD_NM,
+			FLD_ORDINAL,
+			'FOLDER' AS TYPE,
+			<!-- dogfoot shlim 20210414  -->
+			CAST('' AS NVARCHAR2(10)) AS REPORT_TYPE
+		FROM PUB_FLD_MSTR)
+		UNION ALL
+		(SELECT
+			REPORT_ID AS FLD_ID,
+			FLD_ID AS PARENT_FLD_ID,
+			REPORT_NM AS FLD_NM,
+			REPORT_ORDINAL AS FLD_ORDINAL,
+			'REPORT' AS TYPE,
+			REPORT_TYPE
+		FROM REPORT_MSTR
+		WHERE FLD_TYPE = 'PUBLIC'
+		  	AND DEL_YN = 'N')
+		ORDER BY FLD_ORDINAL
+	</select>
+	<update id="updateConfigMstr" parameterType="com.wise.authn.ConfigMasterVO">
+		UPDATE 	CONFIG_MSTR
+		SET 	LICENSES_KEY = #{LICENSES_KEY},
+				MAIN_TITLE = #{MAIN_TITLE},
+				WEB_URL = #{WEB_URL},
+				SEARCH_LIMIT_TIME = #{SEARCH_LIMIT_TIME},
+				SEARCH_LIMIT_SIZE = #{SEARCH_LIMIT_SIZE},
+				LIMIT_WORKS = #{LIMIT_WORKS},
+				USE_TERM = #{USE_TERM},
+				LIMIT_CONNECTIONS = #{LIMIT_CONNECTIONS},
+				PW_CHANGE_PERIOD = #{PW_CHANGE_PERIOD},
+				LOGIN_LOCK_CNT = #{LOGIN_LOCK_CNT},
+				AUTH_REPORT_DETAIL_YN = #{AUTH_REPORT_DETAIL_YN},
+				DEFAULT_LAYOUT = #{DEFAULT_LAYOUT},
+				NULL_VALUE_YN = #{NULL_VALUE_YN},
+				NULL_VALUE_STRING = #{NULL_VALUE_STRING},
+				DASHBOARD_DEFAULT_PALETTE = #{DASHBOARD_DEFAULT_PALETTE}
+	</update>
+	<update id="updateWebConfigMstr" parameterType="com.wise.authn.WebConfigMasterVO">
+		UPDATE 	WB_CONFIG_MSTR
+		SET 	DASHBOARD_LAYOUT = #{DASHBOARD_LAYOUT},
+				LOGIN_IMAGE = #{LOGIN_IMAGE},
+				LOGO = #{LOGO},
+				MENU_CONFIG = #{MENU_CONFIG},
+				SPREAD_JS_LICENSE = #{SPREAD_JS_LICENSE},
+				FONT_CONFIG = #{FONT_CONFIG},
+				PIVOT_ALIGN_CENTER = #{PIVOT_ALIGN_CENTER},
+				GRID_AUTO_ALIGN = #{GRID_AUTO_ALIGN},
+				GRID_DATA_PAGING = #{GRID_DATA_PAGING},
+				REPORT_LOG_CLEAN_HOUR = #{REPORT_LOG_CLEAN_HOUR},
+				EXCEL_DOWNLOAD_SERVER_COUNT = #{EXCEL_DOWNLOAD_SERVER_COUNT} ,
+				LAYOUT_CONFIG = #{LAYOUT_CONFIG},
+				KAKAO_MAP_API_KEY = #{KAKAO_MAP_API_KEY},
+				DOWNLOAD_FILTER_YN = #{DOWNLOAD_FILTER_YN},
+				PIVOT_DRILL_UPDOWN = #{PIVOT_DRILL_UPDOWN},
+				REPORT_DIRECT_VIEW = #{REPORT_DIRECT_VIEW},
+				OLD_SCHEDULE_YN = #{OLD_SCHEDULE_YN}
+	</update>
+	<delete id="initUserFldAuth" parameterType="int">
+		DELETE
+		FROM 	USER_AUTH_REPORT_MSTR
+		WHERE 	USER_NO = #{userNo}
+	</delete>
+	<insert id="insertUserFldAuth" parameterType="com.wise.ds.repository.AuthReportVO">
+		INSERT INTO USER_AUTH_REPORT_MSTR (
+						USER_NO,
+						FLD_ID,
+						AUTH_VIEW,
+						AUTH_PUBLISH,
+						AUTH_DATAITEM,
+						AUTH_EXPORT
+					)
+					VALUES (
+						#{userNo},
+						#{fld_id},
+						#{auth_show},
+						#{auth_publish},
+						#{auth_dataitem},
+						#{auth_export}
+					)
+	</insert>
+	<delete id="initUserReportAuth" parameterType="int">
+		DELETE
+		FROM 	USER_AUTH_REPORT_DETAIL
+		WHERE 	USER_NO = #{userNo}
+	</delete>
+	<insert id="insertUserReportAuth" parameterType="com.wise.ds.repository.AuthReportVO">
+		INSERT INTO USER_AUTH_REPORT_DETAIL (
+						USER_NO,
+						FLD_ID,
+						REPORT_ID,
+						AUTH_VIEW,
+						AUTH_PUBLISH,
+						AUTH_DATAITEM,
+						AUTH_EXPORT
+					)
+					VALUES (
+						#{userNo},
+						#{fld_id},
+						#{report_id},
+						#{auth_show},
+						#{auth_publish},
+						#{auth_dataitem},
+						#{auth_export}
+					)
+	</insert>
+	<delete id="initGrpFldAuth" parameterType="int">
+		DELETE
+		FROM 	GRP_AUTH_REPORT_MSTR
+		WHERE 	GRP_ID = #{grpId}
+	</delete>
+	<insert id="insertGrpFldAuth" parameterType="com.wise.ds.repository.AuthReportVO">
+		INSERT INTO GRP_AUTH_REPORT_MSTR (
+						GRP_ID,
+						FLD_ID,
+						AUTH_VIEW,
+						AUTH_PUBLISH,
+						AUTH_DATAITEM,AUTH_EXPORT
+					)
+					VALUES (
+						#{grpid},
+						#{fld_id},
+						#{auth_show},
+						#{auth_publish},
+						#{auth_dataitem},
+						#{auth_export}
+					)
+	</insert>
+	<delete id="initGrpReportAuth" parameterType="int">
+		DELETE
+		FROM 	GRP_AUTH_REPORT_DETAIL
+		WHERE 	GRP_ID = #{grpId}
+	</delete>
+	<insert id="insertGrpReportAuth" parameterType="com.wise.ds.repository.AuthReportVO">
+		INSERT INTO GRP_AUTH_REPORT_DETAIL (
+						GRP_ID,
+						FLD_ID,
+						REPORT_ID,
+						AUTH_VIEW,
+						AUTH_PUBLISH,
+						AUTH_DATAITEM,
+						AUTH_EXPORT
+					)
+					VALUES (
+						#{grpid},
+						#{fld_id},
+						#{report_id},
+						#{auth_show},
+						#{auth_publish},
+						#{auth_dataitem},
+						#{auth_export}
+					)
+	</insert>
+	<select id="selectUserDatasetList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.USER_ID AS USER_ID,
+		 		A.USER_NM AS USER_NM,
+		 		A.USER_NO AS USER_NO,
+		 		B.GRP_NM AS GRP_NM,
+		 		(
+		 			SELECT	COUNT(USER_NO)
+					FROM	USER_AUTH_DATASET_MSTR
+					WHERE	USER_NO = A.USER_NO
+		 		) AS authCount
+		FROM 	USER_MSTR A
+		 		INNER JOIN GRP_MSTR B ON A.GRP_ID = B.GRP_ID
+	</select>
+	<select id="selectGroupDatasetList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	A.GRP_NM,
+				A.GRP_ID,
+				A.GRP_DESC,
+				(
+		 			SELECT 	COUNT(GRP_ID)
+		 			FROM 	GRP_AUTH_DATASET_MSTR
+		 			WHERE 	GRP_ID = A.GRP_ID
+		 		) AS authCount
+		FROM 	GRP_MSTR A
+	</select>
+	<select id="selectDatasetFolderList" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT 		*
+		FROM 		DATASET_FLD_MSTR
+		ORDER BY 	PARENT_FLD_ID, FLD_ORDINAL
+	</select>
+	<select id="selectUserDatasetAuth" parameterType="java.lang.Integer" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT	A.FLD_ID
+		FROM	USER_AUTH_DATASET_MSTR A
+				LEFT JOIN DATASET_FLD_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE	A.USER_NO = #{USER_NO}
+	</select>
+	<select id="selectGrpDatasetAuth" parameterType="java.lang.String" resultType="com.wise.ds.repository.FolderMasterVO">
+		SELECT	A.FLD_ID
+		FROM	GRP_AUTH_DATASET_MSTR A
+				LEFT JOIN DATASET_FLD_MSTR B ON A.FLD_ID = B.FLD_ID
+		WHERE	GRP_ID = #{grpId}
+	</select>
+	<delete id="initUserDatasetAuth" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	USER_AUTH_DATASET_MSTR
+		WHERE 	USER_NO = #{userNo}
+	</delete>
+	<delete id="initGrpDatasetAuth" parameterType="java.lang.Integer">
+		DELETE
+		FROM 	GRP_AUTH_DATASET_MSTR
+		WHERE 	GRP_ID = #{grpId}
+	</delete>
+	<insert id="insertUserDatasetAuth" parameterType="com.wise.ds.repository.GrpAuthDataSetVO">
+		INSERT INTO 	USER_AUTH_DATASET_MSTR
+		VALUES 			(#{userNo}, #{fldId})
+	</insert>
+	<insert id="insertGrpDatasetAuth" parameterType="com.wise.ds.repository.GrpAuthDataSetVO">
+		INSERT INTO 	GRP_AUTH_DATASET_MSTR
+		VALUES 			(#{GRP_ID}, #{FLD_ID})
+	</insert>
+
+	<select id="selectUserSessionsByDate" parameterType="com.wise.ds.repository.SessionParamVO" resultType="com.wise.authn.UserSessionVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		CONVERT(VARCHAR, MOD_DT, 112) BETWEEN (#{startDate}) AND (#{endDate})
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') BETWEEN (#{startDate}) AND (#{endDate})
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		(VARCHAR_FORMAT(MOD_DT, 'YYYYMMDD')) BETWEEN  (#{startDate}) AND (#{endDate})
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') BETWEEN (#{startDate}) AND (#{endDate})
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		(DATE_FORMAT(MOD_DT, '%Y%m%d')) BETWEEN  (#{startDate}) AND (#{endDate})
+			ORDER BY 	MOD_DT DESC
+		</if>
+	</select>
+
+	<delete id="deleteUserSessionsByDate" parameterType="com.wise.ds.repository.SessionParamVO">
+		<if test="_databaseId == 'sqlserver'">
+			DELETE
+			FROM USER_SESSION_MSTR
+			WHERE 		CONVERT(VARCHAR, MOD_DT, 112) > (#{startDate})
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			DELETE
+			FROM USER_SESSION_MSTR
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') > (#{startDate})
+		</if>
+		<if test="_databaseId == 'db2'">
+			DELETE
+			FROM USER_SESSION_MSTR
+			WHERE 		(VARCHAR_FORMAT(MOD_DT, 'YYYYMMDD')) > (#{startDate})
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			DELETE
+			FROM USER_SESSION_MSTR
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') > (#{startDate})
+		</if>
+		<if test="_databaseId == 'Maria'">
+			DELETE
+			FROM USER_SESSION_MSTR
+			WHERE 	(DATE_FORMAT(MOD_DT, '%Y%m%d')) > (#{startDate}))
+		</if>
+	</delete>
+
+	<select id="selectUserSessionsByDateAndStatus" parameterType="com.wise.ds.repository.SessionParamVO" resultType="com.wise.authn.UserSessionVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		CONVERT(VARCHAR, MOD_DT, 112) BETWEEN (#{startDate}) AND (#{endDate})
+						AND LOG_TYPE = #{logStatus}
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') BETWEEN (#{startDate}) AND (#{endDate})
+						AND LOG_TYPE = #{logStatus}
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		(VARCHAR_FORMAT(MOD_DT, 'YYYYMMDD')) BETWEEN  (#{startDate}) AND (#{endDate})
+						AND LOG_TYPE = #{logStatus}
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		TO_CHAR(MOD_DT, 'YYYYMMDD') BETWEEN (#{startDate}) AND (#{endDate})
+						AND LOG_TYPE = #{logStatus}
+			ORDER BY 	MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 		S.USER_ID AS USER_ID,
+						S.USER_NO AS USER_NO,
+						S.LOG_TYPE AS LOG_TYPE,
+						S.ACCESS_IP AS ACCESS_IP,
+						S.MOD_DT AS MOD_DT,
+						U.USER_ID AS MOD_USER_ID,
+						S.USER_SESSION_KEY AS USER_SESSION_KEY
+			FROM 		USER_SESSION_MSTR S
+						LEFT JOIN USER_MSTR U
+						ON S.MOD_USER_NO = U.USER_NO
+			WHERE 		(DATE_FORMAT(MOD_DT, '%Y%m%d')) BETWEEN (#{startDate}) AND (#{endDate})
+						AND LOG_TYPE = #{logStatus}
+			ORDER BY 	MOD_DT DESC
+		</if>
+	</select>
+	<select id="selectInactiveUserSessions" resultType="com.wise.authn.UserSessionVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DATEDIFF(day, S.MOD_DT, GETDATE()) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									TRUNC(CURRENT_DATE - S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DAYS(CURRENT DATE) - DAYS(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									<!-- 수정 필요 -->
+									TRUNC(CURRENT_DATE) - TRUNC(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									<!-- 수정 필요 -->
+									TIMEDIFF(CURRENT_DATE, S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+	</select>
+	<select id="selectInactiveUserSessionsById" parameterType="com.wise.ds.repository.SessionParamVO" resultType="com.wise.authn.UserSessionVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DATEDIFF(day, S.MOD_DT, GETDATE()) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND A.USER_ID LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									TRUNC(CURRENT_DATE - S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND A.USER_ID LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DAYS(CURRENT DATE) - DAYS(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND A.USER_ID LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									<!-- 수정 필요 -->
+									TRUNC(CURRENT_DATE) - TRUNC(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND A.USER_ID LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									TIMEDIFF(CURRENT_DATE, S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND A.USER_ID LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+	</select>
+	<select id="selectInactiveUserSessionsByNo" parameterType="com.wise.ds.repository.SessionParamVO" resultType="com.wise.authn.UserSessionVO">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DATEDIFF(day, S.MOD_DT, GETDATE()) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND CAST(A.USER_NO AS VARCHAR(10)) LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									TRUNC(CURRENT_DATE - S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND CAST(A.USER_NO AS VARCHAR(10)) LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									DAYS(CURRENT DATE) - DAYS(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND CAST(A.USER_NO AS VARCHAR(10)) LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									<!-- 수정 필요 -->
+									TRUNC(CURRENT_DATE) - TRUNC(S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND CAST(A.USER_NO AS VARCHAR(10)) LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 		*
+			FROM 		(
+							SELECT 	S.USER_ID AS USER_ID,
+									S.USER_NO AS USER_NO,
+									S.LOG_TYPE AS LOG_TYPE,
+									S.ACCESS_IP AS ACCESS_IP,
+									S.MOD_DT AS MOD_DT,
+									U.USER_ID AS MOD_USER_ID,
+									S.USER_SESSION_KEY AS USER_SESSION_KEY,
+									TIMEDIFF(CURRENT_DATE, S.MOD_DT) AS inactiveDays
+							FROM 	USER_SESSION_MSTR S
+									LEFT JOIN USER_MSTR U
+									ON S.MOD_USER_NO = U.USER_NO
+						) A
+			WHERE 		A.inactiveDays > (
+							SELECT 	USE_TERM
+							FROM 	CONFIG_MSTR
+							WHERE 	USE_TERM > 0
+						)
+						AND CAST(A.USER_NO AS VARCHAR(10)) LIKE #{idNoFilter}
+			ORDER BY 	A.MOD_DT DESC
+		</if>
+	</select>
+	<select id="selectLockedUserSessions" resultType="com.wise.authn.UserGroupVO">
+		SELECT	U.USER_NO AS USER_NO,
+				U.USER_ID AS USER_ID,
+				U.USER_NM AS USER_NM,
+				G.GRP_NM AS GRP_NM,
+				U.RUN_MODE AS USER_RUN_MODE
+		FROM	USER_MSTR U LEFT JOIN GRP_MSTR G
+				ON U.GRP_ID = G.GRP_ID
+		WHERE	U.LOCK_CNT >= (
+					SELECT 	LOCK_CNT
+					FROM 	CONFIG_MSTR
+					WHERE	LOCK_CNT > 0
+				)
+	</select>
+	<!-- DOGFOOT ktkang 로그인 시 해당 테이블에 정보가 2개이상 들어가는 경우가 있음 USER_NO에 PK를 걸어야할듯  20200221 -->
+	<select id="selectUserConfig" parameterType="int" resultType="com.wise.ds.repository.UserConfigVO">
+		SELECT DISTINCT	CONFIG.USER_NO 						AS USER_NO,
+				CONFIG.USER_IMAGE 					AS USER_IMAGE,
+				CONFIG.DEFAULT_DATASET_ID 			AS DEFAULT_DATASET_ID,
+				DATASET.DATASET_NM 					AS DEFAULT_DATASET_NM,
+				CONFIG.DEFAULT_REPORT_ID 			AS DEFAULT_REPORT_ID,
+				REPORT.REPORT_NM 					AS DEFAULT_REPORT_NM,
+				REPORT.REPORT_TYPE 					AS DEFAULT_REPORT_TYPE,
+				CONFIG.DEFAULT_ITEM 				AS DEFAULT_ITEM,
+				CONFIG.DEFAULT_PALETTE 				AS DEFAULT_PALETTE,
+				CONFIG.DEFAULT_VIEWER_REPORT_ID 	AS DEFAULT_VIEWER_REPORT_ID,
+				VIEW_REPORT.REPORT_NM 				AS DEFAULT_VIEWER_REPORT_NM,
+				VIEW_REPORT.REPORT_TYPE 			AS DEFAULT_VIEWER_REPORT_TYPE,
+				CONFIG.FONT_CONFIG					AS FONT_CONFIG
+		FROM 	WB_USER_CONFIG_MSTR CONFIG
+				LEFT JOIN DATASET_MSTR DATASET		ON CONFIG.DEFAULT_DATASET_ID = DATASET.DATASET_ID
+				LEFT JOIN REPORT_MSTR REPORT 		ON CONFIG.DEFAULT_REPORT_ID = REPORT.REPORT_ID
+				LEFT JOIN REPORT_MSTR VIEW_REPORT 	ON CONFIG.DEFAULT_VIEWER_REPORT_ID = VIEW_REPORT.REPORT_ID
+		WHERE 	USER_NO = #{USER_NO}
+	</select>
+	<insert id="insertUserConfig_bak" parameterType="com.wise.ds.repository.UserConfigVO">
+		INSERT INTO 	WB_USER_CONFIG_MSTR (
+							USER_NO,
+							USER_IMAGE,
+							DEFAULT_DATASET_ID,
+							DEFAULT_REPORT_ID,
+							DEFAULT_ITEM,
+							DEFAULT_PALETTE,
+							DEFAULT_VIEWER_REPORT_ID,
+							FONT_CONFIG
+						)
+		VALUES 			(
+							#{USER_NO},
+							#{USER_IMAGE},
+							#{DEFAULT_DATASET_ID},
+							#{DEFAULT_REPORT_ID},
+							#{DEFAULT_ITEM},
+							#{DEFAULT_PALETTE},
+							#{DEFAULT_VIEWER_REPORT_ID},
+							#{FONT_CONFIG}
+						)
+	</insert>
+	<insert id="insertUserConfig" parameterType="com.wise.ds.repository.UserConfigVO">
+		INSERT INTO 	WB_USER_CONFIG_MSTR (
+							USER_NO
+						)
+		VALUES 			(
+							#{USER_NO}
+						)
+	</insert>
+	<update id="updateUserProfileInfo" parameterType="com.wise.authn.User">
+		UPDATE 	USER_MSTR
+		SET 	USER_NM = #{USER_NM},
+				E_MAIL1 = #{E_MAIL1},
+				E_MAIL2 = #{E_MAIL2},
+				HP_NO = #{HP_NO},
+				TEL_NO = #{TEL_NO}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserImage" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	USER_IMAGE = #{USER_IMAGE}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserDatasetId" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	DEFAULT_DATASET_ID = #{DEFAULT_DATASET_ID}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserReportInfo" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	DEFAULT_REPORT_ID = #{DEFAULT_REPORT_ID}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserItem" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	DEFAULT_ITEM = #{DEFAULT_ITEM}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserPalette" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	DEFAULT_PALETTE = #{DEFAULT_PALETTE}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserViewerReportInfo" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	DEFAULT_VIEWER_REPORT_ID = #{DEFAULT_VIEWER_REPORT_ID}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserFontConfig" parameterType="com.wise.ds.repository.UserConfigVO">
+		UPDATE 	WB_USER_CONFIG_MSTR
+		SET 	FONT_CONFIG = #{FONT_CONFIG}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	
+	<select id="selectUserWbList" resultType="com.wise.authn.UserGroupVO">
+		SELECT
+				A.USER_ID
+				,A.USER_NM
+				,A.USER_NO
+				,B.GRP_NM
+				,(SELECT COUNT(*) FROM USER_AUTH_WB_MSTR WHERE USER_NO = A.USER_NO) AS authCount
+		FROM USER_MSTR A
+		INNER JOIN GRP_MSTR B
+		   ON A.GRP_ID = B.GRP_ID
+		WHERE A.DEL_YN = 'N'
+	</select>
+	<select id="selectGroupWbList" resultType="com.wise.authn.UserGroupVO">
+		SELECT 
+				A.GRP_NM
+				,A.GRP_ID
+				,A.GRP_DESC
+				,(SELECT COUNT(*) FROM GRP_AUTH_WB_MSTR WHERE GRP_ID = A.GRP_ID) AS authCount
+		FROM GRP_MSTR A
+		WHERE A.DEL_YN = 'N'
+	</select>
+	
+	<select id="selectUserWbAuth" parameterType="java.lang.Integer" resultType="HashMap">
+		SELECT	*
+		FROM USER_AUTH_WB_MSTR
+		WHERE USER_NO = #{userNo}
+	</select>
+	<select id="selectGrpWbAuth" parameterType="java.lang.String" resultType="HashMap">
+		SELECT 
+				*
+		FROM GRP_AUTH_WB_MSTR
+		WHERE GRP_ID = #{grpId}
+	</select>
+	
+	<insert id="insertUserWbAuth" parameterType="HashMap">
+		INSERT INTO 	USER_AUTH_WB_MSTR
+		VALUES 			(#{USER_NO}, #{ADHOC}, #{DASH}, #{EXCEL}, #{ANAL}, #{DS}, #{CONFIG}, #{DSVIEWER}, #{DS_DETAIL})
+	</insert>
+	<insert id="insertGrpWbAuth" parameterType="HashMap">
+		INSERT INTO 	GRP_AUTH_WB_MSTR
+		VALUES 			(#{GRP_ID}, #{ADHOC}, #{DASH}, #{EXCEL}, #{ANAL}, #{DS}, #{CONFIG}, #{DSVIEWER}, #{DS_DETAIL})
+	</insert>
+	
+	<delete id="initUserWbAuth" parameterType="java.lang.Integer">
+		DELETE FROM USER_AUTH_WB_MSTR
+		WHERE USER_NO = #{userNo}
+	</delete>
+	<delete id="initGrpWbAuth" parameterType="java.lang.Integer">
+		DELETE FROM GRP_AUTH_WB_MSTR
+		WHERE GRP_ID = #{grpId}
+	</delete>
+</mapper>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE log4j:configuration SYSTEM "http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/xml/doc-files/log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/" debug="false">
+    
+    <appender name="console" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d %5p [%c] %m %n" />
+            <!-- <param name="ConversionPattern" value="%t> [%d{yyyy-MM-dd HH:mm:ss}] [%c{1}] [%L] [%p] %m %n"/> -->
+        </layout>   
+    </appender>
+    
+    <appender name="daily" class="org.apache.log4j.DailyRollingFileAppender">
+        <param name="datePattern" value="'.'yyyy-MM-dd" />
+        <param name="file" value="${wise.ds.root}/WEB-INF/log/wise-ds-application.log" />
+        <param name="append" value="true" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d %t %5p [%c] %m %n" />
+            <!-- <param name="ConversionPattern" value="%t> [%d{yyyy-MM-dd HH:mm:ss}] [%c{1}] [%L] [%p] %m %n"/> -->
+        </layout>
+    </appender>
+    
+    <!-- log SQL with timing information, post execution -->
+    <logger name="jdbc.sqltiming" additivity="false">
+        <level value="WARN" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+    <logger name="org.springframework" additivity="false">
+        <level value="WARN" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+    <logger name="org.apache.commons.digester3" additivity="false">
+        <level value="WARN" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+    <logger name="org.apache.commons.beanutils" additivity="false">
+        <level value="WARN" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+    <logger name="httpclient.wire" additivity="false">
+        <level value="WARN" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+	<!-- File Transfer log -->
+    <logger name="org.apache.http.headers" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    <logger name="org.apache.http.wire" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+
+    <logger name="org.spark_project" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+
+    <logger name="org.apache.spark" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+
+    <logger name="org.apache.hadoop" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+
+    <logger name="io.netty" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+    
+    <logger name="org.hibernate.validator" additivity="false">
+    	<level value="WARN"/>
+    	<appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </logger>
+
+    <root>
+        <level value="DEBUG" />
+        <appender-ref ref="console" />
+        <appender-ref ref="daily" />
+    </root>
+                       
+</log4j:configuration>

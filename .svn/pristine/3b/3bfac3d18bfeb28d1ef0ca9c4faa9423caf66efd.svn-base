@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="editds">
+
+	<property environment="env" />
+	<property name="content.path" location="${basedir}/WebContent" />
+	<property name="build.path" location="${basedir}/build" />
+	<property name="war.path" location="${basedir}/target" />
+	<property name="servlet-api.jar" location="${basedir}/lib/javax.servlet-api-3.1.0.jar" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<property name="target" value="1.8" />
+	<property name="source" value="1.8" />
+
+	<path id="Deploy.classpath">
+		<pathelement location="build/classes" />
+		<pathelement location="${servlet-api.jar}" />
+		<fileset dir="${content.path}/WEB-INF/lib" includes="*.jar" />
+	</path>
+
+	<target name="init">
+		<mkdir dir="build/classes" />
+        <mkdir dir="build/test-classes" />
+        <mkdir dir="build/test-reports" />
+		<copy includeemptydirs="false" todir="build/classes">
+			<fileset dir="src">
+				<exclude name="**/*.java" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="clean">
+		<delete dir="build/classes" />
+        <delete dir="build/test-classes" />
+        <delete dir="build/test-reports" />
+		<delete dir="${war.path}" />
+	</target>
+
+	<target depends="init" name="compile">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="build/classes" includeantruntime="false" source="${source}" target="${target}" encoding="UTF-8">
+			<src path="src" />
+			<classpath refid="Deploy.classpath" />
+		</javac>
+	</target>
+
+    <target depends="compile" name="test-compile">
+        <echo message="Compiling test classes..." />
+        <javac debug="true" destdir="build/test-classes" includeantruntime="false" source="${source}" target="${target}" encoding="UTF-8">
+        <src path="test/src" />
+        <classpath location="lib/junit-4.13.2.jar" />
+        <classpath location="lib/easymock-4.3.jar" />
+        <classpath refid="Deploy.classpath" />
+        </javac>
+    </target>
+
+    <target name="test" depends="test-compile">
+        <junit fork="no" printsummary="yes" haltonfailure="yes">
+            <sysproperty key="log4j.configuration" value="file:${basedir}/WebContent/WEB-INF/config/log4j.xml" />
+            <classpath location="lib/junit-4.13.2.jar" />
+            <classpath location="lib/hamcrest-2.2.jar" />
+            <classpath location="lib/easymock-4.3.jar" />
+            <classpath refid="Deploy.classpath" />
+            <classpath location="build/test-classes" />
+            <formatter type="xml" />
+            <formatter type="plain" />
+            <batchtest fork="no" todir="build/test-reports">
+                <fileset dir="test/src">
+                    <include name="**/*Test*.java" />
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target depends="compile, test" name="build">
+        <echo message="${ant.project.name}: ${ant.file} being built..." />
+    </target>
+
+    <target name="web" depends="build">
+        <mkdir dir="${war.path}" />
+        <copy todir="${war.path}">
+            <fileset dir="${content.path}">
+                <include name="**/*" />
+            </fileset>
+        </copy>
+        <copy todir="${war.path}/WEB-INF">
+            <fileset dir="${build.path}">
+                <include name="classes/**/*" />
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="war" depends="web">
+        <jar destfile="${war.path}/${ant.project.name}.war" basedir="${war.path}" />
+    </target>
+
+    <target name="avro">
+        <java jar="lib/avro-tools-1.8.2.jar" fork="true" failonerror="true">
+            <arg line="compile -string schema" />
+            <arg file="src/com/wise/comp/pivotmatrix/schema/AvroSummaryMatrix.avsc" />
+            <arg file="src" />
+        </java>
+    </target>
+
+</project>

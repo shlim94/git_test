@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Authn">
+	<select id="UP_CONFIG_MSTR" resultType="com.wise.authn.ConfigMasterVO">
+		SELECT 	* 
+		FROM 	CONFIG_MSTR
+	</select>
+	<select id="UP_WB_CONFIG_MSTR" resultType="com.wise.authn.WebConfigMasterVO">
+		SELECT 	* 
+		FROM 	WB_CONFIG_MSTR
+	</select>
+	<select id="selectUserById" parameterType="String" resultType="com.wise.authn.User">
+		SELECT 	*
+		FROM 	USER_MSTR
+		WHERE 	USER_ID = #{id}
+				AND DEL_YN = 'N'
+	</select>
+	<select id="selectUserByNo" parameterType="int" resultType="com.wise.authn.User">
+		SELECT 	*
+		FROM 	USER_MSTR
+		WHERE 	USER_NO = #{userNo}
+				AND DEL_YN = 'N'
+	</select>
+	<select id="selectRepositoryUserByUserNo" parameterType="int" resultType="com.wise.authn.User">
+		SELECT	USER_NO as USER_NO,
+				USER_ID as USER_ID,
+				GRP_ID as GRP_ID,
+				USER_NM as USER_NM,
+				USER_REL_CD as USER_REL_CD
+		FROM	USER_MSTR
+		WHERE   USER_NO = #{userNo}	
+		and		DEL_YN = 'N'
+	</select>
+	<select id="selectRepositoryUserByUserId" parameterType="String" resultType="com.wise.authn.User">
+		SELECT	USER_NO as USER_NO,
+				USER_ID as USER_ID,
+				GRP_ID as GRP_ID,
+				USER_NM as USER_NM,
+				USER_REL_CD as USER_REL_CD
+		FROM	USER_MSTR
+		WHERE   USER_ID = #{userId}	
+		and		DEL_YN = 'N'
+	</select>
+
+	<select id="selectUserOfMapperTable" parameterType="map" resultType="com.wise.authn.User">
+		SELECT	USER_NO as no,
+				USER_ID as id,
+				GRP_ID as gid,
+				USER_NM as name,
+				USER_REL_CD as USER_REL_CD
+		FROM	USER_MSTR
+		WHERE   USER_NO = (
+					SELECT	${TARGET_COLUMN}
+					FROM	${TABLE_NAME}
+					WHERE   ${SOURCE_COLUMN} = #{userId}
+					AND DEL_YN = 'N'
+				)
+		and		DEL_YN = 'N'
+	</select>
+	
+	<select id="selectUserOfMapperTableByUserId" parameterType="String" resultType="com.wise.authn.User">
+		SELECT	USER_NO as no,
+				USER_ID as id,
+				GRP_ID as gid,
+				USER_NM as name,
+				USER_REL_CD as USER_REL_CD
+		FROM	USER_MSTR
+		WHERE   USER_ID = #{user_id}
+		AND 	DEL_YN = 'N'
+	</select>
+	
+	<select id="selectUserPermissions" resultType="com.wise.authn.ReportPermission">
+		SELECT	USER_NO as id,
+				FLD_ID as folderId,
+				AUTH_VIEW as viewYn,
+				AUTH_PUBLISH as publishYn,
+				AUTH_DATAITEM as dataItemYn
+		FROM	USER_AUTH_REPORT_MSTR
+	</select>
+	<select id="selectUserGroupPermissions" resultType="com.wise.authn.ReportPermission">
+		SELECT	GRP_ID as id,
+				FLD_ID as folderId,
+				AUTH_VIEW as viewYn,
+				AUTH_PUBLISH as publishYn,
+				AUTH_DATAITEM as dataItemYn
+		FROM	GRP_AUTH_REPORT_MSTR
+	</select>
+	
+	<select id="selectUserPermissionByReport" parameterType="map" resultType="com.wise.authn.ReportPermission">
+		SELECT	USER_NO as id,
+				FLD_ID as folderId,
+				AUTH_VIEW as viewYn,
+				AUTH_PUBLISH as publishYn,
+				AUTH_DATAITEM as dataItemYn
+		FROM	USER_AUTH_REPORT_MSTR
+		WHERE   USER_NO = #{USER_NO}
+		AND		FLD_ID = (
+					SELECT	FLD_ID
+					FROM	REPORT_MSTR
+					WHERE   REPORT_ID = #{REPORT_ID}	
+				)
+	</select>
+	<select id="selectUserGroupPermissionByReport" parameterType="map" resultType="com.wise.authn.ReportPermission">
+		SELECT	GRP_ID as id,
+				FLD_ID as folderId,
+				AUTH_VIEW as viewYn,
+				AUTH_PUBLISH as publishYn,
+				AUTH_DATAITEM as dataItemYn
+		FROM	GRP_AUTH_REPORT_MSTR
+		WHERE   GRP_ID = (
+					SELECT	GRP_ID
+					FROM	USER_MSTR
+					WHERE   USER_NO = #{USER_NO}	
+					and		DEL_YN = 'N'
+				)
+		AND		FLD_ID = (
+					SELECT	FLD_ID
+					FROM	REPORT_MSTR
+					WHERE   REPORT_ID = #{REPORT_ID}	
+				)
+	</select>
+	
+	<select id="selectLoginUser" parameterType="map" resultType="com.wise.authn.User">
+		SELECT *
+		FROM USER_MSTR
+		WHERE 1=1
+		AND USER_ID = #{USER_ID}
+		AND PASSWD = #{PASSWORD}
+		AND DEL_YN = 'N'
+	</select>
+	<select id="selectDataAuthnByUserGroup" parameterType="int" resultType="com.wise.authn.ReportDataPermission">
+		SELECT	GRP_ID as userGroupId
+			   ,DATA_XML as dataAuthnXmlBase64
+		FROM	GRP_AUTH_DATA_MSTR
+		WHERE	GRP_ID = #{userGroupId}
+	</select>
+	<select id="selectDataAuthnByUser" parameterType="int" resultType="com.wise.authn.ReportDataPermission">
+		SELECT	USER_NO as userNo
+			   ,DATA_XML as dataAuthnXmlBase64
+		FROM	USER_AUTH_DATA_MSTR
+		WHERE	USER_NO = #{userNo}
+	</select>
+	<select id="selectUserSessionLog" parameterType="com.wise.authn.User" resultType="com.wise.authn.UserSessionVO">
+		SELECT 	*
+		FROM 	USER_SESSION_MSTR
+		WHERE 	USER_ID = #{USER_ID}
+				AND USER_NO = #{USER_NO}
+	</select>
+	<insert id="insertUserSessionLog" parameterType="com.wise.authn.UserSessionVO">
+		INSERT INTO 	USER_SESSION_MSTR 
+		VALUES 			(
+							#{USER_ID},
+							#{USER_NO},
+							#{USER_SESSION_KEY},
+							#{LOG_TYPE},
+							#{ACCESS_IP},
+							#{LAST_MSG_DT},
+							#{MOD_USER_NO},
+							#{MOD_DT}
+						)
+	</insert>
+	<update id="updateUserSessionLog" parameterType="com.wise.authn.UserSessionVO">
+		UPDATE 	USER_SESSION_MSTR
+		SET		USER_SESSION_KEY = #{USER_SESSION_KEY},
+				LOG_TYPE = #{LOG_TYPE},
+				ACCESS_IP = #{ACCESS_IP},
+				LAST_MSG_DT = #{LAST_MSG_DT},
+				MOD_USER_NO = #{MOD_USER_NO},
+				MOD_DT = #{MOD_DT}
+		WHERE 	USER_ID = #{USER_ID} 
+				AND USER_NO = #{USER_NO}
+	</update>
+	<update id="updateUserLockCount" parameterType="com.wise.authn.User">
+		UPDATE 	USER_MSTR
+		SET 	LOCK_CNT = #{LOCK_CNT}
+		WHERE 	USER_NO = #{USER_NO}
+	</update>
+	<select id="selectUserInactiveDays" parameterType="com.wise.authn.User" resultType="java.lang.Integer">
+		<if test="_databaseId == 'sqlserver'">
+			SELECT 	DATEDIFF(day, MOD_DT, GETDATE())
+			FROM 	USER_SESSION_MSTR
+			WHERE 	USER_NO = #{USER_NO}
+		</if>
+		<if test="_databaseId == 'Oracle'">
+			SELECT 	TRUNC(CURRENT_DATE - MOD_DT)
+			FROM 	USER_SESSION_MSTR
+			WHERE 	USER_NO = #{USER_NO}
+		</if>
+		<if test="_databaseId == 'db2'">
+			SELECT 	DAYS(CURRENT DATE) - DAYS(MOD_DT) AS inactiveDays
+			FROM 	USER_SESSION_MSTR
+			WHERE 	USER_NO = #{USER_NO}
+		</if>
+		<if test="_databaseId == 'Tibero'">
+			SELECT 	TRUNC(CURRENT_DATE) - TRUNC(MOD_DT)
+			FROM 	USER_SESSION_MSTR
+			WHERE 	USER_NO = #{USER_NO}
+		</if>
+		<if test="_databaseId == 'Maria'">
+			SELECT 	TIMEDIFF(MOD_DT, CURRENT_DATE)
+			FROM 	USER_SESSION_MSTR
+			WHERE 	USER_NO = #{USER_NO}
+		</if>
+		
+	</select>
+	<select id="insertLoginLog" parameterType="com.wise.authn.LoginLogVO">
+		INSERT INTO LOG_LOGINOUT
+		VALUES (
+			#{EVENT_DT},
+			#{LOG_TYPE},
+			#{USER_ID},
+			#{USER_NM},
+			#{USER_NO},
+			#{GRP_ID},
+			#{GRP_NM},
+			#{ACCESS_IP},
+			#{ACCESS_GUID},
+			#{MOD_USER_NO},
+			#{MOD_DT},
+			#{PROG_TYPE}
+		)
+	</select>
+	
+<!-- 	<select id="selectUserGroupRunMode" parameterType="com.wise.authn.User" resultType="com.wise.authn.UserGroupVO">
+		SELECT 	U.RUN_MODE 	AS USER_RUN_MODE,
+				G.RUN_MODE 	AS GRP_RUN_MODE
+		FROM 	USER_MSTR U
+				LEFT JOIN GRP_MSTR G ON U.GRP_ID = G.GRP_ID
+		WHERE 	U.USER_NO = #{USER_NO}
+	</select> -->
+	
+	
+	
+<select id="selectUserGroupRunMode" parameterType="com.wise.authn.User" resultType="com.wise.authn.UserGroupVO">
+		SELECT
+			CASE WHEN (U.RUN_MODE IS NULL OR U.RUN_MODE = '') THEN G.RUN_MODE ELSE U.RUN_MODE END AS USER_RUN_MODE
+			, G.RUN_MODE AS GRP_RUN_MODE, G.GRP_NM
+			FROM USER_MSTR U LEFT JOIN GRP_MSTR G
+			ON U.GRP_ID = G.GRP_ID
+		WHERE 	U.USER_NO = #{USER_NO}
+	</select>
+</mapper>

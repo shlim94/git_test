@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xmlns:aop="http://www.springframework.org/schema/aop"
+	 xmlns:tx="http://www.springframework.org/schema/tx"
+	 xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+							  http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+							  http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<value>/WEB-INF/config/jdbc/jdbc.properties</value>
+		</property>
+	</bean>
+
+	<!-- JDBC용  -->	
+	 <bean id="repositoryDataSource" class="org.apache.commons.dbcp.BasicDataSource"> 
+		<property name="driverClassName" value="${jdbc.repository.driverClass}" />
+		<property name="url" value="${jdbc.repository.url}" />
+		<property name="username" value="${jdbc.repository.username}" />
+		<property name="password" value="${jdbc.repository.password}" />
+		<property name="maxActive" value="50" />
+		<property name="maxIdle" value="50" />
+		<property name="defaultAutoCommit" value="false" />
+	</bean>
+
+ 	<!-- db id/pw를 암호화 할때  -->
+ 	<!-- 
+	<bean id="repositoryDataSource" class="com.wise.common.secure.SecureBasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.repository.driverClass}" />
+		<property name="url" value="${jdbc.repository.url}" />
+		<property name="username" value="${jdbc.repository.username}" />
+		<property name="password" value="${jdbc.repository.password}" />
+		<property name="defaultAutoCommit" value="false" />
+	</bean>
+	-->
+	
+	<!-- JNDI용 -->
+<!-- 	<bean id="repositoryDataSource" class="org.springframework.jndi.JndiObjectFactoryBean"> -->
+<!-- 		<property name="jndiName" value="ds_olap" /> -->
+<!-- 	</bean> -->
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="repositoryDataSource" />
+		<property name="configLocation" value="/WEB-INF/config/mybatis/mybatis-config.xml"/>
+		<property name="mapperLocations" value="/WEB-INF/config/mybatis/mapper/*.xml" />
+		<property name="databaseIdProvider" ref="databaseIdProvider"/>
+	</bean>
+	
+	<bean id="vendorProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+	    <property name="properties">
+	        <props>
+	            <prop key="SQL Server">sqlserver</prop>
+	            <prop key="DB2">db2</prop>
+	            <prop key="Oracle">Oracle</prop>
+	            <prop key="Tibero">Tibero</prop>
+	            <prop key="MySQL">mysql</prop>
+	            <prop key="PostgreSQL">postgres</prop>
+	            <prop key="Maria">Maria</prop>
+	        </props>
+	    </property>
+	</bean>
+	
+	<bean id="databaseIdProvider" class="org.apache.ibatis.mapping.VendorDatabaseIdProvider"> 
+		<property name="properties" ref="vendorProperties"/>
+	</bean>
+	
+	<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+</beans>

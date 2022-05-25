@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Dashboard CurrencyCulture="ko-KR">
+  <Title Text="전체실업지표TEST" Alignment="Left"/>
+  <DataSources>
+    <DataSource ComponentName="dataSource1" Name="1. 전체실업지표"/>
+    <DataSource ComponentName="dataSource2" Name="1-1. 월별"/>
+    <DataSource ComponentName="dataSource3" Name="1-2. 연령대별"/>
+    <DataSource ComponentName="dataSource4" Name="1-3. 성별"/>
+    <DataSource ComponentName="dataSource5" Name="1-4. 산업별"/>
+    <DataSource ComponentName="dataSource6" Name="1-5. 지역별"/>
+    <DataSource ComponentName="dataSource7" Name="1-6. 규모별"/>
+  </DataSources>
+  <Items>
+    <Chart ComponentName="chartDashboardItem2" Name="1-1. 월별 상실률" MemoText="" DataSource="dataSource2" ShowCaption="false">
+      <DataItems>
+        <Measure DataMember="상실률" SummaryType="Sum" Name="상실률" UniqueName="DataItem0">
+          <NumericFormat FormatType="Percent" Unit="Ones" Precision="1" IncludeGroupSeparator="true"/>
+        </Measure>
+        <Dimension DataMember="월" Name="월" UniqueName="DataItem1"/>
+        <Dimension DataMember="년" Name="년" UniqueName="DataItem2"/>
+      </DataItems>
+      <Arguments>
+        <Argument UniqueName="DataItem1"/>
+      </Arguments>
+      <SeriesDimensions>
+        <SeriesDimension UniqueName="DataItem2"/>
+      </SeriesDimensions>
+      <AxisY ShowZero="true" FormatType="Percent" Unit="Ones" SuffixEnabled="false" Precision="0" PrecisionOption="반올림" Separator="true">
+        <MeasureFormat O="" K="천" M="백만" B="십억"/>
+      </AxisY>
+      <Panes>
+        <Pane Name="창 1">
+          <AxisY ShowZero="true">
+            <NumericFormat FormatType="Percent" Precision="0" PrecisionOption="반올림" Unit="Ones" IncludeGroupSeparator="true"/>
+          </AxisY>
+          <Series>
+            <Simple IgnoreEmptyPoints="false" PlotOnSecondaryAxis="false" SeriesType="Line" ShowPointMarkers="true">
+              <Value UniqueName="DataItem0"/>
+              <PointLabelOptions ContentType="Value" Orientation="" OverlappingMode="Hide" Position="Outside" ShowForZeroValues="false"/>
+            </Simple>
+          </Series>
+        </Pane>
+      </Panes>
+      <AxisX Rotation="0"/>
+      <ChartLegend Visible="true" IsInsidePosition="false" InsidePosition="TopRightHorizontal" OutsidePosition="BottomCenterHorizontal"/>
+    </Chart>
+    <TabContainer ComponentName="tabContainerDashboardItem6" Name="텝 컨테이너 1">
+      <Pages>
+        <Page ComponentName="dashboardTabPage6" Name="1-1. 월별 상실률"/>
+      </Pages>
+    </TabContainer>
+  </Items>
+  <LayoutTree>
+    <LayoutTabContainer DashboardItem="tabContainerDashboardItem6" Weight="100">
+      <LayoutTabPage DashboardItem="dashboardTabPage6" Orientation="Horizontal">
+        <LayoutItem DashboardItem="chartDashboardItem2" Weight="99.01055735304303"/>
+      </LayoutTabPage>
+    </LayoutTabContainer>
+  </LayoutTree>
+</Dashboard>

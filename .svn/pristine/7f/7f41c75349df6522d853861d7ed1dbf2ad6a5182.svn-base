@@ -1,0 +1,4 @@
+jdbc.repository.driverClass=com.tmax.tibero.jdbc.TbDriver
+jdbc.repository.url=jdbc:tibero:thin:@10.100.12.153:9629:kfss
+jdbc.repository.username=wisebiv6
+jdbc.repository.password=wisebiv61012

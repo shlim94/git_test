@@ -1,0 +1,83 @@
+@charset "utf-8";
+
+/* progress bar */
+div.progress_box {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width:100%; 
+    height: 100%; 
+    display: none;
+    z-index: 9999999999;
+    display: none;
+}
+
+.progress_back_panel {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width:100%; 
+    height: 100%; 
+    display: block;
+    filter: alpha(opacity=40); 
+    opacity: 0.4;
+    background: #eee;
+}
+
+/* 2020.01.16 mksong 프로그레스 써클 회전 방향 변경 dogfoot */     
+.img_progress{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	margin: auto;
+	transform: rotateY(180deg);
+	width: 64px;
+    height: 64px;
+    z-index: 99999999999;
+	background-image:url('../resources/main/images/wi_loading.gif');
+}
+
+/* 2020.01.16 mksong 작업취소 버튼 수정 dogfoot */
+.progress-btn-type{
+	background-image: linear-gradient(to bottom, #577df6, #2b5eff);
+	border-radius:50px;
+	overflow: hidden;
+	position: absolute;
+	width: 100px;
+	height: 40px;
+	border: none;
+	left: 0;
+	top: 130px;
+	right: 0;
+	bottom: 0;
+	margin: auto;
+	z-index: 999;
+}
+/*dogfoot shlim 보고서 연결 초기화면 로딩 페이지설정 20200309*/
+.progress_back_panel2 {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width:100%; 
+    height: 100%; 
+    display: block;
+    filter: alpha(opacity=40);
+    z-index: 9999999999; 
+    background: white;
+}
+
+.img_progress2{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	margin: auto;
+	transform: rotateY(180deg);
+	width: 64px;
+    height: 64px;
+    z-index: 99999999999;
+	background-image:url('../resources/main/images/wi_loading.gif');
+}

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="editds">
+	<property environment="env" />
+	<property name="content.path" location="${basedir}/WebContent" />
+	<property name="build.path" location="${basedir}/build" />
+	<property name="war.path" location="${basedir}/target" />
+	<property name="tomcat.servlet" location="/usr/share/java/servlet.jar" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<property name="target" value="1.8" />
+	<property name="source" value="1.8" />
+	<path id="Deploy.classpath">
+		<pathelement location="build/classes" />
+		<pathelement location="${tomcat.servlet}" />
+		<fileset dir="${content.path}/WEB-INF/lib" includes="*.jar" />
+	</path>
+	<target name="init">
+		<mkdir dir="build/classes" />
+		<copy includeemptydirs="false" todir="build/classes">
+			<fileset dir="src">
+				<exclude name="**/*.java" />
+			</fileset>
+		</copy>
+	</target>
+	<target name="clean">
+		<delete dir="build/classes" />
+		<delete dir="${war.path}" />
+	</target>
+	<target depends="init" name="build">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="build/classes" includeantruntime="false" source="${source}" target="${target}">
+			<src path="src" />
+			<classpath refid="Deploy.classpath" />
+		</javac>
+	</target>
+	<target name="war" depends="build">
+		<mkdir dir="${war.path}" />
+		<copy todir="${war.path}">
+			<fileset dir="${content.path}">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+		<copy overwrite="true" force="true" verbose="true" file="${content.path}/WEB-INF/config/jdbc/jdbc.mssql.opr.properties" tofile="${war.path}/WEB-INF/config/jdbc/jdbc.properties"/>
+		<copy overwrite="true" force="true" verbose="true" file="${content.path}/WEB-INF/config/mybatis/mybatis-config.non-db2.xml" tofile="${war.path}/WEB-INF/config/mybatis/mybatis-config.xml"/>
+		<copy todir="${war.path}/WEB-INF">
+			<fileset dir="${build.path}">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+		<jar destfile="${war.path}/${ant.project.name}.war" basedir="${war.path}" />
+	</target>
+</project>
+

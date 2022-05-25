@@ -1,0 +1,82 @@
+[
+   {
+      "type":"record",
+      "name":"AvroSummaryValue",
+      "namespace":"com.wise.comp.pivotmatrix.schema.avro",
+      "fields":[
+         {
+            "name": "fieldName",
+            "type": [ "string", "null" ]
+         },
+         {
+            "name": "summaryType",
+            "type": [ "string", "null" ]
+         },
+         {
+            "name": "count",
+            "type": "long"
+         },
+         {
+            "name": "sum",
+            "type": [ "string", "null" ]
+         },
+         {
+            "name": "value",
+            "type": [ "string", "null" ]
+         },
+         {
+            "name": "distinctValues",
+            "type": {
+               "type": "array",
+               "items": "string"
+            }
+         },
+         {
+            "name": "textValue",
+            "type": [ "string", "null" ]
+         }
+      ]
+   },
+   {
+      "type":"record",
+      "name":"AvroSummaryCell",
+      "namespace":"com.wise.comp.pivotmatrix.schema.avro",
+      "fields":[
+         {
+            "name": "summaryValues",
+            "type": {
+               "type": "array",
+               "items": "AvroSummaryValue"
+            }
+         }
+      ]
+   },
+   {
+      "type":"record",
+      "name":"AvroSummaryCellRow",
+      "namespace":"com.wise.comp.pivotmatrix.schema.avro",
+      "fields":[
+         {
+            "name": "row",
+            "type": {
+               "type": "array",
+               "items": "AvroSummaryCell"
+            }
+         }
+      ]
+   },
+   {
+      "type":"record",
+      "name":"AvroSummaryCellRows",
+      "namespace":"com.wise.comp.pivotmatrix.schema.avro",
+      "fields":[
+         {
+            "name": "rows",
+            "type": {
+               "type": "array",
+               "items": "AvroSummaryCellRow"
+            }
+         }
+      ]
+   }
+]

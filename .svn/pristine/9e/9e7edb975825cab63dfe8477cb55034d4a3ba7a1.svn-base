@@ -1,0 +1,20 @@
+/* @charset "utf-8"; */
+
+/* dxLookup */
+/* .dx-lookup-hack div.dx-lookup-field {padding: 0 27px 0 9px;} */
+/* .dx-list:not(.dx-list-select-decorator-enabled) .dx-list-item.dx-state-focused {background-color: #fff; color: #000;} */
+
+/* dxList */
+/* .dx-list-hack .dx-list-item, .dx-list .dx-empty-message {border: none;} */
+/* .dx-list-item-content {padding:5px 10px;} */
+
+/* dxDataGrid */
+/* td.dx-grid-hack-border-left {border-left: 1px #d3d3d3 solid !important;} */
+/* .dx-datagrid-text-content {font-weight: bold;} */
+/* .dx-datagrid-nodata {width:100%; height:100%; background-image:url(../images/no_data.gif); background-repeat:no-repeat; background-position:center center;} */
+
+/* dxPivotGrid */
+/* thead.dx-pivotgrid-horizontal-headers, thead.dx-pivotgrid-vertical-headers {font-weight: 900;} */
+
+/* datebox */
+/* .dx-datebox-with-calendar .dx-texteditor-input {padding-right: 30px;} */

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<weblogic-web-app xmlns="http://xmlns.oracle.com/weblogic/weblogic-web-app" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd http://xmlns.oracle.com/weblogic/weblogic-web-app http://xmlns.oracle.com/weblogic/weblogic-web-app/1.4/weblogic-web-app.xsd">
+    <context-root>olap</context-root>
+    <jsp-descriptor>
+    	<encoding>UTF-8</encoding>
+    </jsp-descriptor>
+    <container-descriptor>
+<!-- 		<prefer-web-inf-classes>true</prefer-web-inf-classes> -->
+		<prefer-application-packages>
+			<package-name>org.apache.*</package-name>
+			<package-name>org.apache.xmlbeans.*</package-name>
+			<package-name>org.apache.commons.*</package-name>
+			<package-name>com.ibm.icu.*</package-name>
+			<package-name>schemaorg_apache_xmlbeans.system.sXMLCONFIG.*</package-name>
+			<package-name>schemaorg_apache_xmlbeans.system.sXMLLANG.*</package-name>
+			<package-name>schemaorg_apache_xmlbeans.system.sXMLSCHEMA.*</package-name>
+			<package-name>schemaorg_apache_xmlbeans.system.sXMLTOOL.*</package-name>
+			<package-name>com.fasterxml.jackson.*</package-name>
+		</prefer-application-packages>
+		<show-archived-real-path-enabled>true</show-archived-real-path-enabled>
+    </container-descriptor>
+<!--      <session-descriptor>-->
+    <!--	<tracking-enabled>true</tracking-enabled>-->
+    <!--	<cookie-name>OLAPSESSION</cookie-name>-->
+    <!--	<sharing-enabled>true</sharing-enabled>-->
+    <!--</session-descriptor> -->
+    
+    <session-descriptor>
+    	<timeout-secs>7200</timeout-secs>
+    	<invalidation-interval-secs>60</invalidation-interval-secs>
+        <tracking-enabled>true</tracking-enabled>
+        <cookie-name>OLAPSESSION</cookie-name>
+        <persistent-store-type>replicated_if_clustered</persistent-store-type>
+        <sharing-enabled>true</sharing-enabled>
+    </session-descriptor>
+    
+    <charset-params>
+    	<input-charset>
+    		<resource-path>/*</resource-path>
+    		<java-charset-name>UTF-8</java-charset-name>
+    	</input-charset>
+    </charset-params>
+</weblogic-web-app>

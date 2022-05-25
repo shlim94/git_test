@@ -1,0 +1,15 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  7300    0  1937  100  5363  1243k  3443k --:--:-- --:--:-- --:--:-- 5237k
+HTTP/1.1 100 Continue
+
+HTTP/1.1 200 OK
+Cache-Control: no-cache, no-store, must-revalidate
+Date: Mon, 11 Oct 2021 08:46:20 GMT
+Pragma: no-cache
+Transfer-Encoding: chunked
+Content-Type: application/json; charset=utf-8
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+X-Frame-Options: SAMEORIGIN
+
+{"meta":{"cacheKey":"a90e097952e72d1d3b046710bb7c00bbb444c4932a90280a751b880e759ef172","rowGroupParams":[{"selector":"마감년월","groupInterval":null,"isExpanded":false,"key":"마감년월:"}],"colGroupParams":[{"selector":null,"groupInterval":null,"isExpanded":false,"key":null}],"summaryParams":[{"selector":"근속일수","summaryType":"SUM"},{"selector":"S_마감년월","summaryType":"MIN"}],"attributes":{"sql":"U0VMRUNUICBESVZfSURJX1lNLiJZTV9DRE5NIiBBUyAi66eI6rCQ64WE7JuUIiwNICAgICAgICBESVZfSURJX1lNLiJEV19ZTSIgQVMgIlNf66eI6rCQ64WE7JuUIiwNICAgICAgICBTdW0oVEJfRVdfSVVHXzEwNDJEVy4iQ05XS19TTV9EWUNUIikgQVMgIuq3vOyGjeydvOyImCIgCkZST00gICAgVEJfRVdfSVVHXzEwNDJEVyAgSU5ORVIgSk9JTiBESVZfSURJX1lNIERJVl9JRElfWU0gT04gVEJfRVdfSVVHXzEwNDJEVy4iRFdfQ0xPU19ZTSIgPSBESVZfSURJX1lNLiJEV19ZTSINICAgICAgICAKV0hFUkUgICAoRElWX0lESV9ZTS4iRFdfWU0iIEJFVFdFRU4gJzIwMjEwOCcgQU5EICcyMDIxMDgnKQpBTkQgICAgIChESVZfSURJX1lNLiJZTV9DRE5NIiBJTiAoJzIwMjHrhYQwOOyblCcpKQpBTkQgICAgIChESVZfSURJX1lNLiJVRVBTX0NMT1NfWU4iIElOICgnWScpKQpHUk9VUCBCWSAJRElWX0lESV9ZTS4iWU1fQ0ROTSIsDQkJRElWX0lESV9ZTS4iRFdfWU0iIA=="},"rowFlattendSummaryDimensions":[{"key":null,"path":"","parentPath":null,"depth":0},{"key":"2021년08월","path":"~|_2021년08월","parentPath":"","depth":1}],"colFlattendSummaryDimensions":[{"key":null,"path":"","parentPath":null,"depth":0},{"key":null,"path":"~|_null","parentPath":"","depth":1}]},"paging":{"offset":0,"limit":50,"count":2,"total":2,"distinctTotal":2},"matrix":{"rows":2,"cols":2,"cells":[[{"vs":[{"f":"근속일수","t":"SUM","c":1,"s":1537209169},{"f":"S_마감년월","t":"MIN","c":1,"v":202108}]},{"vs":[{"f":"근속일수","t":"SUM","c":1,"s":1537209169},{"f":"S_마감년월","t":"MIN","c":1,"v":202108}]}],[{"vs":[{"f":"근속일수","t":"SUM","c":1,"s":1537209169},{"f":"S_마감년월","t":"MIN","c":1,"v":202108}]},{"vs":[{"f":"근속일수","t":"SUM","c":1,"s":1537209169},{"f":"S_마감년월","t":"MIN","c":1,"v":202108}]}]]}}
